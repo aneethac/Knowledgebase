@@ -1,0 +1,368 @@
+ 
+Summary
+Parallel Run Testing Strategy Status
+Strategy Objective
+Overview
+Prerequisites and Entry Criteria
+Parallel Run Execution Strategy
+Testing Scope
+Data Migration & Reconciliation Testing
+ELT/ETL Process & Integration Testing
+Regression Testing
+Performance & Load Testing
+User Acceptance Testing (UAT)
+Security & Access Control Testing
+Disaster Recovery Testing
+Enablement Testing
+Post-Migration(Go-Live) Audit
+Input synchronisation plan
+ 
+
+Summary
+ 
+
+Parallel Run Testing Strategy Status
+DRAFT
+
+Strategy Objective
+Overview
+The purpose of this document is to capture the testing strategy for the BIW (Business Information Warehouse) migration parallel run. As part of the BIW migration, there will be a period when the existing BIW data warehouse and the EDP (Cloud Enterprise Data Platform) refresh will run in parallel. During this period, there will be a series of testing and reconciliation required between the existing and the new platform and this document provides the guiding principle for that period.
+
+ 
+
+Prerequisites and Entry Criteria
+<This section is subject to change based on discussion with the project team>
+
+This is a critical step which needs to complete and signed off before the parallel run kicks-off.
+
+System Integration Testing (SIT) Complete - All new cloud components have been individually and collectively tested to prove they function as designed.
+Below are the key components which needs to be developed, tested and SIT signed off before moving to parallel run:
+
+
+Component
+
+SIT Testing
+
+Comments
+
+Priority
+
+Completion status
+
+Unix scripts
+
+Integrated with Control-M scheduling
+
+Correct dependencies & sequencing between jobs
+
+Handles SIT dataset with no errors
+
+ 
+
+At-least two successful runs of the Control-M schedule for all the scripts
+
+High
+
+ 
+
+PL/SQL Packages / Procedures
+
+End-to-end SIT scenarios pass.
+
+Handles edge cases with SIT data.
+
+Matches expected outputs vs Oracle reference runs.
+
+No logic divergence.
+
+ 
+
+High
+
+ 
+
+Tables
+
+SIT dataset loads into tables without error.
+
+Referential integrity validated.
+
+No column mismatches.
+
+ 
+
+High
+
+ 
+
+Views
+
+Output validated against Oracle SIT dataset
+
+All dependent reports/queries run without errors
+
+Parallel run can commence without this
+
+Medium
+
+ 
+
+Outbound Feeds
+
+SIT feeds generated and validated against Oracle outputs.
+
+Feeds successfully picked up by SIT downstream systems.
+
+No missing or extra columns
+
+Parallel run can commence without this
+
+Low
+
+ 
+
+Reports (Oracle → Power BI)
+
+SIT reports render correctly with SIT data.
+
+Measures/aggregates match Oracle.- Filters, drill-downs, and interactions work.
+
+Parallel run can commence without this
+
+Low
+
+ 
+
+Microstrategy reports
+
+ 
+
+Parallel run can commence without this
+
+Low
+
+ 
+
+Historical Data Load Complete - The initial migration of all the historical data to BIW is complete, and Data Migration & Reconciliation Testing on this historical data is signed off. The starting point for both systems must be identical.
+
+Parallel Run Environment Readiness - A stable, production-like environment is available. This environment must have the new cloud pipelines, the Snowflake DWH, and connectivity from the production Control-M scheduler. <Check with Platform team and Suchintan on the status>
+
+Reconciliation Tooling Ready - All automated/semi-automated reconciliation scripts (SQL, Python, PowerBI reports) are developed, tested and ready to execute.
+<The reconciliation scripts should be developed, tested and demonstrated before parallel run>
+
+ 
+
+Parallel Run Execution Strategy
+<This section is subject to change based on discussion with the project team>
+
+The execution strategy outlines the batch processing between the existing platform and the new platform. 
+
+ 
+
+Input Synchronisation - The identical inbound data feed is delivered to both the legacy system and the EDL storage account. There would be catching up period during which we might have to run the new pipelines multiple times in a day to catchup. More details below.
+
+Batch-based execution - Considering the size of the migration, it is recommended that the execution flow cannot be simultaneous until we hit Day 0. It might need to run in batches to catchup. Batch based execution are under two groups:
+
+File based load - Here are the proposed steps:
+
+Input Staging - The production inbound data is received. A copy is send to the on-prem server and a copy persisted in the EDL storage.
+
+Legacy Execution - The on-prem process runs as normal and completes. A “legacy checkpoint” is logged.
+
+EDP Execution - The new cloud pipeline is triggered to process including ingestion and end-to-end transformation that day’s batch (6th Jan).
+
+EDP checkpoint – Once the new pipeline successfully completes the 6th Jan batch, a “EDP checkpoint” is logged. 
+
+Reconciliation trigger – The automated tests are triggered when both the checkpoints for that batch are complete.
+
+Direct load - Here are the proposed steps:
+
+Legacy Execution - The on-prem process runs as normal and completes. A “legacy checkpoint” is logged.
+
+EDP Execution - The new cloud pipeline is triggered to process including ingestion and end-to-end transformation that day’s batch (6th Jan).
+
+EDP checkpoint – Once the new pipeline successfully completes the 6th Jan batch, a “EDP checkpoint” is logged. 
+
+Reconciliation trigger – The automated tests are triggered when both the checkpoints for that batch are complete.
+
+Monitoring – Both processes are monitored for execution time and any operational failures.
+
+Triage and reporting – Discrepancies are logged as defects and a daily status report is issued.
+
+ 
+
+Testing Scope
+The testing scope includes process across the migration flow and go-live testing.
+
+Data Migration & Reconciliation Testing
+This phase validates that data was moved from Oracle to Snowflake completely and correctly. This should be performed at each significant stage (e.g., after initial historical load, after each incremental delta load).
+
+Key Activities - Here are some key activities to consider but not limited to.
+
+Schema Validation: Verify that all tables, columns, data types, and constraints (where applicable) in Snowflake match the Oracle source or the new design (e.g., `NUMBER` to `NUMBER`, not `FLOAT`).
+
+Row Count Validation: Perform full table row counts between source (Oracle) and target (Snowflake) for all migrated tables.
+
+Data Profile & Aggregate Validation: Compare aggregates (e.g., ‘SUM()’, ‘AVG()’, ‘MIN()’, ‘MAX()’, ‘COUNT(DISTINCT)’) on key numeric and date columns between source and target. This is essential for meeting the "acceptable thresholds" requirement.
+
+Cell-to-Cell Comparison (Delta Testing): For critical reference data or smaller tables, perform a full data comparison (e.g., using ‘MINUS’ or ‘EXCEPT’ queries or tools) to find row-level discrepancies.
+
+Null Value Validation: Ensure ‘NULL’ values were migrated correctly and not transformed into empty strings, zeros, or other values (and vice-versa).
+
+Date Column Validation: Ensure the date and timestamp columns are in the right format.
+
+Responsible Teams:
+
+Development teams: Unit testing, SIT execution and reporting of reconciliation results.
+
+Data Stewards/Analysts: Define "acceptable thresholds" and provide sign-off on any discrepancies.
+
+ 
+
+ELT/ETL Process & Integration Testing
+This phase tests the processes that load and transform the data, ensuring all components work together as a system.
+
+Key Activities - Here are some key activities to consider but not limited to.
+
+Inbound Interface Testing:
+
+File-Based: Test the MFT process from the ETL server to the EDL storage. Verify file detection, file copy, and error handling (e.g., duplicate file, corrupt file, late arrival).
+
+Direct-Load (External): Verify connectivity to source systems, data extraction logic, and correct loading into the Snowflake landing layer.
+
+Direct-Load (Internal): Test the ADF parallel load process to ensure data is simultaneously and correctly delivered to both Oracle (old) and Snowflake (new) during the parallel run.
+
+Transformation Logic Testing
+
+Test each modified shell script and its embedded SQL.
+
+RETL Scripts - This is already in production. Needs testing during parallel run.
+
+Test the new logical views (from simple MVs) to ensure they return the correct data.
+
+Test the new ELT jobs that populate physical tables (from complex MVs).
+
+End-to-End testing: Test the end-to-end orchestration. Trigger the Control-M jobs and verify the entire chain of dependencies runs correctly—from file arrival/source extraction to final DWH table population. Test job failure and restart procedures.
+
+Responsible Teams:
+
+Development teams: Unit testing, SIT execution and reporting of reconciliation results.
+
+EDP/Scheduling Team (Control-M) - Verify scheduling integration, alerts, and operational procedures.
+
+ 
+
+Regression Testing
+This focuses on proving that the migrated logic (views, procedures, functions) still produces the same results as the original Oracle code.
+
+Key Activities - Here are some key activities to consider but not limited to.
+
+Identify a set of "golden" queries or reports that run against the current Oracle DWH.
+
+Execute these queries (modified for Snowflake syntax) against the migrated logical views, packages, and functions in Snowflake.
+
+Compare the result sets and performance against the Oracle baseline.
+
+Test the migrated Packages, Procedures, and Functions to ensure any PL/SQL logic was correctly translated to Snowflake's equivalent (e.g., JavaScript UDFs, Snowpark, or SQL procedures).
+
+Responsible Teams:
+
+Development teams: Manages and executes the comparison. Investigates and fixes any defects found.
+
+BI/Analytics Team: To provide the "golden" queries and reports and help validate the results.
+
+ 
+
+Performance & Load Testing
+This is a non-functional test to validate the "performance equivalence" and "SLA" requirements.
+
+Key Activities:
+
+ELT Job Performance: Establish a baseline for all key Oracle ELT jobs (e.g., daily load takes 90 minutes). Run the new, migrated jobs in Snowflake (using Control-M) and measure their duration. Ensure they meet or beat the baseline and fit within the SLA window (e.g., "data available by 7 AM").
+
+Query Performance: Test the performance of key analytical queries, BI dashboards, and reports against the new Snowflake platform. This is critical for validating the migration of complex MVs to new tables/views.
+
+Load Testing: Simulate concurrent user queries and data loading processes to ensure the system remains stable and performant under a realistic production load. This helps validate the Snowflake warehouse sizing.
+
+Responsible Teams:
+
+Development team: Design, script, and execute these tests.
+
+Project Team: To monitor the systems during tests and help tune performance.
+
+ 
+
+User Acceptance Testing (UAT)
+Key Activities:
+
+Reporting & BI Validation: Business users and data analysts open their existing (re-platformed) reports and dashboards.
+
+Advanced Analytics Validation: Data scientists test their models against the new Snowflake data source to ensure inputs are correct and model results are consistent.
+
+Outbound Extract Validation: This is a critical requirement. The team responsible for 3rd-party extracts must generate the extracts from the new Snowflake DWH. Validate the file format, structure, and content exactly matches the files produced by the old Oracle system. A "diff" or file-comparison tool is essential here.
+
+Responsible Teams:
+
+Business Users / Data Consumers
+
+Project Manager/Business Analyst: Coordinates UAT and manages sign-off.
+
+ 
+
+Security & Access Control Testing
+ This validates that BIW is secure and users have the correct permissions.
+
+Key Activities:
+
+Role-Based Access Control
+
+Data Masking/Anonymization
+
+
+ Responsible Teams:
+
+Project Team / Platform Team: To define the test cases based on security policies.
+
+ 
+
+Disaster Recovery Testing
+This goes beyond a simple restore. <Not applicable for BIW migration>
+
+Enablement Testing
+This is to enable the end users to use the new tools and usage of the data from BIW in EDP. PowerBI, microstrategy, data products, AAAI users 
+
+Post-Migration(Go-Live) Audit
+<The data objects of migration DB will be moved to Prod DB. >This is a post-deployment test, a planned “Day 1” activity. Its a final sanity check after the production cutover to ensure nothing was missed.
+
+Key Activities:
+
+Run a final, high-level set of reconciliation checks (eg, row counts, SUM on key financial tables) to confirm the production data is 100% correct after the final delta load.
+
+Verify all scheduled jobs ran successfully on their first production schedule.
+
+Confirm all monitoring alerts are green and no unexpected errors are firing.
+
+Have a hypercare team on standby to immediately field any user-reported issues.
+
+Responsible teams:
+
+TBD
+
+ 
+
+ 
+
+Input synchronisation plan
+The key here is to decouple the execution of the pipeline from the validation of the data. The strategy in this case, shifts from comparing time to comparing a logical batch.
+
+It needs to be a batch-aligned asynchronous parallel run.
+
+Here is a draft strategy –
+
+Define the batch as the unit of comparison – We would not be comparing the state of the DWH at a point in time (e.g., 10 AM). We would be comparing the DWH after is has fully process a specific batch of data. Say a batch of data as of 6th Jan 2026.
+
+Establish validation checkpoints – The testing starts after a logical event is complete for both the systems.
+
+Parameterise the new pipeline – The new ADF/Databricks must be designed to be re-run for a specific logical date or batch.
+
+Plan for data staging/Queuing – The source data for the batch day(6th Jan) must be available for the new pipeline to process at say 2 PM, even if the legacy system processed it at 10 AM. The file-landing MFT process must persist the source files in the EDL storage until they have to been successfully processed by the new pipeline.
