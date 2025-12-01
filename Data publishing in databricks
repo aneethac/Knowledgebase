@@ -406,3 +406,163 @@ from publish_config import PUBLISH_CONFIG
 
 publish_datasets(PUBLISH_CONFIG)
 
+    print("\n=== PUBLISHING PROCESS COMPLETE ===")
+----------------------------- Call the oython framwork from databricks jobs api
+Your **Databricks Job** will act as the *publishing endpoint*, and **R / Azure Machine Learning (AML) / Python / Airflow / Function App** can all call it using the **Databricks Jobs API**.
+
+Below is exactly how it works and what you need.
+
+---
+
+# ✅ **Architecture: Calling Databricks Publishing Job from R or AML**
+
+```
+AML / R Script / Python / Airflow / Logic App
+              ↓ (REST API call)
+        Databricks Jobs API
+              ↓
+       Databricks Job Run
+              ↓
+  Cluster attaches → Python Publish Framework runs
+              ↓
+      Data Publishing Completed
+```
+
+Your ETL environment can be anywhere — Databricks → AML → Airflow → RStudio → Azure Function → DevOps Pipeline.
+
+As long as it can make an **HTTPS REST API request**, it can trigger your publish job.
+
+---
+
+# 🟦 **1. You create a Databricks Job**
+
+The job will:
+
+* Run your `publish_framework.py`
+* Accept parameters (dataset list, publish path, tenants, etc.)
+* Attach to a cluster.
+
+---
+
+# 🟦 **2. Enable parameters (Databricks job)**
+
+Your job should have parameters like:
+
+```
+datasets = ["pfs_ild","smkt_sales"]
+publish_root = "abfss://pub/"
+base_root = "/mnt/smkt/"
+tenants = ["wsA","wsB"]
+```
+
+The job will accept them as:
+
+```
+--datasets "pfs_ild,smkt_sales"  
+--tenants "wsA,wsB"
+```
+
+---
+
+# 🟦 **3. Call the job from AML, R, or anywhere via REST**
+
+You call:
+
+```
+POST https://<databricks-instance>/api/2.1/jobs/run-now
+```
+
+with the job ID and parameters.
+
+---
+
+# ⚙️ **Python Example (from AML or any machine)**
+
+```python
+import requests
+
+DATABRICKS_HOST = "https://<your-databricks>"
+TOKEN = "dapiXXXXXXXXXXXX"
+
+payload = {
+  "job_id": 1234,
+  "notebook_params": {
+      "datasets": "pfs_ild,smkt_sales",
+      "publish_root": "abfss://pub/",
+      "base_root": "/mnt/smkt/",
+      "tenants": "wsA,wsB"
+  }
+}
+
+response = requests.post(
+    f"{DATABRICKS_HOST}/api/2.1/jobs/run-now",
+    headers={"Authorization": f"Bearer {TOKEN}"},
+    json=payload
+)
+
+print(response.json())
+```
+
+---
+
+# 🟦 **4. R Example (calling Databricks job)**
+
+```r
+library(httr)
+
+token <- "dapiXXXXXXXXXXXX"
+host <- "https://<your-databricks>"
+
+body <- list(
+  job_id = 1234,
+  notebook_params = list(
+    datasets = "pfs_ild,smkt_sales",
+    publish_root = "abfss://pub/",
+    base_root = "/mnt/smkt/",
+    tenants = "wsA,wsB"
+  )
+)
+
+res <- POST(
+  url = paste0(host, "/api/2.1/jobs/run-now"),
+  add_headers(Authorization = paste("Bearer", token)),
+  body = body,
+  encode = "json"
+)
+
+content(res)
+```
+
+---
+
+# 🟦 **5. Azure ML can call Databricks job as well**
+
+In an AML pipeline step, simply use a Python script (same as above).
+AML has no restrictions — if it can call REST, it can trigger Databricks.
+
+---
+
+# ✔️ Summary (Yes or No)
+
+| Question                                              | Answer |
+| ----------------------------------------------------- | ------ |
+| Can Databricks job run your publishing framework?     | ✔️ Yes |
+| Can you call that Databricks job from R?              | ✔️ Yes |
+| Can AML pipelines call it?                            | ✔️ Yes |
+| Is the mechanism via Databricks Jobs REST API?        | ✔️ Yes |
+| Can you pass dataset + tenant parameters dynamically? | ✔️ Yes |
+
+---
+
+# If you want next step
+
+I can generate:
+
+✅ The Databricks Job JSON definition
+✅ The full parameterized Python wrapper
+✅ The API payload format
+✅ A diagram showing R → AML → Databricks job → publish flow
+
+Just tell me:
+**“Generate Databricks job JSON”** or
+**“Give me complete end-to-end architecture diagram”**
