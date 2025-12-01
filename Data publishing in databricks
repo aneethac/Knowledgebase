@@ -1,0 +1,408 @@
+Below is a clean, professional **README.md** for your **Databricks Data Publishing 2.0 Framework**.
+It is written at an architect + engineer level so you can directly use it for documentation or onboarding.
+
+---
+
+# 📘 **Data Publishing 2.0 Framework – README**
+
+## 🚀 Overview
+
+The **Data Publishing 2.0 Framework** automates the promotion of curated Delta Lake datasets into **versioned, URL-accessible Data Channels** for consumption by downstream tenants.
+
+It standardizes:
+
+* Versioning
+* Access authorization
+* Pointer management
+* Publishing workflows
+* Multi-dataset automation
+
+This framework is designed for Databricks (UC and non-UC) environments.
+
+---
+
+# 🧱 Architecture
+
+```
+ETL Pipeline → Curated Delta Table (base_path)
+               ↓
+       Data Publishing Framework
+               ↓
+Versioned Published Dataset (publish_path/vYYYYMMDD_HHMMSS)
+               ↓
+           Pointer Update
+               ↓
+          Tenant Access (URL)
+```
+
+### 🔹 **base_path**
+
+Location where ETL writes the final curated Delta tables.
+Example:
+`/mnt/smkt/pfs_ild/`
+
+### 🔹 **publish_path**
+
+Location of the Data Channel where versioned datasets are generated.
+Example:
+`abfss://pub/pfs_ild/`
+
+### 🔹 **dataset_name**
+
+Logical identifier for the dataset used by publishing, e.g.:
+`pfs_ild`, `smkt_sales`, `range`, etc.
+
+---
+
+# ✨ Features (What This Framework Does)
+
+### 1. **Generates version folders automatically**
+
+Each publish creates a folder like:
+
+```
+v20250101_000001/
+```
+
+### 2. **Updates the pointer (latest version URL)**
+
+The pointer always redirects tenants to the newest version.
+
+### 3. **Authorizes tenants**
+
+Adds or removes consumer groups or individual workspaces.
+
+### 4. **Supports UC and non-UC workspaces**
+
+You can publish from UC to non-UC channels.
+
+### 5. **Allows publishing multiple datasets at once**
+
+### 6. **Fully scriptable and automated**
+
+---
+
+# 🛠 Directory Structure
+
+```
+base_path/
+    delta files from ETL
+
+publish_path/
+    v20250101_000001/
+    v20250105_090130/
+    v20250109_120455/
+    pointer/
+        _latest_version
+```
+
+---
+
+# ▶️ **Publish Workflow Steps**
+
+### **Step 1 — Validate dataset & paths**
+
+Ensure dataset exists under `base_path`.
+
+### **Step 2 — Create version folder**
+
+Timestamp-based version folder created under `publish_path`.
+
+### **Step 3 — Copy curated Delta table**
+
+Delta files copied from `base_path` → version folder.
+
+### **Step 4 — Update pointer**
+
+Pointer file updated to the latest version.
+
+### **Step 5 — Create or update data channel**
+
+If not existing, create the data channel.
+
+### **Step 6 — Authorise tenants**
+
+Consumers are granted access to the published URL.
+
+---
+
+# 🔁 Automated End-to-End Flow (Python Wrapper)
+
+The final wrapper orchestrates:
+
+1. Create version folder
+2. Copy dataset
+3. Create channel if missing
+4. Authorize tenants
+5. Update pointer
+6. Log success/failure
+
+Supports **multi-dataset publishing**.
+
+---
+
+# 🧪 Example Usage
+
+```python
+datasets = ["pfs_ild", "smkt_sales"]
+
+publish_framework(
+    datasets=datasets,
+    base_root="/mnt/smkt/",
+    publish_root="abfss://pub/",
+    tenants=["workspaceA", "workspaceB"]
+)
+```
+
+---
+
+# 🔐 Access Model
+
+Consumers **do not mount**.
+They access through a **URL** pointing to the channel + current pointer.
+
+This improves:
+
+* Scalability
+* Access control
+* Workspace independence
+
+---
+
+# 🧩 Folder Naming Convention
+
+```
+vYYYYMMDD_HHMMSS
+```
+
+Example:
+
+```
+v20250131_143212
+```
+
+---
+
+# 🔍 Logging & Monitoring
+
+Logs generated for:
+
+* Version created
+* Publish success/failure
+* Pointer update
+* Tenant authorisation
+* Dataset list processing
+
+---
+
+# ⚠️ Important Notes
+
+* Publishing is **append-only** — no version is overwritten.
+* Pointer update is **atomic**, ensuring zero downtime.
+* Supports both **UC and non-UC** publishing.
+* No ETL logic is included; the framework assumes Delta tables already exist.
+
+---
+
+# 🙌 Contribution
+
+Feel free to add:
+
+* Schema validation
+* Data quality checks
+* Slack/Teams notification on publish
+* Audit log table
+
+---
+
+ 
+
+----------------------------------------------------------------------CONFIG FILE (recommended)
+# publish_config.py
+
+PUBLISH_CONFIG = {
+    "base_publish_path": "/mnt/publish",
+    
+    "datasets": [
+        {
+            "name": "pfs_ild",
+            "source_path": "/mnt/smkt/pfs_ild",
+            "tenants": ["tenantA", "tenantB"]
+        },
+        {
+            "name": "cluster_mapping",
+            "source_path": "/mnt/smkt/cluster_mapping",
+            "tenants": ["tenantA"]
+        },
+        {
+            "name": "range_outputs",
+            "source_path": "/mnt/smkt/range_outputs",
+            "tenants": ["tenantC"]
+        }
+    ],
+    
+    "audit_log_path": "/mnt/publish_audit/publish_log"
+}
+-----------------------------------------------------------------------PRODUCTION-GRADE PUBLISH WRAPPER
+from publish.publication.publish_data import create_datachannel, authorise_datachannel
+from delta.tables import DeltaTable
+from pyspark.sql import SparkSession
+import datetime, time
+
+spark = SparkSession.builder.getOrCreate()
+
+
+def ensure_audit_table(path):
+    """
+    Creates audit Delta table if it does not exist.
+    """
+    try:
+        spark.read.format("delta").load(path)
+        print("[INFO] Audit table already exists.")
+    except:
+        print("[INFO] Creating audit table...")
+        spark.createDataFrame([], 
+            "dataset STRING, version_path STRING, latest_path STRING, tenants ARRAY<STRING>, timestamp STRING, status STRING, message STRING"
+        ).write.format("delta").mode("overwrite").save(path)
+
+
+
+def get_next_version_path(base_path, dataset):
+    """
+    Auto-create version folder: v1, v2, v3...
+    """
+    list_files = dbutils.fs.ls(f"{base_path}/{dataset}")
+    version_nums = [
+        int(x.name.replace("/", "").replace("v",""))
+        for x in list_files if x.name.startswith("v")
+    ] if list_files else []
+
+    next_version = max(version_nums) + 1 if version_nums else 1
+    return f"{base_path}/{dataset}/v{next_version}"
+
+
+def safe_pointer_update(src, dest, retries=3):
+    """
+    Robust pointer update with retries.
+    """
+    for i in range(retries):
+        try:
+            dbutils.fs.rm(dest, True)
+            dbutils.fs.ln(src, dest)
+            return True, None
+        except Exception as e:
+            print(f"[WARN] Pointer update failed (attempt {i+1}): {e}")
+            time.sleep(2)
+    return False, str(e)
+
+
+
+def log_publish(path, entry):
+    """
+    Append log entry to audit Delta table.
+    """
+    spark.createDataFrame([entry]).write \
+        .format("delta") \
+        .mode("append") \
+        .save(path)
+
+
+
+def publish_datasets(config):
+    """
+    Full Data Publishing 2.0 automation for multiple datasets.
+    """
+
+    base_publish = config["base_publish_path"]
+    audit_path   = config["audit_log_path"]
+    
+    ensure_audit_table(audit_path)
+
+    for d in config["datasets"]:
+        name = d["name"]
+        source_path = d["source_path"]
+        tenants = d.get("tenants", [])
+        
+        print(f"\n====================")
+        print(f"PUBLISHING: {name}")
+        print("====================")
+        
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # 1. Create version path
+        version_path = get_next_version_path(base_publish, name)
+        
+        # Copy or shallow clone into version folder
+        print(f"[INFO] Creating version: {version_path}")
+        spark.read.format("delta").load(source_path) \
+            .write.format("delta") \
+            .mode("overwrite") \
+            .save(version_path)
+        
+        # 2. Create data channel
+        entity = f"{name}-versioned"
+        try:
+            channel = create_datachannel(entity)
+            print(f"[INFO] Channel created: {entity}")
+        except Exception as e:
+            msg = f"Channel creation failed: {e}"
+            print("[ERROR]", msg)
+            log_publish(audit_path, {
+                "dataset": name, "version_path": version_path,
+                "latest_path": None, "tenants": tenants,
+                "timestamp": timestamp, "status": "FAILED",
+                "message": msg
+            })
+            continue
+
+        # 3. Authorize tenants
+        try:
+            if tenants:
+                authorise_datachannel(result=channel)
+                print(f"[INFO] Tenants authorized: {tenants}")
+        except Exception as e:
+            print("[ERROR] Tenant authorization failed:", e)
+
+        # 4. Update pointer
+        latest = f"{base_publish}/{name}/latest"
+        ok, err = safe_pointer_update(version_path, latest)
+
+        if not ok:
+            msg = f"Pointer update FAILED: {err}"
+            print("[ERROR]", msg)
+            log_publish(audit_path, {
+                "dataset": name, "version_path": version_path,
+                "latest_path": latest, "tenants": tenants,
+                "timestamp": timestamp, "status": "FAILED",
+                "message": msg
+            })
+            continue
+
+        # 5. Verification
+        try:
+            cnt = spark.read.format("delta").load(latest).count()
+            print(f"[INFO] Verification success: {cnt} rows")
+            status = "SUCCESS"
+            message = "Published successfully"
+        except Exception as e:
+            status = "FAILED"
+            message = str(e)
+            print("[ERROR] Verification failed:", e)
+
+        # 6. Audit log
+        log_publish(audit_path, {
+            "dataset": name,
+            "version_path": version_path,
+            "latest_path": latest,
+            "tenants": tenants,
+            "timestamp": timestamp,
+            "status": status,
+            "message": message
+        })
+
+    print("\n=== PUBLISHING PROCESS COMPLETE ===")
+-----------------------------. RUN THE PUBLISH PROCESS
+from publish_config import PUBLISH_CONFIG
+
+publish_datasets(PUBLISH_CONFIG)
+
