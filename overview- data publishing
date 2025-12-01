@@ -1,0 +1,104 @@
+Here is a **clean, simple, memory-friendly workflow** of the entire **Data Publishing Framework + Databricks Job + External Trigger** process — written as short steps, no code, just pure text.
+
+Use this as your final reference.
+
+---
+
+# ✅ **Data Publishing Workflow — Easy-to-Remember Steps**
+
+### **1. ETL produces the curated Delta table**
+
+* ETL writes final data to **base path** (e.g., `/mnt/smkt/pfs_ild`).
+
+---
+
+### **2. Databricks job is created**
+
+* Job runs the publishing Python wrapper.
+* Job accepts parameters (dataset names, paths, tenants).
+* Job is attached to a cluster.
+
+---
+
+### **3. External systems trigger the Databricks job**
+
+* R, AML, Python, Airflow, Azure Function, or DevOps.
+* All call **Databricks Jobs API (run-now)**.
+* They send the job ID + parameters.
+
+---
+
+### **4. Job starts and reads parameters**
+
+* Gets dataset list.
+* Gets base path and publish path.
+* Gets tenant list.
+
+---
+
+### **5. For each dataset**
+
+#### 5.1 Validate dataset exists under base path
+
+#### 5.2 Create new version folder
+
+* Timestamp-based directory under publish path.
+
+#### 5.3 Copy curated Delta table to version folder
+
+* Version becomes immutable.
+
+#### 5.4 Create data channel (if not already created)
+
+* First publish only.
+
+#### 5.5 Update pointer
+
+* Pointer now points to the new version folder.
+* Old versions remain for rollback.
+
+#### 5.6 Authorize tenants
+
+* Give access to consumer workspaces or groups.
+
+---
+
+### **6. Log publish details**
+
+* Dataset name
+* Version created
+* Publish path
+* Pointer updated
+* Tenants authorized
+
+---
+
+### **7. Job returns success response**
+
+* Returned to R / AML / caller system.
+
+---
+
+### **8. Consumers read only via pointer**
+
+* Always access the stable URL.
+* No mounts required.
+* No impact when new versions are published.
+
+---
+
+# 🎯 **Super-short mnemonic version**
+
+**“ETL → Job → Trigger → Version → Copy → Channel → Pointer → Access → Done.”**
+
+Or even shorter:
+
+**“Produce → Publish → Point → Provide.”**
+
+---
+
+If you want, I can also give this in:
+
+* A **one-page cheat sheet**
+* A **diagram**
+* A **laminated-card style summary**
