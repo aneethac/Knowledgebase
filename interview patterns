@@ -1,0 +1,49 @@
+🔵 Round 1 — L1 Technical (SQL + Python)
+🟣 SQL
+Window functions usage
+Recursive CTEs
+Identify numbers appearing three times consecutively
+
+🟣 Python
+Coding on strings/lists/dicts
+Concepts:
+Decorators
+Multiprocessing vs Multithreading
+
+🔵 Round 2 — L2 Technical (Spark + PySpark)
+🟣 Spark Concepts
+Broadcast vs Shuffle Join
+Salting for skew handling
+Bloom Filters
+Spark memory internals (heap, GC)
+Repartition vs Coalesce
+SparkContext vs SparkSession
+PySpark ↔ Snowflake integration
+
+🟣 PySpark Coding
+Joins + window functions using DataFrame API
+Had to code in Notepad — no IDE support 😅
+
+🔵 Round 3 — Techno-Managerial Round
+🟣 Architecture & Projects
+Discussed an end-to-end pipeline using:
+Azure + Databricks + Airflow + Snowflake + Spark
+Also asked to draw the data flow on draw.io.
+
+🟣 Scenario-Based Questions
+Cost optimization on Spark clusters
+Infra issues vs data issues
+Delivering during resource shortages
+Managing cross-team dependencies
+
+🔵 Round 4 — HR Round
+Salary discussion
+Notice period
+Role alignment
+Work location flexibility
+
+💡 What this interview teaches us:
+✔ SQL, PySpark, and Cloud Data Pipelines are non-negotiable
+✔ Real-world scenarios matter more than textbook definitions
+✔ Communication → Architecture clarity → Problem-solving = the real game
+✔ IDEs won’t save you — fundamentals will
