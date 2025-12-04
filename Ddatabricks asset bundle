@@ -1,13 +1,5 @@
 https://www.youtube.com/watch?v=q2hDLpsJfmE
-
-
-• databricks.yml (Main configuration)
-• src/variables.yml (Project variables)
-• src/environment/dev.yml (Dev target configuration with presets and source_linked_deployment: false)
-• src/environment/qa.yml (QA target configuration with restricted permissions)
-• resources/schemas/bronze_schema.yml (Schema resource definition, dynamically referencing the catalog variable)
-• resources/pipelines/dab_demo_orders.yml (Pipeline configuration using relative paths and resource references)
-• resources/jobs/dab_demo_job.yml (Job configuration using relative paths)
+ 
 
  | Source             | Prefix                    | Automatic? | Example                        |
 | ------------------ | ------------------------- | ---------- | ------------------------------ |
@@ -22,6 +14,7 @@ https://www.youtube.com/watch?v=q2hDLpsJfmE
 │
 ├── databricks.yml               # Root bundle configuration
 ├── variables.yml                # Global variables (prefixes, paths, etc.)
+├── secrets.yml                  # Secret / sensitive variables
 │
 ├── targets/                     # Environment-specific configs
 │   ├── dev.yml
@@ -82,104 +75,97 @@ https://www.youtube.com/watch?v=q2hDLpsJfmE
     └── test_sql_queries.sql
 
 
+No — the folder names **don’t have to be exactly the ones I used**, but Databricks Bundles **expects certain conventions for specific types of files**. Some are flexible; others are required. Here’s a clear breakdown:
 
-1. Main Bundle Configuration File: databricks.yml
-This file defines the overall bundle, deployment targets, permissions, and includes all sub-configurations.
-bundle:
-  name: dab-demo # The name of the bundle [2]
+---
 
-# Top-level permissions applied across the whole project [3, 4]
-permissions:
-  - group_name: DE group # Defined DE group [3]
-    level: can manage # Granting can manage permission [4]
+# ✅ **1. Required / fixed names**
 
-# Include statements to pull in resource definitions and variables [5, 6]
-include:
-  - src/variables.yml
-  - src/environment/*.yml
-  - resources/jobs/*.yml
-  - resources/pipelines/*.yml
-  - resources/schemas/*.yml # Added to include schema definitions [6]
+| File / Folder           | Must it be named this?                   | Notes                                                                                                   |
+| ----------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `databricks.yml`        | ✅ Yes                                    | Root-level, mandatory entry point                                                                       |
+| `targets/`              | ✅ Yes                                    | Folder for environment YAMLs (`dev.yml`, `prod.yml`)                                                    |
+| `variables.yml`         | ❌ Optional, but if used, must be at root | Can be renamed but then references in `databricks.yml` must point to the correct file using `includes:` |
+| `resources/`            | ❌ Optional                               | Can rename, but references inside `databricks.yml` must match                                           |
+| `/resources/jobs/`      | ❌ Optional                               | Can rename, but job references inside bundle must match                                                 |
+| `/resources/clusters/`  | ❌ Optional                               | Same as above                                                                                           |
+| `/resources/pipelines/` | ❌ Optional                               | Same as above                                                                                           |
 
-targets:
-  # Development Environment Target (Dev) [4]
-  dev:
-    mode: development # Specifies this is a development environment [4]
-    default: true # Used if no target is specified during deployment [7]
-    workspace:
-      host: <DEV_WORKSPACE_URL> # The URL of the Dev workspace [7]
+---
 
-  # QA Environment Target (QA) [8]
-  qa:
-    workspace:
-      host: <QA_WORKSPACE_URL> # The URL of the QA workspace [8]
-2. Variables File: src/variables.yml
-This file defines project-level variables that can be used across configurations.
-variables:
-  catalog:
-    description: This is the name of the target catalog # Description of the variable [11]
-    default: dev # Default value for the catalog name [11]
-3. Dev Environment Configuration: src/environment/dev.yml
-This file defines configurations specific to the dev target.
-targets:
-  dev:
-    permissions:
-      - group_name: DE group
-        level: can manage # DE group can manage everything in Dev [12, 13]
-    
-    # Presets for naming resources to allow multiple developers to work concurrently [14]
-    presets:
-      name_prefix: dev-${workspace.current_user.sort_name} # Uses environment name and user sort name [14]
-    
-    # Crucial setting to ensure jobs/pipelines read from the .bundle folder, not the Git repo source [15]
-    source_linked_deployment: false 
-4. QA Environment Configuration: src/environment/qa.yml
-This file defines configurations specific to the qa target, often with restricted permissions.
-targets:
-  qa:
-    permissions:
-      - group_name: DE group
-        level: can run # Allows running jobs [13]
-      - group_name: DE group
-        level: can view # Allows viewing bundle configurations/assets [13]
-5. Schema Resource Configuration: resources/schemas/bronze_schema.yml
-This file defines the schema resource to be created in the target environment.
-resources:
-  schemas:
-    bronze_schema:
-      name: bronze # The physical name of the schema [16]
-      catalog_name: ${v.catalog} # Dynamically references the 'catalog' variable [16, 17]
-6. Pipeline Resource Configuration: resources/pipelines/dab_demo_orders.yml
-This file configures a Delta Live Tables (DLT) or LakeFlow pipeline, referencing the schema resource dynamically.
-(Note: Content is partially transcribed, focusing on the configuration elements that use relative paths and resource references)
-resources:
-  # The configuration copied from the pipeline settings (many lines of cluster/settings removed for brevity) [18]
-  pipelines:
-    dab_demo_orders:
-      name: <Original Pipeline Name>
-      
-      # Configuration to dynamically set the catalog and schema names based on the defined resource [19, 20]
-      target_catalog: ${resources.bronze_schema.catalog_name}
-      target_schema: ${resources.bronze_schema.name}
+# ✅ **2. Flexible / can be renamed**
 
-      # The relative path to the source notebook [18, 21]
-      libraries:
-        - notebook:
-            path: ../notebooks/DT_demo_orders.sql 
-            
-      # ... (Other pipeline settings like clusters, storage, etc.)
-7. Job Resource Configuration: resources/jobs/dab_demo_job.yml
-This file configures a Databricks Job, referencing a Python notebook.
-(Note: Content is partially transcribed, focusing on the configuration elements that use relative paths)
-resources:
-  # The configuration copied from the job settings (many lines of cluster/settings removed for brevity) [22]
-  jobs:
-    dab_demo_job:
-      name: <Original Job Name>
-      tasks:
-        - task_key: main_task
-          notebook_task:
-            # The relative path to the source notebook [22]
-            notebook_path: ../notebooks/notebook_name.py
-            
-      # ... (Other job settings like cluster configuration, workers, etc.) [22]
+| Folder / File   | Notes                                                                                                                                  |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/`          | Can be `code/`, `scripts/`, or anything, as long as you don’t put bundle-managed YAMLs here. Only raw code, notebooks, or SQL scripts. |
+| `/src/sql/ddl/` | Can be renamed; just keep consistent with your workflow                                                                                |
+| `/src/python/`  | Can be renamed; update notebook imports accordingly                                                                                    |
+| `/tests/`       | Can be renamed; only affects your local QA/testing                                                                                     |
+
+---
+
+# ⚠️ **Important constraints**
+
+1. **Environment YAMLs (`dev.yml`, etc.) must be under the folder you register in `databricks.yml`** — the bundle engine only scans the folder specified.
+2. **Variables YAML** must be included in `databricks.yml` if not named `variables.yml`.
+3. **Jobs/pipelines/notebooks references** inside `databricks.yml` must match the folder names.
+
+---
+
+# ✅ **Example with renamed folders**
+
+You can do:
+
+```
+my-project/
+├── databricks.yml
+├── config/                   # renamed from targets/
+│   ├── dev.yml
+│   └── prod.yml
+├── globals.yml               # renamed from variables.yml
+├── infra/                    # renamed from resources/
+│   ├── jobs/
+│   ├── clusters/
+│   └── notebooks/
+└── code/                     # renamed from src/
+    ├── sql/
+    └── python/
+```
+
+In this case, your `databricks.yml` must point to the correct folders:
+
+```yaml
+includes:
+  - config/*.yml
+  - globals.yml
+  - infra/jobs/*.yml
+  - infra/clusters/*.yml
+```
+
+---
+
+So in short:
+
+* **Fixed names**: `databricks.yml`, `targets/` (unless you override in `includes`)
+* **Flexible**: `resources/`, `src/`, `variables.yml`, `tests/` — can rename if you update references
+
+                   databricks.yml
+                         |
+                         v
+             Includes: globals.yml, secrets.yml
+                         |
+        ---------------------------------------------
+        |                                           |
+   globals.yml                                   secrets.yml
+   -----------                                   -----------
+   prefix: "dev-myproject"      <--- duplicate ---> prefix: "secret-prefix"
+   region: "australia-southeast1"             db_password: "mypassword"
+   default_cluster: "small-job-cluster"
+        |
+        v
+    Combined ${var.*} Namespace:
+    ---------------------------
+    prefix        -> "secret-prefix"   # last included file wins
+    region        -> "australia-southeast1"
+    default_cluster -> "small-job-cluster"
+    db_password   -> "mypassword"
