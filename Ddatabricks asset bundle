@@ -9,15 +9,14 @@ https://www.youtube.com/watch?v=q2hDLpsJfmE
 • resources/pipelines/dab_demo_orders.yml (Pipeline configuration using relative paths and resource references)
 • resources/jobs/dab_demo_job.yml (Job configuration using relative paths)
 
-| Namespace     | Purpose                        |
-| ------------- | ------------------------------ |
-| `var.*`       | User-defined variables         |
-| `env.*`       | Environment variables          |
-| `workspace.*` | Workspace environment metadata |
-| `bundle.*`    | Bundle metadata                |
-| `resources.*` | Properties of bundle resources |
-| `secrets.*.*` | Databricks secrets             |
-| `file://`     | Local file loading             |
+ | Source             | Prefix                    | Automatic? | Example                        |
+| ------------------ | ------------------------- | ---------- | ------------------------------ |
+| Workspace Metadata | `workspace.*`             | Auto       | `${workspace.host}`            |
+| Target Config      | `targets.<env>.*`         | Auto       | `${targets.dev.spark_version}` |
+| User Variables     | `var.*`                   | Manual     | `${var.cluster_size}`          |
+| Env Variables      | `env.*`                   | Shell/CICD | `${env.BRANCH_NAME}`           |
+| Bundle Metadata    | `bundle.*`                | Auto       | `${bundle.name}`               |
+| Resource Metadata  | `resources.<type>.<name>` | Auto       | `${resources.jobs.myjob.id}`   |
 
 
 
