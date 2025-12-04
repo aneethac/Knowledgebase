@@ -18,6 +18,22 @@ https://www.youtube.com/watch?v=q2hDLpsJfmE
 | Bundle Metadata    | `bundle.*`                | Auto       | `${bundle.name}`               |
 | Resource Metadata  | `resources.<type>.<name>` | Auto       | `${resources.jobs.myjob.id}`   |
 
+your-project/
+│
+├── databricks.yml              <-- REQUIRED (root bundle config)
+│
+├── bundle/                     <-- OPTIONAL (if you prefer nested)
+│
+├── resources/                  <-- Jobs, pipelines, clusters YAMLs (optional)
+│
+├── targets/                    <-- REQUIRED folder for target configs
+│   ├── dev.yml                 <-- dev environment config
+│   ├── test.yml                <-- test/stage environment config
+│   └── prod.yml                <-- prod environment config
+│
+├── variables.yml               <-- OPTIONAL (global variables)
+│
+└── src/                        <-- your code (Python, SQL, notebooks)
 
 
 1. Main Bundle Configuration File: databricks.yml
