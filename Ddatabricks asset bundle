@@ -18,34 +18,69 @@ https://www.youtube.com/watch?v=q2hDLpsJfmE
 | Bundle Metadata    | `bundle.*`                | Auto       | `${bundle.name}`               |
 | Resource Metadata  | `resources.<type>.<name>` | Auto       | `${resources.jobs.myjob.id}`   |
 
-
-your-project/
+ databricks-project/
 │
-├── databricks.yml           # Root-level bundle configuration (mandatory)
-├── variables.yml            # Optional global variables
+├── databricks.yml               # Root bundle configuration
+├── variables.yml                # Global variables (prefixes, paths, etc.)
 │
-├── targets/                 # Environment-specific configurations (mandatory)
+├── targets/                     # Environment-specific configs
 │   ├── dev.yml
 │   ├── test.yml
 │   └── prod.yml
 │
-├── resources/               # Optional, reusable bundle resources
-│   ├── jobs/
+├── resources/                   # Databricks-managed resources
+│   ├── clusters/                # Cluster definitions
+│   │   ├── dev_cluster.yml
+│   │   └── prod_cluster.yml
+│   │
+│   ├── jobs/                    # Jobs that orchestrate notebooks/scripts
 │   │   ├── etl_job.yml
-│   │   └── analytics_job.yml
-│   ├── clusters/
-│   │   └── my_cluster.yml
-│   └── pipelines/
-│       └── pipeline.yml
+│   │   ├── analytics_job.yml
+│   │   └── backup_job.yml       # Example job calling DB backup script
+│   │
+│   ├── pipelines/               # Databricks Workflows / Delta Live Tables
+│   │   ├── daily_pipeline.yml
+│   │   └── weekly_pipeline.yml
+│   │
+│   └── notebooks/               # Notebooks executed by Jobs or Pipelines
+│       ├── load_data_notebook.py
+│       ├── transform_data_notebook.py
+│       └── analytics_notebook.py
 │
-└── src/                     # Source code (Python, SQL, notebooks)
-    ├── notebooks/
-    │   ├── load_data.py
-    │   └── transform_data.py
-    ├── sql/
-    │   └── create_tables.sql
-    └── python/
-        └── utils.py
+├── src/                         # Source code / SQL / helper modules
+│   ├── notebooks/               # Raw notebook sources (optional)
+│   │   ├── demo_notebook.ipynb
+│   │   └── temp_notebook.ipynb
+│   │
+│   ├── python/                  # Python scripts (utils, helpers, DB backup)
+│   │   ├── utils.py
+│   │   ├── db_backup.py
+│   │   └── data_validation.py
+│   │
+│   ├── notebooks_lib/           # Python modules imported in notebooks
+│   │   └── helper_functions.py
+│   │
+│   └── sql/                     # SQL scripts
+│       ├── ddl/                 # Table, view, UDF definitions
+│       │   ├── tables/
+│       │   │   ├── customer_table.sql
+│       │   │   ├── orders_table.sql
+│       │   │   └── sales_table.sql
+│       │   ├── views/
+│       │   │   ├── customer_view.sql
+│       │   │   └── order_summary_view.sql
+│       │   └── udfs/
+│       │       └── calculate_discount.sql
+│       │
+│       └── dml/                 # Insert / update / transformation scripts
+│           ├── insert_customer.sql
+│           ├── update_orders.sql
+│           └── aggregate_sales.sql
+│
+└── tests/                       # Optional QA / testing scripts
+    ├── test_etl.py
+    └── test_sql_queries.sql
+
 
 
 1. Main Bundle Configuration File: databricks.yml
