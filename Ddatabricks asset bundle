@@ -10,6 +10,24 @@ https://www.youtube.com/watch?v=q2hDLpsJfmE
 | Bundle Metadata    | `bundle.*`                | Auto       | `${bundle.name}`               |
 | Resource Metadata  | `resources.<type>.<name>` | Auto       | `${resources.jobs.myjob.id}`   |
 
+best practice 
+my-databricks-bundle/
+├── resources/                 # Deployable assets
+│   ├── notebooks/
+│   └── sql/
+├── src/                       # Source scripts & helpers
+│   └── scripts/
+│       ├── run_unit_tests.py
+│       └── lint_notebooks.py
+├── variables/                 # Global variables
+│   └── globals.yml
+└── target/                    # Environment-specific variables
+    └── environment/
+        ├── dev.yml
+        ├── int.yml
+        └── prod.yml
+
+
  databricks-project/
 │
 ├── databricks.yml               # Root bundle configuration
