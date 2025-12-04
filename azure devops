@@ -141,3 +141,251 @@ databricks-deploy-stage.yml
 | snowflake/          | ✅ Flexible     | ✅               | Optional raw scripts                     |
 
  
+Code Commit
+    |
+    v
+[CI Pipeline]
+    ├─ Load Variables
+    ├─ Lint Notebooks
+    ├─ Run Unit Tests
+    └─ Publish Artifacts
+    |
+    v
+[CD Pipeline]
+    ├─ Load Env Variables
+    ├─ Upload Notebook
+    ├─ Create/Update Job
+    ├─ Optional Test Run
+    └─ Notify / Approval
+    |
+    v
+[Databricks Workspace]
+    ├─ Notebook Deployed
+    └─ Job Configured on Cluster
+Got it! I can create the content in a **Word-doc style layout** that you can copy into Microsoft Word or Google Docs. I’ll structure it with **headings, code blocks, and explanations**, so it’s fully ready for documentation.
+
+Here’s the draft:
+
+---
+
+# **Databricks CI/CD Pipeline – Full Example with Unit Testing**
+
+---
+
+## **1. Overview**
+
+This document describes a **CI/CD pipeline for Databricks** using **Azure DevOps**. The pipeline ensures:
+
+* Continuous Integration (CI) validates notebooks and scripts.
+* Continuous Deployment (CD) deploys notebooks and jobs to Databricks clusters.
+* Unit tests are used to verify logic before deployment.
+
+**Use Case Example:**
+A notebook that calculates **Customer Lifetime Value (CLV)** and **average order value** from raw sales data.
+
+---
+
+## **2. Folder Structure**
+
+```
+azure-devops-pipelines/
+├── azure-pipelines.yml
+├── variables/
+│   ├── globals.yml
+│   ├── secrets.yml
+│   └── dev.yml
+├── templates/
+│   ├── stages/
+│   │   └── databricks-ci-stage.yml
+│   ├── jobs/
+│   │   └── databricks-ci-job.yml
+│   └── steps/
+│       └── validate-databricks.yml
+└── scripts/
+    └── databricks/
+        ├── lint_notebooks.py
+        └── run_unit_tests.py
+```
+
+---
+
+## **3. Variables**
+
+### **3.1 globals.yml**
+
+```yaml
+databricks_workspace_url: "https://<your-databricks-instance>.azuredatabricks.net"
+databricks_cluster: "dev-job-cluster"
+notebooks_path: "/Repos/my-project/notebooks/"
+```
+
+### **3.2 secrets.yml**
+
+```yaml
+databricks_token: "dapiXXXXXXXXXXXX"
+```
+
+### **3.3 dev.yml**
+
+```yaml
+environment: "dev"
+```
+
+---
+
+## **4. CI Pipeline**
+
+### **4.1 Main Pipeline (azure-pipelines.yml)**
+
+```yaml
+trigger:
+  branches:
+    include:
+      - main
+      - dev
+
+variables:
+  - template: variables/globals.yml
+  - template: variables/secrets.yml
+  - template: variables/dev.yml
+
+stages:
+  - template: templates/stages/databricks-ci-stage.yml
+```
+
+---
+
+### **4.2 Stage Template**
+
+**templates/stages/databricks-ci-stage.yml**
+
+```yaml
+stage: Databricks_CI
+displayName: "Databricks CI Stage"
+jobs:
+  - template: ../jobs/databricks-ci-job.yml
+```
+
+---
+
+### **4.3 Job Template**
+
+**templates/jobs/databricks-ci-job.yml**
+
+```yaml
+job: Databricks_CI_Job
+displayName: "Lint and Unit Test Databricks Notebooks"
+steps:
+  - template: ../steps/validate-databricks.yml
+```
+
+---
+
+### **4.4 Step Template**
+
+**templates/steps/validate-databricks.yml**
+
+```yaml
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.10'
+
+  - script: |
+      echo "Linting notebooks..."
+      python scripts/databricks/lint_notebooks.py --path "${{ variables.notebooks_path }}"
+
+      echo "Running unit tests..."
+      python scripts/databricks/run_unit_tests.py --cluster "${{ variables.databricks_cluster }}"
+    displayName: "Lint and Unit Test Databricks Notebooks"
+```
+
+---
+
+## **5. Scripts**
+
+### **5.1 Lint Notebooks**
+
+**scripts/databricks/lint_notebooks.py**
+
+```python
+import argparse
+import os
+
+def lint_notebooks(path):
+    for root, _, files in os.walk(path):
+        for file in files:
+            if file.endswith(".ipynb"):
+                print(f"Found notebook: {file}")
+    print("Linting complete.")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--path", required=True)
+    args = parser.parse_args()
+    lint_notebooks(args.path)
+```
+
+### **5.2 Unit Tests**
+
+**scripts/databricks/run_unit_tests.py**
+
+```python
+from pyspark.sql import SparkSession
+from pyspark.sql import Row
+from pyspark.sql.functions import avg
+
+# Create Spark session
+spark = SparkSession.builder.getOrCreate()
+
+# Mock data for testing
+data = [
+    Row(order_id=1, customer_id=101, order_amount=100, status='completed'),
+    Row(order_id=2, customer_id=102, order_amount=200, status='pending'),
+    Row(order_id=3, customer_id=101, order_amount=300, status='completed')
+]
+
+df = spark.createDataFrame(data)
+
+# Unit Test 1: Filter completed orders
+completed = df.filter(df.status == 'completed')
+assert completed.count() == 2, f"Expected 2 completed orders, got {completed.count()}"
+
+# Unit Test 2: Average order value calculation
+avg_val = completed.agg(avg("order_amount")).collect()[0][0]
+assert avg_val == 200, f"Expected avg 200, got {avg_val}"
+
+print("All unit tests passed!")
+```
+
+---
+
+## **6. CI Pipeline Flow**
+
+1. Developer pushes code to `dev` or `main`.
+2. Pipeline triggers CI stage: `Databricks_CI`.
+3. **Steps executed:**
+
+   * Lint notebooks
+   * Run unit tests with mock data
+4. Pipeline **fails** if any unit test fails.
+5. Pipeline **succeeds** if all tests pass → notebooks/scripts ready for CD.
+
+---
+
+## **7. Benefits**
+
+* Catch errors **before deployment**.
+* Mock data ensures **fast, isolated tests**.
+* CI ensures **quality and maintainability** of Databricks notebooks.
+* Artifacts can be published for **CD deployment** to dev/test/prod clusters.
+
+---
+
+## **Next Step: CD Pipeline (Optional)**
+
+* Deploy notebooks to Databricks workspace.
+* Use Databricks **Job API** to create/update jobs.
+* Approvals for production deployments.
+
+ 
