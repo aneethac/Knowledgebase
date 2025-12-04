@@ -1,0 +1,143 @@
+Perfect! Here’s a **visual tree + flow diagram** for Azure DevOps CI/CD pipelines covering **ADF, Databricks, Snowflake**, showing **folder structure, variables flow, and templates hierarchy** — similar to the Databricks bundle diagram we did earlier.
+
+---
+
+# **1. Folder Tree with Variable Flow**
+
+```
+azure-devops-pipelines/
+│
+├── azure-pipelines.yml           <-- Main pipeline (fixed)
+│
+├── variables/                    <-- Variables (renameable)
+│   ├── globals.yml               <-- Global variables (prefix, region, cluster)
+│   ├── secrets.yml               <-- Secrets (passwords, tokens)
+│   ├── dev.yml                   <-- Environment-specific (dev)
+│   ├── test.yml                  <-- Environment-specific (test)
+│   └── prod.yml                  <-- Environment-specific (prod)
+│
+├── templates/                    <-- YAML templates (renameable)
+│   ├── stages/
+│   │   ├── adf-deploy-stage.yml
+│   │   ├── databricks-deploy-stage.yml
+│   │   └── snowflake-deploy-stage.yml
+│   ├── jobs/
+│   │   ├── adf-job.yml
+│   │   ├── databricks-job.yml
+│   │   └── snowflake-job.yml
+│   └── steps/
+│       ├── deploy-adf.yml
+│       ├── deploy-databricks.yml
+│       └── run-snowflake-sql.yml
+│
+├── scripts/                      <-- Scripts (renameable)
+│   ├── adf/
+│   │   └── deploy_adf.ps1
+│   ├── databricks/
+│   │   ├── create_cluster.py
+│   │   ├── upload_notebooks.py
+│   │   └── run_job.py
+│   └── snowflake/
+│       └── run_sql.sh
+│
+├── adf/                           <-- Raw ADF ARM templates (optional)
+├── databricks/                    <-- Notebooks / jobs (optional)
+└── snowflake/                     <-- SQL scripts / DDL / DML (optional)
+```
+
+---
+
+# **2. Variable Flow Diagram**
+
+```
+variables/
+├── globals.yml   -> prefix, region, cluster
+├── secrets.yml   -> db_password, databricks_token, snowflake_user
+└── dev.yml       -> environment-specific vars (adf_resource_group, warehouse)
+
+          |
+          v
+azure-pipelines.yml
+          |
+          v
+templates/
+├── stages/
+│   ├── adf-deploy-stage.yml
+│   ├── databricks-deploy-stage.yml
+│   └── snowflake-deploy-stage.yml
+│
+├── jobs/
+│   ├── adf-job.yml
+│   ├── databricks-job.yml
+│   └── snowflake-job.yml
+│
+└── steps/
+    ├── deploy-adf.yml
+    ├── deploy-databricks.yml
+    └── run-snowflake-sql.yml
+          |
+          v
+scripts/
+├── adf/deploy_adf.ps1
+├── databricks/*.py
+└── snowflake/run_sql.sh
+```
+
+> **Notes on Flow:**
+>
+> 1. Variables from `variables/*.yml` → available to all templates via `${{ variables.key_name }}`.
+> 2. Stage templates call **job templates**, which call **step templates**, which execute **scripts**.
+> 3. Scripts interact with ADF / Databricks / Snowflake APIs or CLIs.
+
+---
+
+# **3. Templates Hierarchy**
+
+```
+Stage Template
+└── Job Template
+    └── Step Template
+        └── Script Execution
+```
+
+Example for Databricks:
+
+```
+databricks-deploy-stage.yml
+└── databricks-job.yml
+    └── deploy-databricks.yml
+        └── scripts/databricks/create_cluster.py
+        └── scripts/databricks/upload_notebooks.py
+        └── scripts/databricks/run_job.py
+```
+
+---
+
+# **4. Variable Resolution / Best Practices**
+
+* All included variable files populate a single `${{ variables.* }}` namespace.
+* Duplicate keys: **last included file wins**.
+* Environment-specific files (dev/test/prod) override global values if needed.
+* Secrets should be stored in **secure variable groups** instead of YAML if possible.
+
+---
+
+# **5. Folder Rename Rules**
+
+| Folder/File         | Fixed?         | Can be renamed? | Notes                                    |
+| ------------------- | -------------- | --------------- | ---------------------------------------- |
+| azure-pipelines.yml | ✅ Yes          | ❌               | Main pipeline                            |
+| templates/          | ⚠️ Recommended | ⚠️              | Must update pipeline references          |
+| templates/stages/   | ⚠️ Flexible    | ⚠️              | Update stage references                  |
+| templates/jobs/     | ⚠️ Flexible    | ⚠️              | Update job references                    |
+| templates/steps/    | ⚠️ Flexible    | ⚠️              | Update step references                   |
+| scripts/            | ✅ Flexible     | ✅               | Update template paths                    |
+| scripts/adf/        | ✅ Flexible     | ✅               | Update template paths                    |
+| scripts/databricks/ | ✅ Flexible     | ✅               | Update template paths                    |
+| scripts/snowflake/  | ✅ Flexible     | ✅               | Update template paths                    |
+| variables/          | ✅ Flexible     | ✅               | Update references in azure-pipelines.yml |
+| adf/                | ✅ Flexible     | ✅               | Optional raw templates                   |
+| databricks/         | ✅ Flexible     | ✅               | Optional notebooks/scripts               |
+| snowflake/          | ✅ Flexible     | ✅               | Optional raw scripts                     |
+
+ 
