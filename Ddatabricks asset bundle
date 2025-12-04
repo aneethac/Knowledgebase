@@ -9,6 +9,15 @@ https://www.youtube.com/watch?v=q2hDLpsJfmE
 • resources/pipelines/dab_demo_orders.yml (Pipeline configuration using relative paths and resource references)
 • resources/jobs/dab_demo_job.yml (Job configuration using relative paths)
 
+| Namespace     | Purpose                        |
+| ------------- | ------------------------------ |
+| `var.*`       | User-defined variables         |
+| `env.*`       | Environment variables          |
+| `workspace.*` | Workspace environment metadata |
+| `bundle.*`    | Bundle metadata                |
+| `resources.*` | Properties of bundle resources |
+| `secrets.*.*` | Databricks secrets             |
+| `file://`     | Local file loading             |
 
 
 
