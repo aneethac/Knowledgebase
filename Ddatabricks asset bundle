@@ -18,22 +18,34 @@ https://www.youtube.com/watch?v=q2hDLpsJfmE
 | Bundle Metadata    | `bundle.*`                | Auto       | `${bundle.name}`               |
 | Resource Metadata  | `resources.<type>.<name>` | Auto       | `${resources.jobs.myjob.id}`   |
 
+
 your-project/
 │
-├── databricks.yml              <-- REQUIRED (root bundle config)
+├── databricks.yml           # Root-level bundle configuration (mandatory)
+├── variables.yml            # Optional global variables
 │
-├── bundle/                     <-- OPTIONAL (if you prefer nested)
+├── targets/                 # Environment-specific configurations (mandatory)
+│   ├── dev.yml
+│   ├── test.yml
+│   └── prod.yml
 │
-├── resources/                  <-- Jobs, pipelines, clusters YAMLs (optional)
+├── resources/               # Optional, reusable bundle resources
+│   ├── jobs/
+│   │   ├── etl_job.yml
+│   │   └── analytics_job.yml
+│   ├── clusters/
+│   │   └── my_cluster.yml
+│   └── pipelines/
+│       └── pipeline.yml
 │
-├── targets/                    <-- REQUIRED folder for target configs
-│   ├── dev.yml                 <-- dev environment config
-│   ├── test.yml                <-- test/stage environment config
-│   └── prod.yml                <-- prod environment config
-│
-├── variables.yml               <-- OPTIONAL (global variables)
-│
-└── src/                        <-- your code (Python, SQL, notebooks)
+└── src/                     # Source code (Python, SQL, notebooks)
+    ├── notebooks/
+    │   ├── load_data.py
+    │   └── transform_data.py
+    ├── sql/
+    │   └── create_tables.sql
+    └── python/
+        └── utils.py
 
 
 1. Main Bundle Configuration File: databricks.yml
