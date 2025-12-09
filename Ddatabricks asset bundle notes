@@ -187,3 +187,74 @@ So in short:
     region        -> "australia-southeast1"
     default_cluster -> "small-job-cluster"
     db_password   -> "mypassword"
+
+Variables
+) Where CAN variables be used?
+✅ jobs
+✅ pipelines
+✅ clusters
+✅ dashboards
+✅ notebooks (path parameters)
+✅ any field inside these YAMLs
+
+Where CANNOT variables be used?
+1) Inside the top-level workspace: block
+ Why? Because DAB only allows a fixed set of substitutions for workspace paths.
+2) Inside include: paths
+Where MUST variables be defined?
+✅ bundle.yml
+You cannot create variables inside:
+job YAML
+cluster YAML
+pipeline YAML
+databricks.yml
+✅ 6) How substitution actually happens (step-by-step)
+
+When you run:
+
+databricks bundle deploy
+
+Databricks executes:
+Read bundle.yml
+Load variables
+Read all resources
+Replace every ${...} with values
+Validate
+Deploy
+
+
+1) Custom User Variables → defined under variables:
+
+Example:
+
+variables:
+  cluster_id: abc123
+  env: dev
+
+
+Reference:
+
+${var.cluster_id}
+${var.env}
+
+2) Bundle variables (built-in)
+
+Example:
+
+${bundle.name}
+${bundle.target}
+${bundle.version}
+
+
+Useful when you want auto naming.
+
+3) Workspace variables (built-in)
+
+Example:
+
+${workspace.current_user.userName}
+${workspace.current_user.short_name}
+${workspace.host}
+
+
+These work automatically without defining them.
