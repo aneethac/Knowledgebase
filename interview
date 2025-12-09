@@ -1,0 +1,265 @@
+1. INTRODUCTION
+Thank you for the opportunity. I’m Aneetha, a Lead Data Engineer with around 19 years of experience delivering enterprise-scale data platforms, primarily across the Azure ecosystem, Databricks, Snowflake, and Delta Lake architectures.
+For the last several years, I’ve been consulting with Coles through Infocentric, where I led data engineering delivery, migration strategy, and platform design. I’ve architected and built large-scale lakehouse solutions, metadata-driven frameworks, and production-grade pipelines that support analytics, ML, forecasting, and reporting for high-volume business domains.
+I also manage a team of data engineers, drive engineering standards, and partner with architects and ML engineers to ensure scalable and governed data products.
+Now, I’m keen to move into a product-based environment like SEEK, where I can take deeper ownership, work closely with product and engineering teams, and solve long-term data challenges that impact millions of users. I’m looking for a role where I can continue to grow architecturally, contribute to platform innovation, and deliver meaningful outcomes at scale.
+ 
+
+# **2. DATA ENGINEERING – TECHNICAL Q&A**
+
+## **Q1. Explain the Lakehouse architecture and why you use Delta Lake.**
+
+**Answer:**
+A Lakehouse combines the scalability of data lakes with the reliability of data warehouses. In my projects, I use Delta Lake because it provides ACID transactions, schema evolution, versioning, efficient upserts, and performance optimisations like Z-Ordering and file compaction. This allows us to maintain high-quality, analytics-ready tables while keeping the cost efficiency of object storage.
+For SEEK, this is beneficial because user events, search behaviour logs, job listings, and marketplace data need strong reliability, auditability, and fast query performance.
+
+---
+
+## **Q2. How do you structure Bronze, Silver, Gold layers?**
+
+**Answer:**
+
+* **Bronze:** Raw ingestion with minimal transformations. Ideal for replay, audit, and schema drift handling.
+* **Silver:** Cleaned, conformed, deduplicated, incremental data using business rules.
+* **Gold:** Domain-specific analytics tables or feature tables optimised for reporting, ML, or API consumption.
+  This separation improves governance, quality, cost optimisation, and debugging. It’s exactly how SEEK handles behavioural, job, and company data.
+
+---
+
+## **Q3. How do you handle schema evolution in production?**
+
+**Answer:**
+I use Delta Lake’s schema evolution features.
+
+* Enable `mergeSchema` during writes.
+* Track changes via column metadata.
+* Maintain backward compatibility for downstream models.
+* For breaking changes, I use versioned tables and controlled migrations.
+  This ensures a stable contract for consumers like ML teams, analytics, or APIs.
+
+---
+
+## **Q4. How do you optimise Spark performance?**
+
+**Answer:**
+
+* Avoid wide transformations unless necessary.
+* Reduce shuffles using broadcast joins.
+* Resolve skew through salting.
+* Use correct partitioning strategy.
+* Cache only when the same data is reused multiple times.
+* Compact small files via OPTIMIZE + ZORDER.
+  In my Coles project, these optimisations improved processing time by 30% and saved around $300K annually.
+
+---
+
+## **Q5. Partitioning vs Bucketing – When to use each?**
+
+**Answer:**
+
+* **Partitioning:** Best for filtering large datasets on high-cardinality columns.
+* **Bucketing:** Best for joining large tables on the same bucket keys to avoid shuffle.
+  I use partitioning heavily in Bronze/Silver tables and bucketing for large fact-table joins.
+
+---
+
+## **Q6. Explain incremental ETL design.**
+
+**Answer:**
+I maintain checkpoints with:
+
+* Watermark timestamps
+* Delta table change data feed
+* Derived incremental keys
+  The pipeline identifies new/changed data only, applies upserts through MERGE, and ensures idempotency. This improves cost efficiency and reduces processing time.
+
+---
+
+# **3. ARCHITECTURE & SYSTEM DESIGN Q&A**
+
+## **Q1. Design an end-to-end ingestion pipeline for SEEK user behaviour data.**
+
+**Answer:**
+I would design it as:
+
+1. **Ingestion:** EventHub/Kafka → Bronze Delta
+2. **Processing:** Structured Streaming for near real-time behavior signals
+3. **Silver Layer:**
+
+   * Deduplicate
+   * Parse JSON
+   * Apply business rules
+4. **Gold:**
+
+   * Build aggregates like search patterns, job click-through, engagement scores
+   * Partition by date
+5. **Downstream:**
+
+   * ML features for personalisation
+   * Product analytics dashboards
+6. **Governance:**
+
+   * Unity Catalog for access control
+   * Databricks Jobs for scheduling
+7. **Observability:**
+
+   * SLAs, data quality checks, event count tracking
+     This gives SEEK real-time insights with reliable, governed data.
+
+---
+
+## **Q2. How do you design a metadata-driven framework?**
+
+**Answer:**
+I store pipeline configuration (source, target, keys, rules) in metadata tables.
+The framework reads configuration at runtime, applies validations, transformations, and writes logic automatically.
+
+Benefits:
+
+* Faster onboarding of new pipelines
+* Consistency and reuse
+* Easier maintenance
+* Strong governance
+
+I built this at Coles, enabling distributed execution and standardised development across many domains.
+
+---
+
+## **Q3. How do you design a feature pipeline for ML?**
+
+**Answer:**
+
+* Use Delta Lake for versioning
+* Define feature groups and keys
+* Apply point-in-time correctness
+* Backfill historical features
+* Store them in a Feature Store with metadata
+* Automate refreshing through scheduled Jobs
+  This ensures reproducibility for MLOps teams.
+
+---
+
+# **4. AZURE & DATABRICKS Q&A**
+
+## **Q1. How do you decide between ADF vs Databricks Jobs?**
+
+**Answer:**
+
+* **ADF:** Ideal for orchestrating external systems, copy operations, GUI-based workflows.
+* **Databricks Jobs:** Ideal for complex Spark workloads, streaming, ML feature pipelines, metadata-driven pipelines.
+  In product environments like SEEK, Databricks Jobs is preferred for engineering-grade orchestration.
+
+---
+
+## **Q2. Explain Unity Catalog and why it is important.**
+
+**Answer:**
+Unity Catalog centralises governance for all data and AI assets.
+Key benefits:
+
+* Fine-grained access control
+* Lineage
+* Consistent governance across clusters
+* Central metadata
+* Secure sharing
+  This is essential for SEEK, where multiple product and analytics teams access the same datasets.
+
+---
+
+# **5. SQL & DATA MODELLING Q&A**
+
+## **Q1. When do you choose Star schema vs One Big Table?**
+
+**Answer:**
+
+* **Star Schema:** Best for analytics, BI, slower-changing dimensions, optimised querying.
+* **One-Big-Table:** Best for ML feature engineering and high-throughput read patterns.
+  I choose based on consumer workload.
+
+---
+
+## **Q2. How do you design a model for job listings search analytics?**
+
+**Answer:**
+
+* Fact table for search events
+* Dimensions for job type, user, device, geography
+* Aggregations at hourly/daily grain
+* Gold tables optimised for product KPIs
+  This is similar to transactional-to-analytical modelling I built at Coles.
+
+---
+
+# **6. CI/CD & DEVOPS Q&A**
+
+## **Q1. How do you implement CI/CD for Databricks?**
+
+**Answer:**
+
+* Repo: notebooks, pipelines, configs, tests
+* CI step: linting, unit tests, integration tests
+* Build artifacts: wheel files, config JSON, workflows
+* CD step: deploy to Dev → UAT → Prod via YAML pipelines
+* Automated approvals and PR checks
+  This ensures repeatable and reliable deployments.
+
+---
+
+# **7. BEHAVIOURAL & LEADERSHIP Q&A (STAR ANSWERS)**
+
+## **Q1. Tell me about a time things went wrong in production and how you solved it.**
+
+**Answer:**
+*Situation:* A critical data quality issue created gaps in forecasting tables.
+*Task:* Resolve immediately and prevent recurrence.
+*Action:*
+
+* Replayed incremental data using Bronze Delta
+* Identified the root cause (late-arriving data)
+* Updated watermark logic
+* Added business validation rules
+  *Result:* Fixed the issue within the same day, avoided reoccurrence, and increased data quality by 20%.
+
+---
+
+## **Q2. An example of improving engineering standards.**
+
+**Answer:**
+I introduced code reviews, common utility libraries, and a metadata-driven ingestion framework.
+This improved delivery speed, reduced defects, and standardised the engineering practices across the team.
+
+---
+
+## **Q3. Explain a conflict with a stakeholder.**
+
+**Answer:**
+A data science team wanted a pipeline delivered urgently with incomplete requirements.
+I proposed an MVP approach with clear scope boundaries.
+We delivered a functional version in 2 weeks and extended with additional features later.
+Stakeholders appreciated the structured approach.
+
+---
+
+## **Q4. How do you mentor your team?**
+
+**Answer:**
+I do weekly skill sessions, review code with feedback, provide architectural context, and help engineers take ownership.
+Several team members progressed in their careers under my mentoring.
+
+---
+
+# **8. “TELL ME ABOUT YOUR CURRENT PROJECT”**
+
+(Short, product-company version)
+
+I’m leading the design and build of a modern data platform on Azure + Databricks for Coles. I oversee pipelines from ingestion through Delta Lake layers, implement metadata-driven frameworks, design models for analytics and ML, and drive governance via Unity Catalog. I work with architects, ML engineers, and business teams to deliver analytics-ready datasets at scale.
+
+---
+
+# **9. “WHY SEEK?” ANSWER**
+
+You already have strong versions; the best one is:
+
+I want to transition from consulting into a product-based environment where I can take deeper technical ownership and work on long-term platforms. SEEK’s mission and scale give me the opportunity to design meaningful data solutions that impact millions of users and grow further in architecture and modern data engineering.
+
+ 
