@@ -1,0 +1,197 @@
+Below is a **complete, corrected, and comprehensive Spark optimization cheat sheet**, including the missing/incorrect parts (such as partition pruning for Delta), and adding missing but critical optimizations used in production (especially FAANG-level data engineering).
+
+I have kept it formal and precise.
+
+---
+
+# **Full Spark Optimization Cheat Sheet (Correct + Expanded)**
+
+---
+
+## **1. Read Path Optimizations**
+
+| Optimization                               | Stage | Goal                               | Example                              | Notes / When to Use                                                                                                                                         |
+| ------------------------------------------ | ----- | ---------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Partition Pruning**                      | Read  | Avoid reading partitions           | `df.filter($"dt" >= "2025-01-01")`   | Works on Hive partitioned tables & Delta when filtering on partition columns (stored in metadata). This is extremely effective → reduces scan dramatically. |
+| **Predicate Pushdown**                     | Read  | Push filter down to Parquet reader | automatic                            | Applies to Parquet & Delta. Always beneficial.                                                                                                              |
+| **Z-Order (Multi-dimensional clustering)** | Read  | File pruning by key ranges         | `OPTIMIZE t ZORDER BY (user_id, dt)` | Benefits time series + multi-column filter + join on keys. Improves read I/O.                                                                               |
+| **Column Pruning**                         | Read  | Avoid reading unused columns       | `df.select("id","amt")`              | Automatically applied in Parquet/Delta.                                                                                                                     |
+| **Data Skipping (Delta)**                  | Read  | Skip files using stats             | automatic                            | Delta stores min/max statistics per file → removes entire files from scan.                                                                                  |
+| **Small Files Reduction**                  | Read  | Improve scan performance           | `OPTIMIZE t`                         | Many small files → slow reads → compaction required.                                                                                                        |
+
+---
+
+# **2. Transform Optimizations**
+
+| Optimization                            | Goal                                         | When to Use                                                     |
+| --------------------------------------- | -------------------------------------------- | --------------------------------------------------------------- |
+| **Filter Early**                        | Reduce data size before expensive operations | Always                                                          |
+| **Select Columns Early**                | Reduce memory + CPU                          | Always                                                          |
+| **Avoid UDFs / Use built-in functions** | Catalyst cannot optimize UDFs                | Very important                                                  |
+| **Repartition vs Coalesce**             | Control parallelism                          | Use repartition before shuffle, coalesce after heavy transforms |
+| **Avoid collecting data to driver**     | Prevent OOM                                  | Never use `.collect()` on large data                            |
+
+---
+
+# **3. Shuffle / Aggregation Optimizations**
+
+| Optimization                       | Goal                        | Example                                    | When to Use                                      |
+| ---------------------------------- | --------------------------- | ------------------------------------------ | ------------------------------------------------ |
+| **reduceByKey vs groupByKey**      | Avoid storing all values    | reduceByKey                                | Use reduceByKey always unless you need full list |
+| **Aggregate / mapGroups / window** | Avoid shuffle when possible | —                                          | Always explore deterministic logic               |
+| **Salting**                        | Avoid skew                  | key + random                               | When one key has 80% data                        |
+| **Skew join tips**                 | Avoid one huge partition    | `spark.sql.adaptive.skewJoin.enabled=true` | Required in production                           |
+| **Broadcast Join**                 | Avoid shuffle               | `broadcast(dim)`                           | When one table <10–100MB                         |
+
+---
+
+# **4. Join Optimizations**
+
+| Optimization                | When to Use              |
+| --------------------------- | ------------------------ |
+| Broadcast join              | Small dimension          |
+| Shuffle hash join (default) | Normal join              |
+| Sort merge join             | Very large sorted data   |
+| Avoid Cartesian join        | Catastrophic performance |
+
+---
+
+# **5. Write Path Optimizations**
+
+| Optimization                    | Goal                           |
+| ------------------------------- | ------------------------------ |
+| **Coalesce**                    | Reduce output files            |
+| **Partition by**                | Optimize future read           |
+| **Bucket by (older)**           | Optimize join on key           |
+| **Delta Optimize (compaction)** | Merge small files              |
+| **Change file size target**     | Default 1GB → tune to workload |
+
+---
+
+# **6. Memory & Executor Optimizations**
+
+| Setting                      | When to Adjust                    |
+| ---------------------------- | --------------------------------- |
+| executor memory              | when GC slow                      |
+| executor cores               | typically 3–5                     |
+| spark.sql.shuffle.partitions | default 200 → tune large datasets |
+| caching                      | when recomputed many times        |
+| off-heap memory              | very large joins                  |
+
+Typical production settings:
+
+```
+spark.sql.shuffle.partitions = 2000
+spark.default.parallelism = 2000
+spark.sql.adaptive.enabled = true
+spark.sql.adaptive.skewJoin.enabled = true
+```
+
+---
+
+# **7. Catalyst & Tungsten Optimizations**
+
+These are automatic but critical:
+
+| Optimization                   | Benefit              |
+| ------------------------------ | -------------------- |
+| Whole stage codegen            | Faster CPU           |
+| Vectorized reader              | Faster column reads  |
+| Compression                    | less I/O             |
+| AQE (Adaptive Query Execution) | runtime optimization |
+
+Always turn on AQE in production.
+
+---
+
+# **8. Delta Lake Specific Optimizations**
+
+### **1) Partition pruning**
+
+✓ Works on partition columns
+Example:
+
+```
+df.filter($"dt" === "2025-01-01")
+```
+
+Delta metadata stores partition map → file skipping.
+
+---
+
+### **2) Data Skipping**
+
+Every data file stores:
+
+```
+min(key)
+max(key)
+null count
+distinct count
+```
+
+So filtering on range automatically avoids scanning irrelevant files.
+
+---
+
+### **3) Z-Order**
+
+Used when:
+
+* multiple filter columns
+* time series
+* user + date
+* join keys
+
+Example:
+
+```
+OPTIMIZE sales ZORDER BY (customer_id, event_dt)
+```
+
+---
+
+### **4) Vacuum**
+
+Removes old versions → saves storage.
+
+---
+
+# **9. When to Use Each Optimization (Short Summary)**
+
+| Scenario               | Best Optimization                        |
+| ---------------------- | ---------------------------------------- |
+| slow read on big table | partition prune + data skipping + ZOrder |
+| many small files       | OPTIMIZE / compaction                    |
+| join slow              | broadcast / skew join / bucket           |
+| memory overload        | reduce partitions / broadcast            |
+| skew                   | salting / AQE skew join                  |
+| repeated reuse         | cache/persist                            |
+| huge aggregation       | reduceByKey                              |
+
+---
+
+# **10. Final Corrected Table**
+
+Below is a cleaned version of your original table with corrected information including partition pruning fully.
+
+| Optimization          | Stage      | Goal                  | Example                    | When to Use                    |
+| --------------------- | ---------- | --------------------- | -------------------------- | ------------------------------ |
+| Partition Pruning     | Read       | Skip partitions       | filter on partition column | Always for partitioned & Delta |
+| Predicate Pushdown    | Read       | skip rows             | automatic                  | Always                         |
+| Data Skipping (Delta) | Read       | skip files            | automatic                  | Large Delta tables             |
+| Z-Order               | Read       | file pruning by key   | OPTIMIZE ZORDER            | time series + join             |
+| Compaction            | Read/Write | reduce small files    | OPTIMIZE                   | many small files               |
+| Filter Early          | Transform  | reduce data           | df.filter                  | always                         |
+| Select Columns        | Transform  | reduce bytes          | df.select                  | wide table                     |
+| reduceByKey           | Shuffle    | reduce shuffle        | reduceByKey                | aggregations                   |
+| avoid groupByKey      | Shuffle    | avoid memory blowup   | —                          | almost always                  |
+| Salting               | Shuffle    | avoid skew            | key+salt                   | skewed key                     |
+| Broadcast join        | Join       | avoid shuffle         | broadcast                  | dimension join                 |
+| Coalesce              | Write      | reduce files          | coalesce                   | final write                    |
+| Cache                 | Transform  | avoid recompute       | cache()                    | reuse                          |
+| Shuffle partitions    | Shuffle    | tune parallelism      | set                        | large data                     |
+| AQE                   | Runtime    | adaptive optimization | enabled                    | production                     |
+
+---
+ 
