@@ -1,0 +1,317 @@
+Airflow is always running in production.
+It has three main long-running services:
+	1. Scheduler → brain that decides what to run
+	2. Webserver → UI / logs
+	3. Workers → actually execute tasks
+These run all the time.
+Airflow parses DAG files roughly every 30 seconds and its scheduler loop checks scheduling conditions every few seconds, so it continuously detects when a DAG should run or when tasks should start.
+DAGS - run the tasks in certain order based on input 
+components
+Metadata Database  - postgres  to store all the config of the job
+Workers to exexute the task
+
+When a job fails in Airflow, the DAG run is marked failed and downstream dependencies are not executed. To orchestrate multi-job dependencies, 
+we either use sensors or explicit trigger operators with failure rules. For monitoring, Airflow provides native email alerts and supports custom failure callbacks,
+which allows integration with Slack, PagerDuty, or any enterprise alerting system.
+
+
+Airflow cannot directly listen to:
+	• Kafka events
+	• S3 file arrival
+	• Database change
+	• Webhook
+	• Message queue
+	• Streaming event
+	• Real-time triggers
+Below is a **clean, complete, interview-ready list** of all Databricks-related operators, sensors and helpers available in Airflow (Provider: `airflow.providers.databricks`).
+I also explain **what each is used for** and **when to use which**.
+
+No extra theory — just the operators you actually need to know.
+
+---
+
+# 1. Databricks Operators in Airflow
+
+These operators allow Airflow to run:
+
+* Databricks Jobs
+* Notebooks
+* JARs / Python Wheels
+* Workflows
+* Command execution
+* Job monitoring
+
+---
+
+# ✅ **1) DatabricksRunNowOperator**
+
+Runs a Databricks **Job** immediately via:
+
+```
+POST /api/2.1/jobs/run-now
+```
+
+Used when:
+
+* you have pre-defined job in Databricks UI
+* want to pass parameters
+* want Airflow to block until job finishes
+
+Example:
+
+```python
+DatabricksRunNowOperator(
+    task_id="job",
+    job_id=12,
+    notebook_params={"name":"abc"}
+)
+```
+
+---
+
+# ✅ **2) DatabricksSubmitRunOperator**
+
+Submits a run **without a predefined job**, meaning you describe:
+
+* notebook path
+* spark version
+* cluster settings
+* libraries
+* params
+
+Example use case:
+
+* dynamic jobs
+* test jobs
+* ad-hoc compute
+
+Example:
+
+```python
+DatabricksSubmitRunOperator(
+    task_id="submit",
+    new_cluster={...},
+    notebook_task={"notebook_path":"/Users/test"}
+)
+```
+
+---
+
+# ✅ **3) DatabricksNotebookOperator**
+
+Runs a notebook.
+
+Used when:
+
+* simple case
+* no cluster config required
+* cluster already attached
+
+Example:
+
+```python
+DatabricksNotebookOperator(
+    task_id="nb",
+    notebook_path="/Users/me/notebooks/job"
+)
+```
+
+---
+
+# ✅ **4) DatabricksWorkflowTaskGroup**
+
+Used for **Databricks Workflows (2024+ feature)**
+Allows grouping multiple workflow tasks inside Airflow.
+
+Example:
+
+```python
+with DatabricksWorkflowTaskGroup(group_id="wf") as wf:
+    t1 = DatabricksNotebookOperator(...)
+    t2 = DatabricksRunNowOperator(...)
+```
+
+Useful when:
+
+* orchestrate complex multi-step Databricks workflows
+* preserve ordering
+* reuse patterns
+
+---
+
+# ✅ **5) DatabricksSqlOperator**
+
+Runs SQL on Databricks SQL warehouse.
+
+Example:
+
+```python
+DatabricksSqlOperator(
+    task_id="sql",
+    sql="select count(*) from sales"
+)
+```
+
+Used when:
+
+* data validation
+* data quality checks
+* simple SQL transformations
+
+---
+
+# ✅ **6) DatabricksCommandOperator**
+
+Executes arbitrary commands in cluster.
+
+Example:
+
+```python
+DatabricksCommandOperator(
+    task_id="cmd",
+    command="spark.catalog.listTables()"
+)
+```
+
+Used when:
+
+* low-level automation
+* metadata tasks
+
+---
+
+# ✅ **7) DatabricksHook**
+
+Low-level helper to call Databricks API manually.
+
+Used when:
+
+* building custom operators
+* calling uncommon endpoints
+* uploading libraries
+* cluster management
+
+Example:
+
+```python
+hook = DatabricksHook()
+hook.submit_run(...)
+```
+
+---
+
+# ✅ **8) DatabricksSensors**
+
+Airflow provides sensors to wait for:
+
+### **DatabricksJobSensor**
+
+Waits until job completes.
+
+### **DatabricksRunSensor**
+
+Waits until run reaches success / failure.
+
+Example:
+
+```python
+DatabricksRunSensor(run_id=123)
+```
+
+Used when:
+
+* you need explicit wait
+* operator does not automatically wait
+
+---
+
+# ✅ **9) DatabricksClusterOperator** (rarely used)
+
+Used to:
+
+* create cluster
+* delete cluster
+* check cluster state
+
+Example:
+
+```python
+DatabricksClusterOperator(
+    cluster_id="abc"
+)
+```
+
+Used in advanced scenarios.
+
+---
+
+# 2. Summary Table (Interview ready)
+
+| Operator                    | What it runs       | When to use                          |
+| --------------------------- | ------------------ | ------------------------------------ |
+| DatabricksRunNowOperator    | predefined job     | Most common                          |
+| DatabricksSubmitRunOperator | dynamic job        | when cluster/notebook defined in DAG |
+| DatabricksNotebookOperator  | notebook           | simple use                           |
+| DatabricksSqlOperator       | SQL                | data quality / validation            |
+| DatabricksCommandOperator   | low level commands | advanced automation                  |
+| DatabricksWorkflowTaskGroup | group workflow     | complex series of tasks              |
+| DatabricksJobSensor         | wait job           | when you need manual wait            |
+| DatabricksHook              | raw API            | custom development                   |
+| ClusterOperator             | clusters           | rarely required                      |
+
+---
+
+# 3. How to call Databricks Job API “without operators”
+
+Example using PythonOperator:
+
+```python
+def call_job():
+    import requests
+    url = "https://xxx.cloud.databricks.com/api/2.1/jobs/run-now"
+    r = requests.post(url,
+                      headers={"Authorization":"Bearer TOKEN"},
+                      json={"job_id":99})
+
+    print(r.json())
+```
+
+---
+
+# 4. Best practice recommendation
+
+In production use:
+
+1. **Use RunNowOperator for life**
+2. Use SubmitRun only when dynamic cluster required
+3. Never use CommandOperator unless required
+4. Always attach retries and timeouts
+5. Do not create cluster inside DAG unless necessary (expensive)
+
+Sample code  : Job b wait for jab A .Job a dag is already created 
+from airflow.sensors.external_task import ExternalTaskSensor
+from airflow import DAG
+from datetime import datetime
+
+with DAG(
+    "dag_b",
+    start_date=datetime(2025,1,1),
+    schedule_interval=None
+) as dag:
+
+    wait_for_a = ExternalTaskSensor(
+        task_id="wait_for_a",
+        external_dag_id="dag_a",
+        external_task_id=None,     # None = wait for entire DAG
+        allowed_states=["success"],
+        failed_states=["failed", "skipped"],
+        mode="poke",              # default
+        timeout=60*60
+    )
+
+    load_b = DatabricksRunNowOperator(
+        task_id="load_b",
+        job_id=222
+    )
+
+    wait_for_a >> load_b
