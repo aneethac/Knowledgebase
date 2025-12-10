@@ -195,3 +195,513 @@ Below is a cleaned version of your original table with corrected information inc
 
 ---
  
+Below is the **ALL-IN-ONE MASTER DOCUMENT** covering:
+
+1. Spark interview questions + answers
+2. Spark execution plan / DAG / stage explanation
+3. Spark tuning with production examples
+4. repartition vs coalesce
+5. Delta Lake interview cheat sheet
+6. Performance troubleshooting guidance
+
+The writing is formal, precise, and production-focused.
+
+---
+
+# **MASTER DOCUMENT – Spark + Delta Lake Deep Engineering Guide**
+
+---
+
+# **1. Spark Interview Questions + Detailed Answers**
+
+---
+
+## **1. What is Spark execution model?**
+
+Spark works in three layers:
+
+1. **Driver**
+
+   * builds DAG
+   * schedules tasks
+   * maintains metadata and shuffle tracking
+
+2. **Cluster Manager**
+
+   * YARN / Mesos / Kubernetes / standalone
+   * allocates executors
+
+3. **Executors**
+
+   * run tasks
+   * hold data in memory/disk
+   * perform shuffle I/O
+
+Execution happens in:
+
+* **Transformations → lazy**
+* **Actions → triggers execution**
+* DAG → optimized → physical plan → stages → tasks
+
+---
+
+## **2. What is DAG? Why is it important?**
+
+DAG = Directed Acyclic Graph.
+
+It represents operation dependency chain before execution.
+
+Example:
+
+```
+read → filter → join → groupBy → write
+```
+
+Spark uses DAG to:
+
+* identify shuffle boundaries
+* pipeline operations
+* reorder logic
+* avoid recomputation
+
+---
+
+## **3. What causes shuffle?**
+
+Shuffle happens whenever data must be redistributed:
+
+* groupBy / reduceBy / agg
+* join (except broadcast join)
+* distinct
+* repartition
+* sort
+
+Shuffle is the single largest cost in distributed computing.
+
+---
+
+## **4. What is lineage?**
+
+Lineage stores how an RDD can be recomputed.
+
+Used for fault tolerance: if partition dies → recompute from lineage.
+
+---
+
+## **5. What is wide vs narrow dependency?**
+
+* **Narrow**
+
+  * each output partition uses data from only one parent partition
+  * no shuffle (map, filter)
+
+* **Wide**
+
+  * output partition depends on multiple parents
+  * shuffle required (groupBy, join)
+
+---
+
+## **6. Why is reduceByKey faster than groupByKey?**
+
+Because:
+
+reduceByKey:
+
+* combines data on mapper
+* reduces shuffle volume massively
+
+groupByKey:
+
+* sends all raw values over network
+* extreme memory pressure
+
+Rule: **Never use groupByKey unless absolutely required.**
+
+---
+
+## **7. What is broadcast join and when?**
+
+When one side of join is small (10–100MB typically):
+
+```
+df.join(broadcast(dim), "id")
+```
+
+Benefits:
+
+* avoids shuffle
+* faster
+* fewer tasks
+
+---
+
+## **8. What is skew and how to fix?**
+
+Skew = one key has disproportionate data.
+
+Symptoms:
+
+* one slow task
+* OOM
+* long tail
+
+Solutions:
+
+* salting
+* AQE skew join
+* reduce aggregation
+* repartition by key
+* pre-aggregate
+
+---
+
+# ------------------------------------------------------------
+
+# **2. Spark Execution Flow Deep Explanation**
+
+---
+
+## **1) Logical Plan**
+
+Catalyst builds a tree of operations.
+
+Example:
+
+```
+Project
+  Filter
+    Join
+      Scan
+      Scan
+```
+
+---
+
+## **2) Optimization**
+
+Catalyst applies rules:
+
+* constant folding
+* predicate pushdown
+* column pruning
+* join reordering
+* map-side combine
+
+---
+
+## **3) Physical Plan**
+
+Determines how execution happens:
+
+* whole stage codegen
+* vectorized reader
+* join strategy
+* shuffle strategy
+
+---
+
+## **4) DAG → Stages**
+
+Spark splits DAG at shuffle boundaries.
+
+Example:
+
+```
+Stage 1: read → filter → map
+Stage 2: shuffle (groupBy)
+Stage 3: aggregation
+```
+
+---
+
+## **5) Tasks**
+
+Each stage is split into tasks equal to partitions:
+
+```
+partition = parallelism
+```
+
+---
+
+# ------------------------------------------------------------
+
+# **3. Spark Tuning – Production Examples**
+
+---
+
+## **1) Shuffle partitions**
+
+Default = 200 → too low for large datasets.
+
+Example:
+
+```
+spark.sql.shuffle.partitions = 2000
+```
+
+When to tune:
+
+* dataset > 100GB
+* OOM on shuffle
+* slow tasks
+
+---
+
+## **2) Executor sizing**
+
+Typical:
+
+* cores = 3–5
+* memory = 8–32GB
+* avoid >5 cores (GC slows down)
+
+---
+
+## **3) Memory tuning**
+
+Indicators:
+
+* long GC
+* Full GCs
+* task spill to disk
+
+Tune:
+
+```
+spark.executor.memoryOverhead
+spark.memory.fraction
+```
+
+---
+
+## **4) Broadcast join**
+
+If broadcast fails → data is too large.
+
+---
+
+## **5) Caching**
+
+Use when:
+
+* reused multiple times
+* expensive computation
+
+Example:
+
+```
+df.cache()
+```
+
+Avoid caching huge datasets unnecessarily.
+
+---
+
+## **6) Small files → compaction**
+
+Delta:
+
+```
+OPTIMIZE table
+```
+
+Parquet:
+
+* write with larger file size
+* use coalesce at final write
+
+---
+
+# ------------------------------------------------------------
+
+# **4. Repartition vs Coalesce**
+
+---
+
+## **Repartition**
+
+```
+repartition(n)
+```
+
+* triggers shuffle
+* increases or decreases partitions
+* evenly distributes data
+* costly but sometimes required
+
+Use when:
+
+* skew correction
+* join optimization
+* preparing partitioning
+
+---
+
+## **Coalesce**
+
+```
+coalesce(n)
+```
+
+* no shuffle
+* only reduces partitions
+* keeps data locality
+
+Use when:
+
+* reducing output files
+* final write optimization
+
+---
+
+# ------------------------------------------------------------
+
+# **5. Delta Lake Advanced Cheat Sheet**
+
+---
+
+## **Key Features**
+
+### **1) ACID transactions**
+
+* atomicity
+* isolation
+* consistency
+* durability
+
+---
+
+### **2) Time travel**
+
+```
+table@v1
+table@2024-01-01
+```
+
+---
+
+### **3) Partition pruning**
+
+Works when filtering on partition column.
+
+Huge reduction in read cost.
+
+---
+
+### **4) Data skipping**
+
+Automatically avoids scanning files using min/max stats.
+
+---
+
+### **5) Z-Order**
+
+Used when:
+
+* multiple filter fields
+* time series
+* join keys
+* large tables
+
+Example:
+
+```
+OPTIMIZE t ZORDER BY (user_id, dt)
+```
+
+---
+
+### **6) Vacuum**
+
+Deletes old versions:
+
+```
+VACUUM t RETAIN 168 HOURS
+```
+
+---
+
+# ------------------------------------------------------------
+
+# **6. Performance Troubleshooting Guide**
+
+---
+
+## **1) Slow job → check shuffle**
+
+Signs:
+
+* large shuffle spill
+* long GC
+* skew tasks
+
+Fix:
+
+* reduceByKey
+* broadcast join
+* salting
+* increase partitions
+* AQE Adaptive Query Execution is a Spark runtime optimization framework
+
+---
+
+## **2) OOM → reduce memory pressure**
+
+Fix:
+
+* increase partitions
+* avoid collect
+* broadcast where possible
+* use mapPartitions
+
+---
+
+## **3) Slow reads**
+
+Fix:
+
+* partition pruning
+* ZOrder
+* data skipping
+* compact files
+* select only needed columns
+
+---
+
+## **4) Many small files**
+
+Fix:
+
+* coalesce
+* bucketing
+* optimize
+* tune file size
+
+---
+
+# ------------------------------------------------------------
+
+# **Conclusion**
+
+This master document now contains:
+
+* interview concepts
+* execution internals
+* tuning
+* optimization patterns
+* Delta Lake production tricks
+* troubleshooting
+
+---
+
+# If you want next, I can produce any of these:
+
+1. **Spark Design Patterns (production-ready)**
+2. **Data Engineering System Design (end-to-end)**
+3. **Streaming + Batch + Lambda + Kappa detailed design**
+4. **Real interview design questions + answers**
+5. **PySpark code examples for all patterns**
+
+Just tell me the number or name.
