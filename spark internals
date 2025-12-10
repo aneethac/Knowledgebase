@@ -1,0 +1,302 @@
+Below is a clean, easy-to-remember mind map of Spark execution flow based on your explanation.
+
+Mind Map — Spark Execution Flow
+
+1. Trigger
+
+   * Action invoked (count, collect, write, etc.)
+   * Causes a Spark Job
+
+2. Job (Driver)
+
+   * Represents the complete execution required for the Action
+   * Hands work to optimizer and scheduler
+
+3. DAG Construction (Catalyst / Optimizer)
+
+   * Converts your transformations into:
+
+     * Logical Plan
+     * Optimized Logical Plan
+     * Physical Plan
+   * Output is a DAG of operations (no cycles)
+
+4. Stage Splitting (DAGScheduler)
+
+   * Key rule:
+
+     * Narrow transformations → can stay in same stage
+     * Wide transformations → cause shuffle → new stage
+   * Output:
+
+     * Multiple Stages
+     * Each stage defines:
+
+       * Input partitions
+       * Output partitions
+
+5. Tasks
+
+   * One Task per partition
+   * Example:
+
+     * 1000 partitions → 1000 tasks
+   * Task = smallest unit of execution
+
+6. Scheduling (TaskScheduler)
+
+   * Assigns tasks to executor cores
+   * Uses data locality:
+
+     * Prefer same node
+     * Then same rack
+     * Then anywhere
+
+7. Execution (Executor Cores)
+
+   * Core = slot that runs one Task
+   * Each core:
+
+     * Reads its partition
+     * Applies stage logic
+     * Writes results
+   * When task completes:
+
+     * Core immediately takes next task
+   * When all tasks in stage finish:
+
+     * If shuffle required → next stage starts
+     * Repeat until all stages done
+
+Compact Mind Map Structure (for fast recall)
+
+Spark Execution
+|
++-- Action triggers Job
+|     |
+|     +-- Optimizer builds DAG
+|
++-- DAG split into Stages
+|     |
+|     +-- Narrow transformations → same stage
+|     +-- Wide transformations → shuffle → new stage
+|
++-- Stage → Tasks
+|     |
+|     +-- 1 partition = 1 task
+|
++-- TaskScheduler
+|     |
+|     +-- Assign tasks to cores
+|     +-- Try data locality
+|
++-- Executor Cores execute
+|
++-- Run tasks
++-- Produce outputs
++-- Move to next stage if needed
+
+                            ┌─────────────────┐
+                           │   Action Called │
+                           │ (count, write..)│
+                           └────────┬────────┘
+                                    ↓
+                           ┌─────────────────┐
+                           │      Job        │
+                           │   (Driver)     │
+                           └────────┬────────┘
+                                    ↓
+                           ┌─────────────────┐
+                           │   Build DAG     │
+                           │ Catalyst/Opt    │
+                           └────────┬────────┘
+                                    ↓
+                     ┌──────────────┴──────────────┐
+                     ↓                         ↓
+           ┌─────────────────┐       ┌───────────────────┐
+           │ Narrow Transf.  │       │ Wide Transf.       │
+           │ (map, filter..) │       │ (join, groupBy..) │
+           └───────┬─────────┘       └────────┬──────────┘
+                   ↓                          ↓
+          ┌────────────────┐         ┌──────────────────┐
+          │ Same Stage     │         │ Shuffle → New     │
+          │ (pipeline)     │         │ Stage           │
+          └────────┬───────┘         └────────┬─────────┘
+                   ↓                          ↓
+                   └──────────────┬───────────┘
+                                ↓
+                       ┌────────────────┐
+                       │     Stage      │
+                       │(input/output)  │
+                       └────────┬────────┘
+                                ↓
+                       ┌────────────────┐
+                       │    Tasks       │
+                       │1 partition =1  │
+                       │     task       │
+                       └────────┬────────┘
+                                ↓
+                       ┌────────────────┐
+                       │ TaskScheduler  │
+                       │data locality   │
+                       └────────┬────────┘
+                                ↓
+                       ┌────────────────┐
+                       │ Executor Cores │
+                       │ Run Tasks      │
+                       └────────┬────────┘
+                                ↓
+                       ┌────────────────┐
+                       │ Stage Done?    │
+                       └────────┬────────┘
+                     Yes ↓           ↓ No
+                ┌────────┴───┐     ┌───────────┐
+                ↓           ↓     ↓         ↓
+         ┌───────────┐   ┌─────────┐    Move to
+         │ Next Stage│   │ Finish │    next stage
+         └───────────┘   └────────┘
+
+Map task = reads a chunk of data and prepares it for grouping
+
+Takes its share of rows
+
+Puts all NY together, LA together, TX together
+
+Saves them somewhere (disk)
+
+So:
+
+Map = prepare + write
+
+Shuffle = moving the grouped data so reduce task can get it.
+Reduce = read + aggregate
+
+Map = read data + group + write to disk
+
+Shuffle = move grouped data
+
+Reduce = read grouped data + calculate result
+
+One-line Summary
+
+Map task → writes one shuffle file
+
+One shuffle file → stores data for all keys
+
+Reduce tasks → read only the data they need from those files
+
+All shuffle files → stored on executor’s local disk
+
+Why Shuffle is So Expensive
+
+Shuffle involves 3 costly things:
+
+Disk I/O
+Spark writes shuffle data to executor disk.
+
+Network
+Data moves between machines.
+
+CPU
+Serialisation + deserialisation.
+
+So shuffle = slow + costly.
+
+Therefore optimization = avoid shuffle as much as possible.
+
+Rule 1 — Filter early
+Rule 2 — Select only needed columns
+Rule 3 — Use broadcast join for small tables
+Rule 4 — Avoid groupByKey
+
+Use:
+
+reduceByKey
+aggregateByKey
+mapValues
+Rule 5 — Increase shuffle partitions
+Rule 6 — Handle skew
+
+Example:
+
+One key has 90% of data.
+
+Solution:
+salting
+custom partitioner
+avoid grouping on skewed column
+reduceByKey < groupByKey (much faster) .reduceby key means partial aggrgation on executor while creating shuffle write file
+shuffle is expensive because disk + network + CPU
+avoid shuffle → fastest Spark jobs
+
+Wide Transformations (CAUSE Shuffle)
+ 
+
+1.repartition → Wide (always shuffle)
+  changes partition count
+  always shuffle
+  balanced
+2.coalesce → Narrow
+  only causes shuffle when you explicitly force it
+  default is no shuffle
+  reduces partition count
+  no shuffle (fast)
+  not balanced
+3.Z-Order compaction → Wide
+because it sorts and rewrites data on disk
+heavy shuffle
+physical ordering of data on disk
+improves file pruning
+speeds up selective queries
+
+Below is the **combined table** including the “When to Use” notes directly in the table.
+
+Clean, compact, and ready for revision.
+
+---
+
+## Full Summary Table (Compact + Example + When to Use)
+
+| Optimization                    | Stage      | Goal                      | Example                                | When to Use                                                                    |
+| ------------------------------- | ---------- | ------------------------- | -------------------------------------- | ------------------------------------------------------------------------------ |
+| **Z-Order**                     | Read       | file pruning (skip files) | `OPTIMIZE t ZORDER BY (user_id, date)` | Queries filter on specific key(s); very large tables; time series; join on key |
+| **OPTIMIZE (compaction)**       | Read/Write | reduce small files        | `OPTIMIZE t`                           | Many small files, slow reads                                                   |
+| **Filter Early**                | Transform  | reduce data volume        | `df.filter("date >= '2025-01-01'")`    | Always. Reduces CPU, shuffle, I/O                                              |
+| **Select Columns**              | Read       | reduce bytes scanned      | `df.select("id","amt")`                | Wide tables; unnecessary columns                                               |
+| **reduceByKey**                 | Shuffle    | reduce shuffle size       | `rdd.reduceByKey(_+_)`                 | Aggregation per key; very effective                                            |
+| **Avoid groupByKey**            | Shuffle    | avoid huge shuffle        | use reduceByKey                        | Never use unless you truly need full list                                      |
+| **Salting**                     | Shuffle    | avoid skew                | add random salt to key                 | One key dominates data; slow tasks                                             |
+| **Broadcast Join**              | Join       | avoid shuffle             | `broadcast(dim)`                       | One table small (<10–100MB)                                                    |
+| **Coalesce**                    | Write      | fewer output files        | `df.coalesce(5)`                       | Final write optimization                                                       |
+| **Cache / Persist**             | Transform  | avoid recomputation       | `df.cache()`                           | Same dataset reused multiple times                                             |
+| **Increase shuffle partitions** | Shuffle    | smaller, faster tasks     | `spark.sql.shuffle.partitions = 2000`  | Large datasets (100GB+); OOM; slow tasks                                       |
+| **Predicate Pushdown**          | Read       | read less data            | Parquet/Delta automatic                | Always beneficial                                                              |
+
+---
+
+Extra Quick Memory Aid
+
+If you want a quick mnemonic:
+
+* **Read stage → reduce files + reduce bytes**
+
+  * Z-Order
+  * Optimize
+  * Filter
+  * Select
+
+* **Transform stage → reduce work**
+
+  * cache
+  * filter early
+
+* **Shuffle stage → reduce shuffle**
+
+  * reduceByKey
+  * salting
+  * shuffle partitions
+
+* **Join stage → avoid shuffle**
+
+  * broadcast join
+ 
