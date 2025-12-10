@@ -1,0 +1,19 @@
+Real-time stream
+
+Kafka → Databricks Structured Streaming Job → Bronze Delta → Silver Delta
+
+Batch jobs
+
+Nightly/Hourly/Azure Event-driven → Batch Transform Job → Enriched Delta → Gold Delta
+
+Combined pipeline
+
+Batch jobs often depend on the streaming table being up-to-date AND their dimension tables refreshed.
+
+| Layer                  | Purpose                         | Typical Frequency             | Why                                     |
+| ---------------------- | ------------------------------- | ----------------------------- | --------------------------------------- |
+| **Bronze**             | Raw landing from Kafka          | **Every 30 sec (continuous)** | Real-time ingestion, no transforms      |
+| **Silver (Streaming)** | Clean, dedupe, enrich           | **1 min**                     | Slight delay to allow stable processing |
+| **Silver (Batch)**     | Heavy transforms, joins         | **Hourly**                    | Optimized cost/performance              |
+| **Gold (Streaming)**   | ML features, real-time insights | **1–5 min**                   | Low-latency features for ranking        |
+| **Gold (Batch)**       | BI, reports                     | **Hourly or Daily**           | Heavy aggregations                      |
