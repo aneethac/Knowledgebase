@@ -1,0 +1,40 @@
+| API Type              | Endpoint            | Purpose            | Example Request JSON                                      | Notes           |
+| --------------------- | ------------------- | ------------------ | --------------------------------------------------------- | --------------- |
+| **Job API**           | jobs/create         | Create job         | `{"name":"job1","notebook_task":{"notebook_path":"/nb"}}` | Create once     |
+| Job API               | jobs/update         | Update job         | `{"job_id":1,"new_settings":{}}`                          |                 |
+| Job API               | jobs/delete         | Delete job         | `{"job_id":1}`                                            |                 |
+| Job API               | jobs/list           | List jobs          | `{}`                                                      |                 |
+| Job API               | jobs/get            | Get job metadata   | `{"job_id":1}`                                            |                 |
+| Job API               | jobs/run-now        | Trigger job run    | `{"job_id":1,"notebook_params":{"year":"2025"}}`          | Creates new run |
+| Job API               | jobs/runs/get       | Get run details    | `{"run_id":1001}`                                         | Polling         |
+| Job API               | jobs/runs/list      | Run history        | `{"job_id":1}`                                            |                 |
+| Job API               | jobs/runs/cancel    | Cancel run         | `{"run_id":1001}`                                         |                 |
+| **Cluster API**       | clusters/create     | Create cluster     | `{"cluster_name":"c1","num_workers":2}`                   |                 |
+| Cluster API           | clusters/start      | Start cluster      | `{"cluster_id":"abc"}`                                    |                 |
+| Cluster API           | clusters/terminate  | Stop cluster       | `{"cluster_id":"abc"}`                                    |                 |
+| Cluster API           | clusters/list       | List               | `{}`                                                      |                 |
+| Cluster API           | clusters/get        | Details            | `{"cluster_id":"abc"}`                                    |                 |
+| **Workspace API**     | workspace/import    | Upload notebook    | `{"path":"/nb","content":"<base64>"}`                     |                 |
+| Workspace API         | workspace/export    | Download           | `{"path":"/nb"}`                                          |                 |
+| Workspace API         | workspace/delete    | Delete             | `{"path":"/nb"}`                                          |                 |
+| Workspace API         | workspace/list      | List folder        | `{"path":"/"}`                                            |                 |
+| **DBFS API**          | dbfs/put            | Upload file        | `{"path":"/tmp/a","contents":"<b64>"}`                    |                 |
+| DBFS API              | dbfs/get            | Download file      | `{"path":"/tmp/a"}`                                       |                 |
+| DBFS API              | dbfs/list           | List files         | `{"path":"/tmp"}`                                         |                 |
+| DBFS API              | dbfs/delete         | Delete file        | `{"path":"/tmp/a"}`                                       |                 |
+| **Secrets API**       | secrets/listScopes  | List scopes        | `{}`                                                      |                 |
+| Secrets API           | secrets/list        | List secrets       | `{"scope":"scope1"}`                                      |                 |
+| Secrets API           | secrets/put         | Create secret      | `{"scope":"scope","key":"pwd","string_value":"abc"}`      |                 |
+| **Permissions API**   | permissions/get     | Get permissions    | `{}`                                                      |                 |
+| Permissions API       | permissions/put     | Set permissions    | `{}`                                                      |                 |
+| **SQL API**           | sql/warehouses/list | List warehouses    | `{}`                                                      |                 |
+| SQL API               | sql/queries/execute | Run SQL            | `{"warehouse_id":"x","statement":"select 1"}`             | async           |
+| SQL API               | sql/queries/get     | Get query result   | `{"query_id":"abc"}`                                      |                 |
+| **Unity Catalog API** | catalogs/create     | Create catalog     | `{"name":"c1"}`                                           |                 |
+| UC API                | schemas/create      | Create schema      | `{"catalog_name":"c1","name":"s1"}`                       |                 |
+| UC API                | tables/create       | Create table       | `{...}`                                                   |                 |
+| **MLflow API**        | experiments         | Manage experiments | `{}`                                                      |                 |
+| MLflow API            | runs                | Log metrics        | `{}`                                                      |                 |
+| MLflow API            | models              | Register model     | `{}`                                                      |                 |
+| **Serving API**       | serving/endpoints   | Manage endpoints   | `{}`                                                      |                 |
+| Serving API           | serving/invocations | Predict            | `{ "data":[...] }`                                        |                 |
