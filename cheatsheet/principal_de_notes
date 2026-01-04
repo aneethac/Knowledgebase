@@ -1,1 +1,40 @@
- 
+“I start by clarifying requirements like data volume, latency, consistency, and SLAs.
+I then design an event-driven, horizontally scalable system using distributed ingestion, stateless processing, and scalable storage.
+Data is partitioned by time and key for parallelism, schemas and quality checks are enforced early, and fault tolerance is achieved using retries, checkpoints, and idempotent writes.
+Finally, I optimize for cost using incremental processing, lifecycle policies, and strong observability to track freshness, reliability, and performance.” 
+
+1️⃣ Data Volume
+What it means: How much data the system must handle.
+2️⃣ Latency
+What it means: How fast data must be available.
+3️⃣ Consistency
+What it means: How accurate and stable the data must be.
+4️⃣ SLAs (Service Level Agreements)
+What it means: Business promises around data delivery.
+5️⃣ Event-Driven Architecture
+What it means: Reacting to events instead of polling.
+6️⃣ Horizontally Scalable System
+What it means: Scale by adding nodes, not bigger machines.
+7️⃣ Distributed Ingestion
+What it means: Multiple producers, parallel ingestion.
+8️⃣ Stateless Processing
+What it means: Workers don’t depend on local state.
+🔟 Partitioning (Time + Key)
+What it means: Parallelism and performance.
+1️⃣1️⃣ Schema Enforcement
+What it means: Preventing bad data early
+1️⃣2️⃣ Data Quality Checks
+What it means: Trustworthy data.
+1️⃣3️⃣ Fault Tolerance What it means: System survives failures.
+What it means: System survives failures.
+1️⃣4️⃣ Retries “Temporary downstream failures—like warehouse unavailability—are handled using controlled retries to avoid data loss.”
+1️⃣5️⃣ Checkpointing
+“Streaming pipelines checkpoint offsets so that if a job fails, it resumes processing without reprocessing already committed transactions.”
+1️⃣6️⃣ Idempotent Writes
+1️⃣7️⃣ Cost Optimization
+What it means: Spend money where it matters.
+1️⃣8️⃣ Observability
+What it means: Know when things break.
+1️⃣9️⃣ Data Freshness  “For trading dashboards, we track the maximum transaction timestamp and alert if data is more than 10 minutes behind real time.”
+2️⃣0️⃣ Reliability
+Coles Example
