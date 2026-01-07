@@ -58,8 +58,21 @@ df["lag_salary"] = df.groupby("dept")["salary"].shift(1)
 
 df["running_sum"] = df.groupby("dept")["salary"].cumsum()
 
- ---------------------  ---------------------  ---------------------  ---------------------  ---------------------  --------------------- 
 
+df["result"] = np.where(df["score"] >= 50, "PASS", "FAIL")
+
+
+df["grade"] = np.select(
+    [
+        df["score"] >= 85,
+        df["score"] >= 70,
+        df["score"] >= 50
+    ],
+    ["A", "B", "C"],
+    default="F"
+)
+users["name"] = users["name"].str[0].str.upper() + users["name"].str[1:].str.lower()
+ ---------------------  ---------------------  ---------------------  ---------------------  ---------------------  --------------------- 
 MEMORY HOOK (REMEMBER THIS)
 
 LIKE → .str.contains / startswith / endswith
