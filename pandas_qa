@@ -6,6 +6,7 @@
 | WHERE AND      | `AND`                       | `&`                       | `a=1 AND b=2`               | `(df["a"]==1)&(df["b"]==2)`                      |               |               |
 | WHERE OR       | `OR`                        | `                         | `                           | `a=1 OR b=2`                                     | `(df["a"]==1) | (df["b"]==2)` |
 | SELECT + WHERE | `SELECT a FROM t WHERE b>5` | `df.loc[df["b"]>5,["a"]]` | `SELECT name WHERE age>30`  | `df.loc[df["age"]>30,["name"]]`                  |               |               |
+| LENGTH         | `LENGTH`                    | `len()`                   | `length()`                  | `df[df["name"].str.len()]`                       |               |               |
 | LIKE START     | `LIKE 'A%'`                 | `startswith()`            | `name LIKE 'A%'`            | `df[df["name"].str.startswith("A")]`             |               |               |
 | LIKE END       | `LIKE '%son'`               | `endswith()`              | `LIKE '%son'`               | `df[df["name"].str.endswith("son")]`             |               |               |
 | LIKE CONTAINS  | `LIKE '%an%'`               | `contains()`              | `LIKE '%an%'`               | `df[df["name"].str.contains("an")]`              |               |               |
