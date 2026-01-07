@@ -41,6 +41,20 @@
 | RUNNING SUM  | `SUM(x) OVER`  | `cumsum()`             | see below           | see below             |
 | ROLLING AVG  | `AVG(x) OVER`  | `rolling()`            | see below           | see below             |
 
+df = df.sort_values(["dept","date"])
+
+df["row_number"] = df.groupby("dept").cumcount() + 1
+
+df["running_sum"] = df.groupby("dept")["salary"].cumsum()
+
+df["prev_salary"] = df.groupby("dept")["salary"].shift(1)
+
+df["rank"] = df.groupby("dept")["salary"].rank(
+    method="dense", ascending=False
+)
+
+
+
 MEMORY HOOK (REMEMBER THIS)
 
 LIKE → .str.contains / startswith / endswith
@@ -57,10 +71,14 @@ UNION → pd.concat().drop_duplicates()
 # =========================
 # UNIVERSAL PANDAS TEMPLATE
 # =========================
-df.loc[condition, columns] \
-  .groupby(keys) \
-  .agg(metrics) \
-  .sort_values(order)
+result = (
+    df.loc[condition, cols]
+      .assign(new_col=lambda x: ...)
+      .groupby(keys, as_index=False)
+      .agg(metrics)
+      .sort_values(order)
+)
+
 
 
 import numpy as np
