@@ -1,0 +1,139 @@
+| OPERATION       | SQL                         | PANDAS                     | SQL EXAMPLE                          | PANDAS EXAMPLE                             |
+| --------------- | --------------------------- | -------------------------- | ------------------------------------ | ------------------------------------------ |
+| SELECT          | `SELECT col FROM t`         | `df[["col"]]`              | `SELECT name FROM users`             | `df[["name"]]`                             |
+| WHERE           | `WHERE a > 10`              | `df[df["a"] > 10]`         | `SELECT * FROM t WHERE age>18`       | `df[df["age"]>18]`                         |
+| SELECT + WHERE  | `SELECT c FROM t WHERE x=1` | `df.loc[df["x"]==1,["c"]]` | `SELECT name FROM t WHERE city='NY'` | `df.loc[df["city"]=="NY",["name"]]`        |
+| LIKE (starts)   | `LIKE 'A%'`                 | `str.startswith()`         | `WHERE name LIKE 'A%'`               | `df[df["name"].str.startswith("A")]`       |
+| LIKE (ends)     | `LIKE '%son'`               | `str.endswith()`           | `WHERE name LIKE '%son'`             | `df[df["name"].str.endswith("son")]`       |
+| LIKE (contains) | `LIKE '%abc%'`              | `str.contains()`           | `WHERE name LIKE '%an%'`             | `df[df["name"].str.contains("an")]`        |
+| NOT LIKE        | `NOT LIKE`                  | `~str.contains()`          | `WHERE name NOT LIKE '%x%'`          | `df[~df["name"].str.contains("x")]`        |
+| DISTINCT        | `SELECT DISTINCT col`       | `drop_duplicates()`        | `SELECT DISTINCT city FROM t`        | `df[["city"]].drop_duplicates()`           |
+| COUNT DISTINCT  | `COUNT(DISTINCT id)`        | `nunique()`                | `COUNT(DISTINCT user_id)`            | `df["user_id"].nunique()`                  |
+| ORDER BY        | `ORDER BY col`              | `sort_values()`            | `ORDER BY salary DESC`               | `df.sort_values("salary",ascending=False)` |
+| GROUP BY        | `GROUP BY col`              | `groupby()`                | `GROUP BY dept`                      | `df.groupby("dept")`                       |
+| AGG             | `SUM,AVG,MIN,MAX`           | `agg()`                    | `SUM(sales)`                         | `("sales","sum")`                          |
+| HAVING          | `HAVING SUM(x)>100`         | filter after agg           | `HAVING SUM(amt)>100`                | `agg[agg["sum"]>100]`                      |
+| UNION           | `UNION`                     | `concat + drop_duplicates` | see below                            | see below                                  |
+| UNION ALL       | `UNION ALL`                 | `concat()`                 | see below                            | see below                                  |
+
+MEMORY HOOK (REMEMBER THIS)
+
+LIKE → .str.contains / startswith / endswith
+
+DISTINCT → .drop_duplicates()
+
+UNION ALL → pd.concat()
+
+UNION → pd.concat().drop_duplicates()
+
+
+
+```python
+# =========================
+# UNIVERSAL PANDAS TEMPLATE
+# =========================
+df.loc[condition, columns] \
+  .groupby(keys) \
+  .agg(metrics) \
+  .sort_values(order)
+
+
+import numpy as np
+
+result = (
+    df
+    # WHERE (multiple conditions)
+    .loc[
+        ((df["a"] > 10) & (df["b"] == "X")) | (df["c"] < 5),
+        ["id", "country", "product", "qty", "price", "date"]
+    ]
+
+    # DERIVED COLUMNS / CASE
+    .assign(
+        revenue=lambda x: x["qty"] * x["price"],
+        flag=lambda x: np.where(x["qty"] > 5, "HIGH", "LOW")
+    )
+
+    # GROUP BY (multiple keys)
+    .groupby(["country", "product", "date"], as_index=False)
+
+    # AGGREGATIONS (multiple metrics)
+    .agg(
+        total_revenue=("revenue", "sum"),
+        avg_qty=("qty", "mean"),
+        min_price=("price", "min"),
+        max_price=("price", "max")
+    )
+
+    # WINDOW FUNCTIONS (PARTITION BY / ORDER BY)
+    .sort_values(["country", "date"])
+    .assign(
+        running_revenue=lambda x: x.groupby("country")["total_revenue"].cumsum(),
+        row_number=lambda x: x.groupby("country").cumcount() + 1,
+        rank=lambda x: x.groupby("country")["total_revenue"]
+                         .rank(method="dense", ascending=False),
+        lag_revenue=lambda x: x.groupby("country")["total_revenue"].shift(1)
+    )
+
+    # ORDER BY (multiple cols, mixed order)
+    .sort_values(
+        by=["country", "total_revenue"],
+        ascending=[True, False]
+    )
+    .rename(columns={"author_id": "id"})
+    .drop_duplicates()
+    # FINAL SELECT (after GROUP + WINDOW)
+    [["country", "product", "date",
+      "total_revenue", "avg_qty",
+      "running_revenue", "rank"]]
+)
+```
+
+
+df[df["col"].str.contains("abc", case=False)]
+df[df["col"].str.startswith("A")]
+df[df["col"].str.endswith("son")]
+
+
+
+
+1.Write a solution to find all customers who never order anything.
+
+import pandas as pd
+
+def find_customers(customers, orders):
+    return (
+        customers.loc[
+            ~customers["id"].isin(orders["customerId"]),
+            ["name"]
+        ]
+        .rename(columns={"name": "Customers"})
+    )
+  2.Write a solution to find the name, population, and area of the big countries.
+  import pandas as pd
+
+def big_countries(world: pd.DataFrame) -> pd.DataFrame:
+    # Apply business rule:
+    # A country is big if area >= 3,000,000 OR population >= 25,000,000
+    result = world.loc[
+        (world["area"] >= 3000000) |
+        (world["population"] >= 25000000)
+    , ["name", "population", "area"]] 
+
+    return result
+
+    import pandas as pd
+3.Write a solution to find all the authors that viewed at least one of their own articles.
+def article_views(views: pd.DataFrame) -> pd.DataFrame:
+    return (
+        views.loc[
+            views["author_id"] == views["viewer_id"],
+            ["author_id"]
+        ]
+        .rename(columns={"author_id": "id"})
+        .drop_duplicates()
+        .sort_values(["id"])
+    )
+
+
+    
