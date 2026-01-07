@@ -1,20 +1,45 @@
-| OPERATION       | SQL                         | PANDAS                     | SQL EXAMPLE                          | PANDAS EXAMPLE                             |
-| --------------- | --------------------------- | -------------------------- | ------------------------------------ | ------------------------------------------ |
-| SELECT          | `SELECT col FROM t`         | `df[["col"]]`              | `SELECT name FROM users`             | `df[["name"]]`                             |
-| WHERE           | `WHERE a > 10`              | `df[df["a"] > 10]`         | `SELECT * FROM t WHERE age>18`       | `df[df["age"]>18]`                         |
-| SELECT + WHERE  | `SELECT c FROM t WHERE x=1` | `df.loc[df["x"]==1,["c"]]` | `SELECT name FROM t WHERE city='NY'` | `df.loc[df["city"]=="NY",["name"]]`        |
-| LIKE (starts)   | `LIKE 'A%'`                 | `str.startswith()`         | `WHERE name LIKE 'A%'`               | `df[df["name"].str.startswith("A")]`       |
-| LIKE (ends)     | `LIKE '%son'`               | `str.endswith()`           | `WHERE name LIKE '%son'`             | `df[df["name"].str.endswith("son")]`       |
-| LIKE (contains) | `LIKE '%abc%'`              | `str.contains()`           | `WHERE name LIKE '%an%'`             | `df[df["name"].str.contains("an")]`        |
-| NOT LIKE        | `NOT LIKE`                  | `~str.contains()`          | `WHERE name NOT LIKE '%x%'`          | `df[~df["name"].str.contains("x")]`        |
-| DISTINCT        | `SELECT DISTINCT col`       | `drop_duplicates()`        | `SELECT DISTINCT city FROM t`        | `df[["city"]].drop_duplicates()`           |
-| COUNT DISTINCT  | `COUNT(DISTINCT id)`        | `nunique()`                | `COUNT(DISTINCT user_id)`            | `df["user_id"].nunique()`                  |
-| ORDER BY        | `ORDER BY col`              | `sort_values()`            | `ORDER BY salary DESC`               | `df.sort_values("salary",ascending=False)` |
-| GROUP BY        | `GROUP BY col`              | `groupby()`                | `GROUP BY dept`                      | `df.groupby("dept")`                       |
-| AGG             | `SUM,AVG,MIN,MAX`           | `agg()`                    | `SUM(sales)`                         | `("sales","sum")`                          |
-| HAVING          | `HAVING SUM(x)>100`         | filter after agg           | `HAVING SUM(amt)>100`                | `agg[agg["sum"]>100]`                      |
-| UNION           | `UNION`                     | `concat + drop_duplicates` | see below                            | see below                                  |
-| UNION ALL       | `UNION ALL`                 | `concat()`                 | see below                            | see below                                  |
+| CONCEPT        | SQL                         | PANDAS                    | SQL EXAMPLE                 | PANDAS EXAMPLE                                   |               |               |
+| -------------- | --------------------------- | ------------------------- | --------------------------- | ------------------------------------------------ | ------------- | ------------- |
+| FROM           | `FROM t`                    | `df`                      | `FROM users`                | `df`                                             |               |               |
+| SELECT         | `SELECT a,b`                | `df[["a","b"]]`           | `SELECT id,name FROM t`     | `df[["id","name"]]`                              |               |               |
+| WHERE          | `WHERE a>10`                | `df[df["a"]>10]`          | `WHERE age>18`              | `df[df["age"]>18]`                               |               |               |
+| WHERE AND      | `AND`                       | `&`                       | `a=1 AND b=2`               | `(df["a"]==1)&(df["b"]==2)`                      |               |               |
+| WHERE OR       | `OR`                        | `                         | `                           | `a=1 OR b=2`                                     | `(df["a"]==1) | (df["b"]==2)` |
+| SELECT + WHERE | `SELECT a FROM t WHERE b>5` | `df.loc[df["b"]>5,["a"]]` | `SELECT name WHERE age>30`  | `df.loc[df["age"]>30,["name"]]`                  |               |               |
+| LIKE START     | `LIKE 'A%'`                 | `startswith()`            | `name LIKE 'A%'`            | `df[df["name"].str.startswith("A")]`             |               |               |
+| LIKE END       | `LIKE '%son'`               | `endswith()`              | `LIKE '%son'`               | `df[df["name"].str.endswith("son")]`             |               |               |
+| LIKE CONTAINS  | `LIKE '%an%'`               | `contains()`              | `LIKE '%an%'`               | `df[df["name"].str.contains("an")]`              |               |               |
+| NOT LIKE       | `NOT LIKE`                  | `~contains()`             | `NOT LIKE '%x%'`            | `df[~df["name"].str.contains("x")]`              |               |               |
+| DISTINCT       | `SELECT DISTINCT a`         | `drop_duplicates()`       | `DISTINCT city`             | `df[["city"]].drop_duplicates()`                 |               |               |
+| COUNT DISTINCT | `COUNT(DISTINCT id)`        | `nunique()`               | `COUNT(DISTINCT user_id)`   | `df["user_id"].nunique()`                        |               |               |
+| ORDER BY ASC   | `ORDER BY a`                | `sort_values()`           | `ORDER BY salary`           | `df.sort_values("salary")`                       |               |               |
+| ORDER BY DESC  | `ORDER BY a DESC`           | `ascending=False`         | `ORDER BY salary DESC`      | `df.sort_values("salary",False)`                 |               |               |
+| ORDER MULTI    | `ORDER BY a,b DESC`         | `ascending=[..]`          | `ORDER BY dept,salary DESC` | `df.sort_values(["dept","salary"],[True,False])` |               |               |
+| GROUP BY       | `GROUP BY a`                | `groupby()`               | `GROUP BY dept`             | `df.groupby("dept")`                             |               |               |
+| AGG SUM        | `SUM(x)`                    | `("x","sum")`             | `SUM(sales)`                | `.agg(total=("sales","sum"))`                    |               |               |
+| AGG AVG        | `AVG(x)`                    | `("x","mean")`            | `AVG(price)`                | `("price","mean")`                               |               |               |
+| AGG MIN        | `MIN(x)`                    | `("x","min")`             | `MIN(price)`                | `("price","min")`                                |               |               |
+| AGG MAX        | `MAX(x)`                    | `("x","max")`             | `MAX(price)`                | `("price","max")`                                |               |               |
+| GROUP AGG      | `GROUP BY`                  | `agg()`                   | see below                   | see below                                        |               |               |
+| HAVING         | `HAVING SUM(x)>100`         | filter agg                | `HAVING SUM(amt)>100`       | `agg[agg["sum"]>100]`                            |               |               |
+| JOIN           | `JOIN`                      | `merge()`                 | `JOIN b ON id`              | `df.merge(df2,on="id")`                          |               |               |
+| LEFT JOIN      | `LEFT JOIN`                 | `how="left"`              | `LEFT JOIN`                 | `how="left"`                                     |               |               |
+| ANTI JOIN      | `NOT IN`                    | `~isin()`                 | `id NOT IN`                 | `~df["id"].isin(df2["id"])`                      |               |               |
+| UNION ALL      | `UNION ALL`                 | `concat()`                | see below                   | see below                                        |               |               |
+| UNION          | `UNION`                     | `concat + distinct`       | see below                   | see below                                        |               |               |
+| LIMIT          | `LIMIT 5`                   | `head()`                  | `LIMIT 5`                   | `df.head(5)`                                     |               |               |
+
+| WINDOW       | SQL            | PANDAS                 | SQL EXAMPLE         | PANDAS EXAMPLE        |
+| ------------ | -------------- | ---------------------- | ------------------- | --------------------- |
+| PARTITION BY | `PARTITION BY` | `groupby()`            | `PARTITION BY dept` | `groupby("dept")`     |
+| ORDER BY     | `ORDER BY`     | `sort_values()`        | `ORDER BY date`     | `sort_values("date")` |
+| ROW_NUMBER   | `ROW_NUMBER()` | `cumcount()+1`         | see below           | see below             |
+| RANK         | `RANK()`       | `rank()`               | see below           | see below             |
+| DENSE_RANK   | `DENSE_RANK()` | `rank(method="dense")` | see below           | see below             |
+| LAG          | `LAG(x)`       | `shift(1)`             | see below           | see below             |
+| LEAD         | `LEAD(x)`      | `shift(-1)`            | see below           | see below             |
+| RUNNING SUM  | `SUM(x) OVER`  | `cumsum()`             | see below           | see below             |
+| ROLLING AVG  | `AVG(x) OVER`  | `rolling()`            | see below           | see below             |
 
 MEMORY HOOK (REMEMBER THIS)
 
