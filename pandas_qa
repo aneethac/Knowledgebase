@@ -72,6 +72,16 @@ df["grade"] = np.select(
     default="F"
 )
 users["name"] = users["name"].str[0].str.upper() + users["name"].str[1:].str.lower()
+
+valid = df[df["prefix_name"].str.match(r"^[A-Za-z][A-Za-z0-9_.-]*$")]
+| Part | Meaning                                    |
+| ---- | ------------------------------------------ |
+| `^`  | start of string                            |
+| `.*` | any character, any number (including zero) |
+| `.`  | exactly one character                      |
+| `$`  | end of string                              |
+
+
  ---------------------  ---------------------  ---------------------  ---------------------  ---------------------  --------------------- 
 MEMORY HOOK (REMEMBER THIS)
 
@@ -97,6 +107,16 @@ result = (
       .sort_values(order)
 )
 
+result = (
+    df1
+    .loc[condition, ["id", "k1", "k2", "qty", "price", "date"]]   # early select
+    .merge(df2, left_on=["k1","k2"], right_on=["fk1","fk2"],how="left",suffixes=("_left", "_right"))  or( suffixes=("", "_dept"))  all columns will be suffixed 
+    .assign(revenue=lambda x: x["qty"] * x["price"])
+    .groupby(["id","date"], as_index=False)
+    .agg(total_revenue=("revenue","sum"))
+    .sort_values("id")
+    [["id", "date", "total_revenue"]]   
+)
 
 
 import numpy as np
@@ -149,6 +169,75 @@ result = (
       "running_revenue", "rank"]]
 )
 ```
+```python
+# =========================
+# UNIVERSAL PANDAS TEMPLATE
+# (FILTER + JOIN + RENAME + AGG + WINDOW + SORT + SELECT)
+# =========================
+
+result = (
+    df1
+    # WHERE (multiple conditions)
+    .loc[
+        ((df1["a"] > 10) & (df1["b"] == "X")) | (df1["c"] < 5),
+        ["id", "k1", "k2", "qty", "price", "date"]
+    ]
+
+    # JOIN (different key names, multiple keys)
+    .merge(
+        df2.loc[
+            (df2["flag"] == "Y") & (df2["type"].isin(["T1", "T2"])),
+            ["fk1", "fk2", "attr"]
+        ],
+        left_on=["k1", "k2"],
+        right_on=["fk1", "fk2"],
+        how="left"
+    )
+
+    # RENAME (alias columns)
+    .rename(columns={
+        "id": "entity_id",
+        "attr": "attribute"
+    })
+
+    # DERIVED COLUMNS / CASE
+    .assign(
+        revenue=lambda x: x["qty"] * x["price"],
+        bucket=lambda x: np.where(x["qty"] > 5, "HIGH", "LOW")
+    )
+
+    # GROUP BY (multiple keys)
+    .groupby(["entity_id", "date"], as_index=False)
+
+    # AGG (multiple metrics)
+    .agg(
+        total_revenue=("revenue", "sum"),
+        avg_qty=("qty", "mean"),
+        min_price=("price", "min"),
+        max_price=("price", "max")
+    )
+
+    # WINDOW (PARTITION BY + ORDER BY)
+    .sort_values(["entity_id", "date"])
+    .assign(
+        running_revenue=lambda x: x.groupby("entity_id")["total_revenue"].cumsum(),
+        row_number=lambda x: x.groupby("entity_id").cumcount() + 1,
+        rank=lambda x: x.groupby("entity_id")["total_revenue"]
+                         .rank(method="dense", ascending=False),
+        lag_revenue=lambda x: x.groupby("entity_id")["total_revenue"].shift(1)
+    )
+
+    # ORDER BY (multi-column, mixed ASC/DESC)
+    .sort_values(
+        by=["entity_id", "total_revenue"],
+        ascending=[True, False]
+    )
+
+    # FINAL SELECT (output columns)
+    [["entity_id", "date", "total_revenue", "avg_qty",
+      "running_revenue", "rank", "lag_revenue"]]
+)
+```
 
 
 df[df["col"].str.contains("abc", case=False)]
@@ -196,5 +285,132 @@ def article_views(views: pd.DataFrame) -> pd.DataFrame:
         .sort_values(["id"])
     )
 
+4.. Nth Highest Salary
+    def nth_highest_salary(employee: pd.DataFrame, n: int) -> pd.DataFrame:
+    salaries = (
+        employee[["salary"]]
+        .drop_duplicates()
+        .sort_values("salary", ascending=False)
+    )
 
-    
+    col_name = f"getNthHighestSalary({n})"
+
+    if len(salaries) < n:
+        return pd.DataFrame({col_name: [None]})
+
+    return pd.DataFrame({
+        col_name: [salaries.iloc[n - 1]["salary"]]
+    })
+
+5.a Department Highest Salary
+import pandas as pd
+
+def department_highest_salary(employee: pd.DataFrame, department: pd.DataFrame) -> pd.DataFrame:
+    df = employee.merge(
+        department,
+        left_on="departmentId",
+        right_on="id",
+        how="inner",
+        suffixes=("", "_dept")
+    )
+
+    df["rank"] = (
+        df.groupby("name_dept")["salary"]
+          .rank(method="dense", ascending=False)
+    )
+
+    result = df.loc[
+        df["rank"] == 1,
+        ["name_dept", "name", "salary"]
+    ].rename(columns={
+        "name_dept": "Department",
+        "name": "Employee",
+        "salary": "Salary"
+    })
+
+    return result
+5.b 
+ def department_highest_salary(employee, department):
+    df = employee.merge(
+        department,
+        left_on="departmentId",
+        right_on="id",
+        how="inner",
+        suffixes=("_emp", "_dept")
+    )
+
+    df["max_salary"] = df.groupby("name_dept")["salary"].transform("max")
+
+    return df.loc[
+        df["salary"] == df["max_salary"],
+        ["name_dept", "name_emp", "salary"]
+    ].rename(columns={
+        "name_dept": "Department",
+        "name_emp": "Employee",
+        "salary": "Salary"
+    })
+
+5.c
+import pandas as pd
+
+def department_highest_salary(employee: pd.DataFrame, department: pd.DataFrame) -> pd.DataFrame:
+    # Join with explicit suffixes
+    df = employee.merge(
+        department,
+        left_on="departmentId",
+        right_on="id",
+        how="inner",
+        suffixes=("_emp", "_dept")
+    )
+
+    # Compute max salary per department
+    max_salary = (
+        df.groupby("name_dept", as_index=False)
+          .agg(max_salary=("salary", "max"))
+    )
+
+    # Filter employees with max salary
+    result = (
+        df.merge(max_salary, on="name_dept", how="inner")
+          .loc[
+              lambda x: x["salary"] == x["max_salary"],
+              ["name_dept", "name_emp", "salary"]
+          ]
+          .rename(columns={
+              "name_dept": "Department",
+              "name_emp": "Employee",
+              "salary": "Salary"
+          })
+    )
+
+    return result
+filtered = df.merge(max_salary, on="name_dept", how="inner")
+filtered = filtered[filtered["salary"] == filtered["max_salary"]]
+
+result = filtered[["name_dept", "name_emp", "salary"]].rename(columns={
+    "name_dept": "Department",
+    "name_emp": "Employee",
+    "salary": "Salary"
+})
+
+6. Rank Scores
+def order_scores(scores: pd.DataFrame) -> pd.DataFrame:
+    scores["rank"] =  scores["score"].rank(method ="dense",ascending = False)
+
+    result = scores [["score","rank"]].sort_values(["rank"])
+ 
+    return result
+
+
+import pandas as pd
+7.Managers with at Least 5 Direct Reports
+def find_managers(employee: pd.DataFrame) -> pd.DataFrame:
+    join_df = (
+        employee
+        .merge(employee ,left_on =["managerId"],right_on =["id"],suffixes =("","_mgr"))
+        .groupby("name_mgr", as_index=False)
+        .agg(emp_count =("id","count"))
+        .loc[lambda x: x["emp_count"] >= 5, ["name_mgr"]]
+        .rename(columns={"name_mgr":"name"})
+    )
+    return join_df
