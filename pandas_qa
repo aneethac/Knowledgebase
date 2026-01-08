@@ -414,3 +414,20 @@ def find_managers(employee: pd.DataFrame) -> pd.DataFrame:
         .rename(columns={"name_mgr":"name"})
     )
     return join_df
+8.Count Salary Categories
+import pandas as pd
+import numpy as np
+
+def count_salary_categories(accounts: pd.DataFrame) -> pd.DataFrame:
+    accounts["category"] = np.select(
+        [accounts['income'] < 20000,
+        (accounts['income'] >= 20000) & (accounts['income'] <= 50000),
+        accounts['income'] > 50000],
+        ["Low_salary","Average Salary","High Salary"]
+    )
+    result  = (accounts
+    .groupby(["category"])
+    .agg(accounts_count = ("account_id","count"))
+    .sort_values(["category"],ascending = True)
+    )
+    return result 
