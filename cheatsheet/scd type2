@@ -1,0 +1,39 @@
+
+In a SQL MERGE statement, there is a strict rule: A single row in the Source can only affect a single row in the Target. When a record changes (like a user changing their email), SCD Type 2 requires two separate actions to happen to the Target table:
+
+Action 1 (UPDATE): You must find the old record and set is_current = false.
+
+Action 2 (INSERT): You must add a new record with the updated value and is_current = true.
+
+
+MERGE INTO dim_customer AS tgt
+USING (
+    -- PART 1: Every record from staging (Handles New Users & Old Expiring)
+    SELECT 
+        src.customer_id AS merge_key, 
+        src.*
+    FROM stg_customer src
+
+    UNION ALL
+
+    -- PART 2: Only the changes (Handles the New Version Insert)
+    -- We force the key to NULL so it always "fails" the match
+    SELECT 
+        NULL AS merge_key, 
+        src.*
+    FROM stg_customer src
+    JOIN dim_customer tgt ON src.customer_id = tgt.customer_id
+    WHERE tgt.is_current = TRUE 
+      AND (src.email IS DISTINCT FROM tgt.email OR src.city IS DISTINCT FROM tgt.city)
+) AS combined_src
+ON tgt.customer_id = combined_src.merge_key
+
+-- For the row from PART 1: Match found? Close the old one.
+WHEN MATCHED AND tgt.is_current = TRUE 
+  AND (combined_src.email IS DISTINCT FROM tgt.email OR combined_src.city IS DISTINCT FROM tgt.city) THEN
+    UPDATE SET tgt.is_current = FALSE, tgt.end_date = CURRENT_DATE()-1
+
+-- For the row from PART 2 (NULL key) OR Brand New Users (ID not in table):
+WHEN NOT MATCHED THEN
+    INSERT (customer_id, email, city, start_date, is_current)
+    VALUES (combined_src.customer_id, combined_src.email, combined_src.city, CURRENT_DATE(), TRUE);
