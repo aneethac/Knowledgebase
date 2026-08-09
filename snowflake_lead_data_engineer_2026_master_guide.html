@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snowflake Lead Data Engineer Master Guide — 2026</title>
+<style>
+:root{
+ --bg:#07101e; --panel:#101a2c; --panel2:#16243d; --text:#eef5ff; --muted:#9fb1ca;
+ --line:#2a3f62; --cyan:#6ee7f9; --blue:#93c5fd; --violet:#c4b5fd; --green:#86efac;
+ --yellow:#fde68a; --red:#fda4af; --code:#07101b;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:linear-gradient(180deg,#06101e,#091526 40%,#07101e);color:var(--text);
+font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.48}
+header{position:sticky;top:0;z-index:20;background:rgba(7,16,30,.97);backdrop-filter:blur(10px);
+border-bottom:1px solid var(--line);padding:14px 18px}
+.wrap{max-width:1600px;margin:auto}
+h1{margin:0;font-size:clamp(1.25rem,2.5vw,2.1rem)}
+.sub{color:var(--muted);font-size:.9rem;margin-top:4px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+input,select,button{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font:inherit}
+input{flex:1;min-width:280px}
+button{cursor:pointer} button:hover{border-color:var(--cyan)}
+main{max-width:1600px;margin:auto;padding:18px}
+.nav{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px}
+.pill{padding:6px 9px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer;font-size:.82rem}
+.pill.active,.pill:hover{background:var(--cyan);color:#06111b;border-color:var(--cyan)}
+.banner{background:linear-gradient(90deg,#0f243a,#1b1b3b);border:1px solid #385171;border-radius:12px;padding:14px 16px;margin-bottom:18px}
+.banner b{color:var(--cyan)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(370px,1fr));gap:14px}
+.card{background:linear-gradient(180deg,var(--panel),#0d1728);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 10px 30px #0002}
+.card.hidden{display:none}.wide{grid-column:1/-1}
+.ch{padding:13px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+h2{font-size:1.04rem;margin:0}.desc{padding:0 14px 12px;color:var(--muted);font-size:.88rem}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}.tag{font-size:.69rem;padding:2px 6px;border-radius:999px;background:#213653;color:#d9e8ff}
+.new{background:#3c294f;color:#eadcff}.must{background:#493817;color:#ffefad}.principal{background:#183d31;color:#bfffdc}.cert{background:#3b2431;color:#ffd8e7}
+details{border-top:1px solid var(--line)}summary{padding:10px 14px;color:var(--cyan);font-weight:750;cursor:pointer}
+pre{margin:0 11px 11px;padding:11px;background:var(--code);border:1px solid #1e304b;border-radius:9px;overflow:auto}
+code{font-family:"SFMono-Regular",Consolas,monospace;color:#dcecff;font-size:.82rem}
+.tip,.answer,.warn{margin:0 11px 11px;padding:9px 10px;border-radius:6px;font-size:.84rem;background:#11281f;border-left:3px solid var(--green)}
+.answer{background:#1d1934;border-left-color:var(--violet)}.warn{background:#2d260f;border-left-color:var(--yellow)}
+.tbl{padding:0 12px 12px;overflow:auto}table{width:100%;border-collapse:collapse;font-size:.81rem}
+th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}th{color:var(--cyan)}
+.section{grid-column:1/-1;margin:20px 0 0;font-size:1.25rem;color:#fff}
+.copy{font-size:.72rem;padding:5px 8px}.q{font-weight:800;color:#fff}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px 12px}
+.check{display:flex;gap:8px;align-items:flex-start;margin:7px 0}.check input{min-width:auto;flex:none;margin-top:3px}
+.progress{color:var(--green);font-size:.82rem}
+.resource a{color:var(--cyan);text-decoration:none}.resource a:hover{text-decoration:underline}
+.flow{font-family:monospace;white-space:pre-wrap;background:#091425;border:1px solid #203754;border-radius:9px;padding:12px;margin:0 12px 12px;color:#d7eaff}
+.hideanswer .answer{display:none}
+.footer{text-align:center;color:var(--muted);padding:28px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}.two{grid-template-columns:1fr}input{min-width:100%}}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap">
+<h1>Snowflake Lead Data Engineer — 2026 Interactive Master Guide</h1>
+<div class="sub">For a Databricks-experienced engineer moving to Snowflake • SnowPro Core COF-C03 • Lead/Senior/Principal interviews • dbt deep dive</div>
+<div class="controls">
+<input id="search" placeholder="Search: Snowpipe Streaming, SCD2, warehouse sizing, Iceberg, dbt snapshot, anti-pattern...">
+<select id="level"><option value="all">All depth</option><option value="foundation">Foundation</option><option value="lead">Lead</option><option value="principal">Principal</option><option value="cert">Certification</option></select>
+<button onclick="toggleAnswers()">Interview answers</button>
+<button onclick="expandAll(true)">Expand</button><button onclick="expandAll(false)">Collapse</button>
+<span class="progress" id="progress"></span>
+</div>
+</div>
+</header>
+
+<main>
+<div class="nav">
+<span class="pill active" data-cat="all">All</span>
+<span class="pill" data-cat="bridge">Databricks → Snowflake</span>
+<span class="pill" data-cat="architecture">Architecture</span>
+<span class="pill" data-cat="ingest">Ingestion</span>
+<span class="pill" data-cat="transform">Transform/CDC</span>
+<span class="pill" data-cat="performance">Performance</span>
+<span class="pill" data-cat="iceberg">Iceberg/Lakehouse</span>
+<span class="pill" data-cat="security">Security/Governance</span>
+<span class="pill" data-cat="dbt">dbt</span>
+<span class="pill" data-cat="system">System Design</span>
+<span class="pill" data-cat="cert">SnowPro</span>
+<span class="pill" data-cat="resources">Resources</span>
+</div>
+
+<div class="banner"><b>Learning strategy:</b> because you already know Databricks, learn Snowflake by mapping concepts rather than starting from zero. Your goal is to answer four questions for every feature: <b>what problem does it solve, when do I choose it, what is the trade-off, and what replaces/competes with it?</b></div>
+
+<div class="grid">
+
+<div class="section">1. Databricks → Snowflake Mental Model</div>
+
+<section class="card wide" data-cat="bridge architecture" data-level="foundation">
+<div class="ch"><div><h2>Fast concept map</h2><div class="tags"><span class="tag must">START HERE</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>Databricks concept</th><th>Closest Snowflake concept</th><th>Important difference</th></tr></thead><tbody>
+<tr><td>Workspace + SQL Warehouse + clusters</td><td>Snowsight/Workspaces + Virtual Warehouses</td><td>Snowflake separates compute from persisted storage; warehouses are independent compute pools.</td></tr>
+<tr><td>Delta tables</td><td>Snowflake native tables / Iceberg tables</td><td>Native tables use Snowflake-managed storage; Iceberg gives open-format interoperability.</td></tr>
+<tr><td>Auto Loader</td><td>Snowpipe for files; Snowpipe Streaming for rows</td><td>Snowpipe is continuous file ingestion; Snowpipe Streaming removes the need to create files.</td></tr>
+<tr><td>Structured Streaming</td><td>Snowpipe Streaming + Dynamic Tables or Streams/Tasks</td><td>In Snowflake, ingestion and downstream incremental transformation are separate design choices.</td></tr>
+<tr><td>DLT / Lakeflow declarative pipelines</td><td>Dynamic Tables</td><td>You define the target SELECT + freshness target; Snowflake manages dependencies/refresh.</td></tr>
+<tr><td>Databricks Jobs</td><td>Tasks / Task graphs / external orchestration</td><td>Tasks are Snowflake-native scheduled/event-driven execution objects.</td></tr>
+<tr><td>Change Data Feed</td><td>Streams</td><td>Streams track table change metadata for CDC consumption.</td></tr>
+<tr><td>Unity Catalog</td><td>Horizon governance + RBAC + tags/policies/catalog features</td><td>Snowflake governance is integrated into account/database/schema/object security.</td></tr>
+<tr><td>Photon/query optimization</td><td>Snowflake optimizer + micro-partition pruning + services</td><td>You generally tune access patterns/warehouse/workload rather than Spark execution plans.</td></tr>
+<tr><td>Medallion bronze/silver/gold</td><td>RAW / CORE or REFINED / MART schemas/databases</td><td>Medallion is an architecture pattern, not a Databricks-only feature; perfectly valid in Snowflake.</td></tr>
+<tr><td>Delta Sharing</td><td>Secure Data Sharing / Listings</td><td>Snowflake can share governed data without copying it between Snowflake accounts.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card" data-cat="architecture bridge" data-level="foundation">
+<div class="ch"><div><h2>Snowflake 3-layer architecture</h2><div class="tags"><span class="tag must">MEMORISE</span><span class="tag cert">CERT</span></div></div></div>
+<div class="desc">The foundational mental model.</div>
+<div class="flow">Cloud Services
+  ↕ metadata, auth, optimizer, transactions, orchestration
+Compute / Virtual Warehouses
+  ↕ independent MPP compute pools
+Central Storage
+  ↕ compressed columnar micro-partitions</div>
+<div class="tip">Interview sentence: “Snowflake decouples compute from persisted storage. I can isolate ETL, BI and ad-hoc workloads on separate warehouses while accessing the same governed data.”</div>
+</section>
+
+<section class="card" data-cat="architecture" data-level="lead">
+<div class="ch"><div><h2>Objects a Lead DE must know</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td><b>Database / Schema / Table / View</b></td><td>Core namespace and data-model objects.</td></tr>
+<tr><td><b>Stage</b></td><td>Named location for files; internal or external.</td></tr>
+<tr><td><b>File Format</b></td><td>Reusable parsing rules for CSV, JSON, Parquet, etc.</td></tr>
+<tr><td><b>Storage Integration</b></td><td>Secure delegated cloud-storage access without embedding credentials.</td></tr>
+<tr><td><b>Pipe</b></td><td>Named COPY definition used by Snowpipe.</td></tr>
+<tr><td><b>Stream</b></td><td>Change tracking/CDC metadata over a source object.</td></tr>
+<tr><td><b>Task</b></td><td>Scheduled or triggered SQL/procedure execution.</td></tr>
+<tr><td><b>Dynamic Table</b></td><td>Declaratively refreshed materialized query result with target freshness.</td></tr>
+<tr><td><b>Warehouse</b></td><td>Compute for queries/transforms/bulk COPY.</td></tr>
+<tr><td><b>Share / Listing</b></td><td>Governed collaboration/distribution.</td></tr>
+<tr><td><b>External Volume</b></td><td>Cloud storage connectivity for Iceberg tables.</td></tr>
+</tbody></table></div>
+</section>
+
+<div class="section">2. Loading & Ingestion — Choose the Correct Mechanism</div>
+
+<section class="card wide" data-cat="ingest system" data-level="lead">
+<div class="ch"><div><h2>Ingestion decision matrix</h2><div class="tags"><span class="tag must">INTERVIEW CORE</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>Situation</th><th>Choose</th><th>Why</th><th>Avoid/Trade-off</th></tr></thead><tbody>
+<tr><td>Large historical files already in S3/ADLS/GCS</td><td><b>COPY INTO</b></td><td>Efficient warehouse-based bulk load; easy backfill.</td><td>Not low-latency continuous ingestion.</td></tr>
+<tr><td>Files continuously landing in object storage</td><td><b>Snowpipe</b></td><td>Serverless event-driven micro-batch file loading.</td><td>Still file-based; many tiny files can be inefficient.</td></tr>
+<tr><td>Kafka/app/IoT rows with seconds-level freshness</td><td><b>Snowpipe Streaming</b></td><td>Direct row ingestion, no staging-file creation.</td><td>Different operational model than bulk COPY.</td></tr>
+<tr><td>Kafka/Kinesis/SaaS/DB connector requirement</td><td><b>Openflow connector</b></td><td>Managed data integration; current connector catalog includes streaming and SaaS/database sources.</td><td>Check connector availability/region/feature maturity.</td></tr>
+<tr><td>Postgres/MySQL/MongoDB/Salesforce CDC</td><td><b>Openflow/CDC connector or partner tool</b></td><td>Source-native replication into Snowflake.</td><td>Need source log retention, network/security, recovery design.</td></tr>
+<tr><td>Custom lightweight producer / API / edge app</td><td><b>Snowpipe Streaming SDK/REST</b></td><td>Direct programmatic ingestion.</td><td>SDK is generally preferred for richer/high-throughput clients.</td></tr>
+<tr><td>External files queried without native ingest</td><td><b>External table / Iceberg</b></td><td>Keep data outside Snowflake storage.</td><td>Performance/feature/operational trade-offs differ from native tables.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card" data-cat="ingest" data-level="foundation">
+<div class="ch"><div><h2>COPY INTO — batch load</h2><div class="tags"><span class="tag must">SQL TO KNOW</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Core pattern</summary><pre><code>CREATE FILE FORMAT ff_parquet TYPE = PARQUET;
+
+CREATE STAGE ext_stage
+  URL='azure://...'
+  STORAGE_INTEGRATION=my_storage_int
+  FILE_FORMAT=ff_parquet;
+
+COPY INTO raw.orders
+FROM @ext_stage/orders/
+FILE_FORMAT=(FORMAT_NAME=ff_parquet)
+MATCH_BY_COLUMN_NAME=CASE_INSENSITIVE;</code></pre></details>
+<div class="tip">Bulk-load design: size files for parallelism rather than producing thousands of tiny files. Snowflake documentation recommends roughly 100–250 MB compressed or larger as a useful target.</div>
+</section>
+
+<section class="card" data-cat="ingest" data-level="lead">
+<div class="ch"><div><h2>Snowpipe — continuous FILE ingestion</h2><div class="tags"><span class="tag must">KNOW VS STREAMING</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Concept + syntax</summary><pre><code>CREATE PIPE orders_pipe
+  AUTO_INGEST = TRUE
+AS
+COPY INTO raw.orders
+FROM @orders_stage
+FILE_FORMAT=(FORMAT_NAME=ff_json);</code></pre></details>
+<div class="tip">Mental model: cloud file arrives → notification → Snowpipe sees it → serverless COPY logic loads it.</div>
+<div class="warn"><b>Common interview trap:</b> Snowpipe ≠ Snowpipe Streaming. Snowpipe loads <b>files</b>; Snowpipe Streaming ingests <b>rows</b>.</div>
+</section>
+
+<section class="card" data-cat="ingest" data-level="lead">
+<div class="ch"><div><h2>Snowpipe Streaming — current low-latency ingestion</h2><div class="tags"><span class="tag new">2026 IMPORTANT</span></div></div></div>
+<div class="desc">High-performance architecture supports Java, Python, Node.js SDKs, REST, Kafka, CDC and Iceberg targets.</div>
+<div class="tip">Use for application events, Kafka, IoT and CDC where the natural unit is a row/event and seconds-level freshness matters.</div>
+<div class="answer"><b>Human interview answer:</b> “If the producer already emits files, I keep it simple with Snowpipe. If it emits events or CDC rows and I need seconds-level freshness, I use Snowpipe Streaming. I don’t create artificial files just to feed Snowpipe.”</div>
+</section>
+
+<section class="card" data-cat="ingest" data-level="principal">
+<div class="ch"><div><h2>Openflow — where it fits</h2><div class="tags"><span class="tag new">NEWER AREA</span><span class="tag principal">PRINCIPAL</span></div></div></div>
+<div class="desc">Snowflake’s connector/integration layer for third-party sources. Current documented connectors include Kafka, Kinesis, MongoDB, Jira Cloud, Salesforce Bulk API, SharePoint, Dataverse and others.</div>
+<div class="answer"><b>Principal framing:</b> “I first ask whether ingestion is a commodity connector problem or custom engineering problem. If a supported managed connector meets CDC, latency, security and recovery requirements, I prefer that over owning bespoke code. I reserve custom SDK/API ingestion for source-specific semantics or latency/processing needs.”</div>
+</section>
+
+<div class="section">3. Transformations, CDC, SCD and Load Modes</div>
+
+<section class="card wide" data-cat="transform system" data-level="lead">
+<div class="ch"><div><h2>Full vs append vs incremental vs CDC — selection guide</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Mode</th><th>Use when</th><th>Pros</th><th>Risks / trade-off</th></tr></thead><tbody>
+<tr><td><b>Full reload</b></td><td>Small dimension/reference table; source lacks change tracking; occasional rebuild</td><td>Simple and deterministic</td><td>Expensive at scale; longer SLA; unnecessary rewrite</td></tr>
+<tr><td><b>Append-only</b></td><td>Immutable events/logs/transactions</td><td>Fast, simple, replayable</td><td>Duplicates/late events need handling</td></tr>
+<tr><td><b>Incremental high-watermark</b></td><td>Reliable updated_at / monotonically increasing key</td><td>Lower compute than full</td><td>Late/out-of-order updates can be missed without overlap</td></tr>
+<tr><td><b>CDC</b></td><td>Need inserts + updates + deletes from operational source</td><td>Efficient and semantically complete</td><td>More state, ordering and recovery complexity</td></tr>
+<tr><td><b>Snapshot/SCD2</b></td><td>Need history of attribute changes</td><td>Audit/history</td><td>Storage growth and effective-date logic</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card" data-cat="transform" data-level="lead">
+<div class="ch"><div><h2>MERGE — upsert / SCD1 workhorse</h2><div class="tags"><span class="tag must">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Pattern</summary><pre><code>MERGE INTO core.customer t
+USING stg_customer s
+  ON t.customer_id = s.customer_id
+WHEN MATCHED THEN UPDATE SET
+  t.name = s.name,
+  t.updated_at = s.updated_at
+WHEN NOT MATCHED THEN INSERT
+  (customer_id, name, updated_at)
+VALUES
+  (s.customer_id, s.name, s.updated_at);</code></pre></details>
+<div class="tip">SCD1 means overwrite current attributes; no history retained.</div>
+</section>
+
+<section class="card" data-cat="transform" data-level="lead">
+<div class="ch"><div><h2>SCD2 — history model</h2><div class="tags"><span class="tag must">INTERVIEW</span></div></div>
+<div class="desc">Typical columns: business_key, attributes, valid_from, valid_to, is_current, hash/version.</div>
+<details open><summary>Conceptual SQL steps</summary><pre><code>-- 1. Detect changed current records
+-- 2. Expire old current row
+UPDATE dim_customer d
+SET valid_to = CURRENT_TIMESTAMP(),
+    is_current = FALSE
+FROM stg_customer s
+WHERE d.customer_id = s.customer_id
+  AND d.is_current = TRUE
+  AND d.attr_hash <> s.attr_hash;
+
+-- 3. Insert new version for new/changed keys
+INSERT INTO dim_customer (...)
+SELECT ..., CURRENT_TIMESTAMP(), NULL, TRUE
+FROM stg_customer s
+...</code></pre></details>
+<div class="answer"><b>Human answer:</b> “For SCD2 I separate change detection from versioning semantics. I need a stable business key, a deterministic way to identify attribute changes, and effective dates/current flag. I also define how late-arriving source updates affect historical validity.”</div>
+</section>
+
+<section class="card" data-cat="transform" data-level="lead">
+<div class="ch"><div><h2>Streams + Tasks</h2><div class="tags"><span class="tag must">NATIVE CDC</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Pattern</summary><pre><code>CREATE STREAM orders_stream
+ON TABLE raw.orders;
+
+CREATE TASK merge_orders
+  WAREHOUSE = etl_wh
+  SCHEDULE = '5 MINUTE'
+WHEN SYSTEM$STREAM_HAS_DATA('orders_stream')
+AS
+MERGE INTO core.orders t
+USING orders_stream s
+ON t.order_id = s.order_id
+...</code></pre></details>
+<div class="tip">Use when you want explicit CDC consumption and procedural/orchestrated logic. A stream is not a duplicate table; think change metadata/offset over the source.</div>
+</section>
+
+<section class="card" data-cat="transform" data-level="lead">
+<div class="ch"><div><h2>Dynamic Tables</h2><div class="tags"><span class="tag new">VERY IMPORTANT 2026</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Declarative pipeline</summary><pre><code>CREATE DYNAMIC TABLE refined.orders_clean
+  TARGET_LAG = '5 minutes'
+  WAREHOUSE = dt_wh
+  REFRESH_MODE = AUTO
+AS
+SELECT ...
+FROM raw.orders
+WHERE ...;</code></pre></details>
+<div class="desc">Snowflake maintains the SELECT result and dependency graph. Current refresh modes include AUTO, INCREMENTAL, FULL, ADAPTIVE and advanced custom incremental capabilities where applicable.</div>
+<div class="answer"><b>Streams/Tasks vs Dynamic Tables:</b> “If the transformation can be expressed declaratively as SELECTs and freshness is the main requirement, I prefer Dynamic Tables. If I need procedural branching, custom DML, stored procedures, precise workflow control or sub-minute semantics, Streams/Tasks or an external orchestrator may be better.”</div>
+</section>
+
+<section class="card wide" data-cat="transform system" data-level="principal">
+<div class="ch"><div><h2>Dynamic Table vs Stream/Task vs dbt — architecture decision</h2><div class="tags"><span class="tag principal">PRINCIPAL</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>Need</th><th>Prefer</th></tr></thead><tbody>
+<tr><td>Snowflake-native declarative near-real-time SQL pipeline</td><td>Dynamic Tables</td></tr>
+<tr><td>Explicit CDC, MERGE, procedure calls or conditional task graph</td><td>Streams + Tasks</td></tr>
+<tr><td>Cross-platform transformation engineering, Git-first modular SQL, tests/docs/CI and team workflow</td><td>dbt</td></tr>
+<tr><td>Complex enterprise orchestration across Snowflake + APIs + files + other platforms</td><td>Airflow/ADF/Control-M/Dagster/etc. plus Snowflake primitives</td></tr>
+</tbody></table></div>
+<div class="answer"><b>Principal delivery:</b> “I don’t select orchestration because one tool is fashionable. I separate data movement, transformation semantics and workflow orchestration, then choose the least complex control plane that satisfies SLA, observability, recovery and team-operability requirements.”</div>
+</section>
+
+<div class="section">4. Performance & Cost Optimization</div>
+
+<section class="card" data-cat="performance" data-level="foundation">
+<div class="ch"><div><h2>Micro-partitions & pruning</h2><div class="tags"><span class="tag must">CORE CONCEPT</span><span class="tag cert">CERT</span></div></div></div>
+<div class="desc">Snowflake automatically organizes table data into immutable columnar micro-partitions and keeps metadata such as value ranges. The optimizer can skip irrelevant partitions.</div>
+<div class="tip">Your first performance question should often be: “How much data is being scanned, and is pruning effective?”—not “Should I immediately increase warehouse size?”</div>
+</section>
+
+<section class="card" data-cat="performance" data-level="lead">
+<div class="ch"><div><h2>Warehouse sizing — simple rule</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Symptom</th><th>Action</th></tr></thead><tbody>
+<tr><td>Single query spills to local/remote storage, CPU/memory bound</td><td>Consider scaling UP after SQL/pruning review</td></tr>
+<tr><td>Queries are individually fine but queue under concurrency</td><td>Scale OUT / multi-cluster or isolate workloads</td></tr>
+<tr><td>ETL warehouse idle most of day</td><td>Auto-suspend quickly; auto-resume</td></tr>
+<tr><td>BI cache repeatedly lost because warehouse suspends</td><td>Balance suspension cost against warm warehouse cache</td></tr>
+<tr><td>Mixed ETL + BI contention</td><td>Separate warehouses by workload/SLA</td></tr>
+</tbody></table></div>
+<div class="answer"><b>Interview answer:</b> “I size from observed workload, not table size alone. Scale-up improves resources available to a query; scale-out addresses concurrency. I inspect Query Profile, scan/pruning, spill and queue time before spending more credits.”</div>
+</section>
+
+<section class="card" data-cat="performance" data-level="lead">
+<div class="ch"><div><h2>Performance toolbox</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td><b>Clustering key / Automatic Clustering</b></td><td>Large tables with recurring range/filter patterns and poor natural clustering.</td></tr>
+<tr><td><b>Search Optimization Service</b></td><td>Highly selective point lookups, substring/semi-structured/geospatial patterns where supported.</td></tr>
+<tr><td><b>Query Acceleration Service</b></td><td>Eligible heavy queries; offloads portions to serverless compute.</td></tr>
+<tr><td><b>Materialized View</b></td><td>Repeated expensive query shape where automatic maintenance is worthwhile.</td></tr>
+<tr><td><b>Warehouse cache</b></td><td>Repeated access while warehouse remains running.</td></tr>
+<tr><td><b>Result cache</b></td><td>Exact reusable results when underlying data/query conditions permit.</td></tr>
+<tr><td><b>Query Profile / QUERY_HISTORY</b></td><td>Diagnose scan, joins, queue, spill, skew-like symptoms and cost.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card wide" data-cat="performance system" data-level="principal">
+<div class="ch"><div><h2>Performance diagnosis order — Principal-level</h2><div class="tags"><span class="tag principal">USE THIS IN INTERVIEW</span></div></div>
+<div class="flow">1. Is the SQL logically efficient?
+   ↓
+2. Is predicate / column pruning good?
+   ↓
+3. Is data layout/clustering appropriate?
+   ↓
+4. Are joins causing explosion?
+   ↓
+5. Is there memory spill?
+   ↓
+6. Is the issue single-query capacity or concurrency?
+   ↓
+7. Would SOS / QAS / MV materially help?
+   ↓
+8. Only then increase recurring spend.</div>
+<div class="answer"><b>Principal phrasing:</b> “I optimize for cost per useful workload, not just query latency. A 20-second query on a small warehouse can be economically better than a 5-second query on an oversized warehouse if the SLA allows it.”</div>
+</section>
+
+<div class="section">5. Iceberg, Lakehouse & Medallion</div>
+
+<section class="card wide" data-cat="iceberg bridge architecture" data-level="lead">
+<div class="ch"><div><h2>Can Snowflake use Medallion architecture?</h2><div class="tags"><span class="tag must">YES</span></div></div></div>
+<div class="flow">Sources
+  ↓
+RAW / BRONZE
+  immutable landed events/files/CDC
+  ↓
+REFINED / SILVER
+  cleaned, typed, deduplicated, conformed
+  ↓
+CURATED / GOLD
+  dimensional models, marts, aggregates, features
+  ↓
+BI / ML / Apps / Sharing</div>
+<div class="tip">Medallion is a logical data-engineering layering pattern. In Snowflake it is commonly expressed with schemas/databases and tables/views/dynamic tables/dbt models.</div>
+</section>
+
+<section class="card" data-cat="iceberg" data-level="lead">
+<div class="ch"><div><h2>Why Iceberg in Snowflake?</h2><div class="tags"><span class="tag new">COF-C03 RELEVANT</span></div></div></div>
+<div class="desc">Iceberg is an open table format with ACID transactions, schema evolution, hidden partitioning and snapshots. Snowflake can query/manage Iceberg tables while data resides in open Parquet files.</div>
+<div class="tip"><b>Choose Iceberg when:</b> data must stay in lake/object storage, multiple engines need access, open-format portability matters, or an existing lake must be reused.</div>
+<div class="warn"><b>Do not choose it automatically.</b> Native Snowflake tables are often simpler when all important consumers live in Snowflake and portability is not required.</div>
+</section>
+
+<section class="card" data-cat="iceberg" data-level="principal">
+<div class="ch"><div><h2>Native table vs Iceberg</h2></div></div>
+<div class="answer"><b>Human response:</b> “I treat Iceberg as an interoperability decision, not a performance fashion. If Snowflake is the primary compute and governance plane and there is no external-engine requirement, native tables reduce operational surface area. If Spark, Snowflake and other engines must share an open data asset, Iceberg becomes strategically useful.”</div>
+</section>
+
+<div class="section">6. Snowpark, APIs, Apps and Extensibility</div>
+
+<section class="card" data-cat="architecture system" data-level="lead">
+<div class="ch"><div><h2>Snowpark</h2></div></div>
+<div class="desc">Developer APIs for processing data in Snowflake with languages such as Python. Useful when logic is easier to express programmatically than in pure SQL while keeping computation close to data.</div>
+<div class="answer"><b>Databricks bridge:</b> “I would not port Spark code line-for-line. I first decide whether the transformation should be SQL. I use Snowpark where Python/dataframe logic, reusable libraries or procedural code materially improves maintainability.”</div>
+</section>
+
+<section class="card" data-cat="architecture system" data-level="lead">
+<div class="ch"><div><h2>UDF vs Stored Procedure vs Snowpark</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td><b>UDF</b></td><td>Reusable function in a SQL expression; row/value-oriented logic.</td></tr>
+<tr><td><b>Stored Procedure</b></td><td>Procedural workflow/DML/control logic executed in Snowflake.</td></tr>
+<tr><td><b>Snowpark DataFrame</b></td><td>Programmatic transformation pipelines while leveraging Snowflake execution.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card" data-cat="architecture system" data-level="principal">
+<div class="ch"><div><h2>Apps / external integration</h2></div></div>
+<div class="desc">Know the landscape: connectors/drivers, REST APIs, external access integrations, Streamlit in Snowflake, Native Apps, Snowpark Container Services, Cortex services. A Lead DE does not need expert app-development depth, but should know where the data platform boundary is.</div>
+</section>
+
+<div class="section">7. Security, Governance, Data Protection & Sharing</div>
+
+<section class="card" data-cat="security cert" data-level="cert">
+<div class="ch"><div><h2>RBAC — hierarchy to remember</h2><div class="tags"><span class="tag cert">CERT</span><span class="tag must">MEMORISE</span></div></div>
+<div class="flow">Privileges → Roles → Users
+              ↘ role hierarchy
+
+Common scopes:
+ACCOUNT → DATABASE → SCHEMA → TABLE/VIEW/STAGE/etc.</div>
+<div class="tip">Design custom functional roles; grant least privilege; avoid using ACCOUNTADMIN for routine workloads.</div>
+</section>
+
+<section class="card" data-cat="security" data-level="lead">
+<div class="ch"><div><h2>Governance toolbox</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>Tags</td><td>Classification, ownership, cost/governance metadata.</td></tr>
+<tr><td>Masking policies</td><td>Dynamic protection of sensitive column values.</td></tr>
+<tr><td>Row access policies</td><td>Filter visible rows based on policy context.</td></tr>
+<tr><td>Secure views</td><td>Restrict exposure of underlying view implementation/data semantics.</td></tr>
+<tr><td>Sensitive data classification</td><td>Identify and govern sensitive columns.</td></tr>
+<tr><td>Network policies / private connectivity</td><td>Restrict access paths.</td></tr>
+<tr><td>Time Travel</td><td>Historical access/recovery within retention policy.</td></tr>
+<tr><td>Fail-safe</td><td>Snowflake-managed recovery safety net for eligible native storage—not a user query feature.</td></tr>
+<tr><td>Resource monitors / budgets / usage views</td><td>Cost governance and alerting.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card" data-cat="security cert" data-level="cert">
+<div class="ch"><div><h2>Secure Data Sharing</h2></div></div>
+<div class="desc">Share selected governed objects with other Snowflake accounts without copying the underlying data. Also understand Listings/Marketplace concepts for broader distribution.</div>
+<div class="answer">Interview sentence: “Sharing is a governed access pattern rather than ETL duplication, which reduces copy proliferation and synchronization problems.”</div>
+</section>
+
+<div class="section">8. Data Quality, Validation & Observability</div>
+
+<section class="card wide" data-cat="system transform" data-level="lead">
+<div class="ch"><div><h2>Where validation belongs</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Layer</th><th>Validation examples</th></tr></thead><tbody>
+<tr><td>Ingestion</td><td>File parsing, schema/type errors, record counts, duplicate file protection, load history, quarantine.</td></tr>
+<tr><td>Raw → refined</td><td>Nullability, domain ranges, uniqueness, referential integrity, schema drift, dedupe.</td></tr>
+<tr><td>Business model</td><td>Cross-table reconciliation, metric thresholds, freshness, SCD correctness.</td></tr>
+<tr><td>Operations</td><td>Task/Dynamic Table status, warehouse cost, queue/spill, pipe usage, failed rows, SLA latency.</td></tr>
+</tbody></table></div>
+<div class="tip">Do not say “we validate at the end.” Principal answer: define controls at the earliest layer where a defect can be identified cheaply and unambiguously.</div>
+</section>
+
+<section class="card" data-cat="transform" data-level="lead">
+<div class="ch"><div><h2>COPY validation</h2><button class="copy">Copy</button></div>
+<details open><summary>Useful idea</summary><pre><code>COPY INTO target
+FROM @stage
+FILE_FORMAT=(FORMAT_NAME=ff)
+VALIDATION_MODE='RETURN_ERRORS';
+
+-- Also inspect load history / pipe history / query history
+-- and reconcile source count vs accepted/rejected counts.</code></pre></details>
+</section>
+
+<div class="section">9. dbt Deep Dive — Why it exists and how it fits Snowflake</div>
+
+<section class="card wide" data-cat="dbt" data-level="foundation">
+<div class="ch"><div><h2>What dbt actually is</h2><div class="tags"><span class="tag must">MENTAL MODEL</span></div></div></div>
+<div class="desc"><b>dbt does transformation engineering, not general-purpose ingestion.</b> You define SQL/Python models, dependencies, tests, metadata and deployment workflow; dbt compiles and executes them on the data platform.</div>
+<div class="flow">Source data already in Snowflake
+        ↓
+dbt source()
+        ↓
+staging models
+        ↓ ref()
+intermediate models
+        ↓
+marts / facts / dimensions
+        ↓
+tests + docs + lineage + CI/CD</div>
+<div class="tip"><b>Why not just SQL scripts?</b> dbt adds modularity, dependency graph, environments, reusable macros, tests, documentation, lineage and software-engineering workflow around SQL transformation.</div>
+</section>
+
+<section class="card" data-cat="dbt" data-level="lead">
+<div class="ch"><div><h2>dbt project structure</h2><button class="copy">Copy</button></div>
+<details open><summary>Typical</summary><pre><code>my_project/
+  dbt_project.yml
+  models/
+    staging/
+      stg_orders.sql
+      sources.yml
+    intermediate/
+      int_customer_orders.sql
+    marts/
+      dim_customer.sql
+      fct_orders.sql
+      schema.yml
+  snapshots/
+  macros/
+  seeds/
+  tests/</code></pre></details>
+</section>
+
+<section class="card" data-cat="dbt" data-level="lead">
+<div class="ch"><div><h2>source() vs ref()</h2><div class="tags"><span class="tag must">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Pattern</summary><pre><code>-- raw table managed outside dbt
+select *
+from {{ source('raw', 'orders') }}
+
+-- upstream dbt model
+select *
+from {{ ref('stg_orders') }}</code></pre></details>
+<div class="tip"><code>source()</code> references externally loaded source assets. <code>ref()</code> creates model dependencies and lets dbt build the DAG.</div>
+</section>
+
+<section class="card wide" data-cat="dbt" data-level="lead">
+<div class="ch"><div><h2>dbt materialization decision table</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Materialization</th><th>Choose when</th><th>Trade-off</th></tr></thead><tbody>
+<tr><td><b>view</b></td><td>Light logic, freshness preferred, low reuse cost</td><td>Query cost paid repeatedly</td></tr>
+<tr><td><b>table</b></td><td>Expensive reusable transformation / BI serving</td><td>Full rebuild can be expensive</td></tr>
+<tr><td><b>incremental</b></td><td>Large event/fact model where only changes need processing</td><td>More code/state/backfill complexity</td></tr>
+<tr><td><b>ephemeral</b></td><td>Small reusable logic used by few downstream models</td><td>CTEs can become hard to debug if overused</td></tr>
+<tr><td><b>materialized_view</b></td><td>Platform-managed refresh semantics fit the use case</td><td>Platform feature constraints/cost</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card" data-cat="dbt transform" data-level="lead">
+<div class="ch"><div><h2>dbt incremental MERGE</h2><div class="tags"><span class="tag must">INTERVIEW</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Snowflake pattern</summary><pre><code>{{ config(
+    materialized='incremental',
+    unique_key='event_id',
+    incremental_strategy='merge'
+) }}
+
+select *
+from {{ source('raw','events') }}
+
+{% if is_incremental() %}
+where event_ts >= (
+  select dateadd(hour,-2,max(event_ts))
+  from {{ this }}
+)
+{% endif %}</code></pre></details>
+<div class="tip">The overlap window protects against late arrivals. Make the transformation idempotent via stable unique keys.</div>
+</section>
+
+<section class="card" data-cat="dbt transform" data-level="lead">
+<div class="ch"><div><h2>dbt snapshots = SCD2-like history</h2></div></div>
+<div class="desc">Snapshots record how mutable source rows change over time. Use a timestamp strategy when a reliable updated_at exists; check strategy when you need to compare selected columns.</div>
+<div class="answer">Human answer: “I use snapshots for source-state history, while an explicit dimensional SCD2 model may be better when I need business-specific effective dating and dimensional semantics.”</div>
+</section>
+
+<section class="card" data-cat="dbt" data-level="lead">
+<div class="ch"><div><h2>dbt tests</h2><button class="copy">Copy</button></div>
+<details open><summary>Example YAML</summary><pre><code>models:
+  - name: fct_orders
+    columns:
+      - name: order_id
+        data_tests:
+          - not_null
+          - unique
+      - name: customer_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_id</code></pre></details>
+<div class="tip">Also know source freshness, custom/generic tests, model contracts, docs and exposures/semantic metadata at a conceptual level.</div>
+</section>
+
+<section class="card wide" data-cat="dbt system" data-level="principal">
+<div class="ch"><div><h2>dbt + Snowflake architecture choices</h2><div class="tags"><span class="tag principal">PRINCIPAL</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>Question</th><th>Principal answer</th></tr></thead><tbody>
+<tr><td>dbt vs Dynamic Tables?</td><td>dbt gives engineering workflow and cross-platform DAG/tests/docs; Dynamic Tables give Snowflake-native declarative refresh. They can coexist. Choose ownership boundaries deliberately.</td></tr>
+<tr><td>One warehouse for all dbt jobs?</td><td>Usually isolate production transformation from ad-hoc/BI; choose warehouse by workload and concurrency. Environment/workload-specific warehouses improve cost attribution and blast-radius control.</td></tr>
+<tr><td>Incremental everywhere?</td><td>No. Start simple. Use incremental when full rebuild cost/SLA justifies state complexity.</td></tr>
+<tr><td>How to CI?</td><td>Git PR → compile/lint/tests → isolated schema/clone/defer pattern → run modified models + downstream impact → promote with controlled credentials.</td></tr>
+<tr><td>How to model?</td><td>Thin source staging → reusable intermediate business logic → durable marts. Avoid duplicating business definitions across models.</td></tr>
+</tbody></table></div>
+</section>
+
+<div class="section">10. End-to-End Project — Connect Every Major Concept</div>
+
+<section class="card wide" data-cat="system ingest transform dbt" data-level="lead">
+<div class="ch"><div><h2>Project: Retail Orders 360</h2><div class="tags"><span class="tag must">BUILD THIS</span></div></div></div>
+<div class="flow">POSTGRES customers/orders CDC ─┐
+                                 ├─ Openflow / CDC → RAW CDC tables
+KAFKA clickstream ───────────────┤
+                                 ├─ Snowpipe Streaming → RAW events
+S3/ADLS historical files ────────┘
+        │                            COPY INTO → RAW history
+        ↓
+RAW / BRONZE
+  immutable + ingestion metadata + rejects
+        ↓
+REFINED / SILVER
+  dedupe + schema normalize + SCD1/SCD2
+  Option A: Streams + Tasks
+  Option B: Dynamic Tables
+  Option C: dbt incremental models
+        ↓
+CURATED / GOLD
+  dim_customer (SCD2)
+  dim_product
+  fct_order
+  fct_event
+  daily_sales
+        ↓
+BI + ML + Secure Sharing / Apps</div>
+</section>
+
+<section class="card wide" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>How to present the project as Senior vs Principal</h2></div></div>
+<div class="two">
+<div>
+<p class="q">Senior/Lead answer</p>
+<div class="answer">“I ingest historical files with COPY, ongoing files with Snowpipe, and Kafka events with Snowpipe Streaming. Raw data is immutable. I clean and deduplicate in the refined layer, use MERGE or incremental models for mutable entities, SCD2 for customer history, and marts for BI. I separate ETL and BI warehouses and monitor load failures, query history and freshness.”</div>
+</div>
+<div>
+<p class="q">Principal answer</p>
+<div class="answer">“I start from workload characteristics rather than tools: source semantics, change mechanism, volume, freshness, recovery RPO/RTO, governance and consumer access. I isolate ingestion from transformation contracts, design replay/idempotency before happy-path scheduling, and choose Snowflake-native vs dbt/external orchestration based on ownership and complexity. I define cost boundaries per workload, enforce data contracts/quality at layer transitions, and select Iceberg only where interoperability is an architectural requirement.”</div>
+</div>
+</div>
+</section>
+
+<section class="card wide" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>System-design question checklist</h2></div></div>
+<div style="padding:0 14px 12px">
+<label class="check"><input type="checkbox" class="practice" data-id="vol">Volume & growth: GB/TB/day, row sizes, retention?</label>
+<label class="check"><input type="checkbox" class="practice" data-id="lat">Latency/freshness SLA: daily, minutes, seconds?</label>
+<label class="check"><input type="checkbox" class="practice" data-id="src">Source semantics: files, API, Kafka, DB CDC, SaaS?</label>
+<label class="check"><input type="checkbox" class="practice" data-id="load">Load mode: full, append, watermark, CDC, SCD?</label>
+<label class="check"><input type="checkbox" class="practice" data-id="dup">Replay/idempotency/deduplication/late data?</label>
+<label class="check"><input type="checkbox" class="practice" data-id="schema">Schema evolution and malformed record strategy?</label>
+<label class="check"><input type="checkbox" class="practice" data-id="wh">Compute isolation, size, concurrency, auto-suspend?</label>
+<label class="check"><input type="checkbox" class="practice" data-id="dq">Data quality, reconciliation, freshness monitoring?</label>
+<label class="check"><input type="checkbox" class="practice" data-id="sec">RBAC, PII masking, network, secrets, audit?</label>
+<label class="check"><input type="checkbox" class="practice" data-id="cost">Cost model, observability, recovery, DR?</label>
+</div>
+</section>
+
+<div class="section">11. SnowPro Core COF-C03 Study Guide</div>
+
+<section class="card wide" data-cat="cert" data-level="cert">
+<div class="ch"><div><h2>Current certification target</h2><div class="tags"><span class="tag cert">COF-C03</span><span class="tag new">CURRENT 2026</span></div></div></div>
+<div class="desc">The older COF-C02 has been replaced. COF-C03 modernizes the exam and includes newer areas such as Snowflake Notebooks, Apache Iceberg and Cortex-related platform knowledge. Official Snowflake learning currently organizes preparation around architecture/storage, security, governance/cost, collaboration and end-to-end pipeline automation.</div>
+</section>
+
+<section class="card wide" data-cat="cert" data-level="cert">
+<div class="ch"><div><h2>Certification checklist</h2></div></div>
+<div style="padding:0 14px 12px">
+<label class="check"><input type="checkbox" class="practice" data-id="c_arch">Architecture: cloud services, compute, storage, micro-partitions, caching</label>
+<label class="check"><input type="checkbox" class="practice" data-id="c_wh">Warehouses: sizing, auto suspend/resume, multi-cluster, concurrency</label>
+<label class="check"><input type="checkbox" class="practice" data-id="c_load">Stages, file formats, COPY, Snowpipe, Snowpipe Streaming, unload</label>
+<label class="check"><input type="checkbox" class="practice" data-id="c_trans">SQL transformation, semi-structured data, Streams, Tasks, Dynamic Tables</label>
+<label class="check"><input type="checkbox" class="practice" data-id="c_sec">RBAC, roles, grants, network/authentication, encryption</label>
+<label class="check"><input type="checkbox" class="practice" data-id="c_gov">Tags, masking, row access, classification, Time Travel/Fail-safe</label>
+<label class="check"><input type="checkbox" class="practice" data-id="c_share">Secure sharing, Listings/Marketplace, cloning</label>
+<label class="check"><input type="checkbox" class="practice" data-id="c_perf">Performance: pruning, clustering, SOS, QAS, Query Profile</label>
+<label class="check"><input type="checkbox" class="practice" data-id="c_ice">Iceberg / external data / interoperability</label>
+<label class="check"><input type="checkbox" class="practice" data-id="c_new">Notebooks / Snowpark / Cortex high-level platform awareness</label>
+</div>
+</section>
+
+<section class="card" data-cat="cert" data-level="cert">
+<div class="ch"><div><h2>Certification exam habit</h2></div></div>
+<div class="tip">Do not only memorize syntax. COF-C03 preparation should focus on feature discrimination: <b>Snowpipe vs Snowpipe Streaming, clustering vs Search Optimization, scale-up vs multi-cluster, native table vs Iceberg, Streams/Tasks vs Dynamic Tables</b>.</div>
+</section>
+
+<div class="section">12. Interview Questions — Human, Speakable Answers</div>
+
+<section class="card wide" data-cat="system performance ingest" data-level="principal">
+<div class="ch"><div><h2>Practice answers</h2><button onclick="toggleAnswers()">Hide/show</button></div></div>
+<div class="two">
+<div><p class="q">How do you choose batch vs streaming?</p><div class="answer">“I use the business freshness SLA first. If minutes or hours are acceptable, batch is cheaper and operationally simpler. If an operational use case genuinely needs seconds-level freshness, I use streaming. I also check whether the source naturally produces files or events because forcing an unnatural ingestion format creates complexity.”</div></div>
+<div><p class="q">How do you decide full vs incremental?</p><div class="answer">“I compare table size, change ratio, rebuild duration, source change semantics and recovery complexity. Full is fine for small tables. For large facts I prefer append or incremental. For mutable operational entities I use CDC or MERGE. I don’t introduce incremental state unless it buys meaningful SLA or cost improvement.”</div></div>
+<div><p class="q">How do you optimize a slow Snowflake query?</p><div class="answer">“I start with Query Profile: bytes/partitions scanned, pruning, joins, spill and queue time. Then I determine whether the bottleneck is SQL/data layout, single-query compute, or concurrency. Only after that do I consider clustering, SOS/QAS or resizing compute.”</div></div>
+<div><p class="q">How do you choose warehouse size?</p><div class="answer">“I benchmark representative workloads. I scale up when a query needs more compute/memory and scale out when concurrency is the issue. I isolate workloads by SLA and cost center, use auto-suspend/resume, and track credits per workload rather than choosing one oversized warehouse for everything.”</div></div>
+<div><p class="q">Why dbt with Snowflake?</p><div class="answer">“Snowflake executes SQL; dbt provides the transformation engineering layer around it—modular models, DAG dependencies, testing, documentation, environments and CI/CD. I use dbt when team maintainability and governed transformation lifecycle matter, not because Snowflake lacks SQL.”</div></div>
+<div><p class="q">Would you use medallion in Snowflake?</p><div class="answer">“Yes. Bronze/silver/gold is a logical layering pattern. I might call them raw/refined/curated, but the principle is the same: preserve ingest fidelity, isolate cleansing/conformance, then expose stable consumer models.”</div></div>
+</div>
+</section>
+
+<div class="section">13. Recommended Learning Resources</div>
+
+<section class="card wide resource" data-cat="resources cert dbt" data-level="foundation">
+<div class="ch"><div><h2>Best current resources</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Resource</th><th>Use it for</th></tr></thead><tbody>
+<tr><td><a href="https://www.snowflake.com/en/developers/northstar/" target="_blank">Snowflake Northstar</a></td><td>Official hands-on learning and COF-C03 preparation path.</td></tr>
+<tr><td><a href="https://docs.snowflake.com/en/user-guide/intro-key-concepts" target="_blank">Snowflake Architecture Docs</a></td><td>3-layer architecture and core mental model.</td></tr>
+<tr><td><a href="https://docs.snowflake.com/en/user-guide/data-load-snowpipe-intro" target="_blank">Snowpipe Docs</a></td><td>Continuous file loading.</td></tr>
+<tr><td><a href="https://docs.snowflake.com/en/user-guide/snowpipe-streaming/data-load-snowpipe-streaming-overview" target="_blank">Snowpipe Streaming Docs</a></td><td>Modern row-based streaming and Kafka/SDK/REST options.</td></tr>
+<tr><td><a href="https://docs.snowflake.com/en/user-guide/dynamic-tables/overview" target="_blank">Dynamic Tables Docs</a></td><td>Declarative incremental pipelines and target lag.</td></tr>
+<tr><td><a href="https://docs.snowflake.com/en/user-guide/tables-iceberg" target="_blank">Iceberg Tables Docs</a></td><td>Open table format and lakehouse interoperability.</td></tr>
+<tr><td><a href="https://docs.getdbt.com/guides/snowflake" target="_blank">Official dbt + Snowflake Quickstart</a></td><td>Sources, models, tests, docs and scheduling.</td></tr>
+<tr><td><a href="https://learn.getdbt.com/" target="_blank">dbt Learn</a></td><td>Best structured starting point for dbt fundamentals.</td></tr>
+<tr><td><a href="https://github.com/Snowflake-Labs/getting-started-with-dbt-on-snowflake" target="_blank">Snowflake Labs dbt project</a></td><td>Hands-on Tasty Bytes project, environment, CI/CD and scheduling.</td></tr>
+<tr><td><a href="https://github.com/dbt-labs/jaffle-shop" target="_blank">dbt Jaffle Shop</a></td><td>Current dbt sandbox project and modern feature practice.</td></tr>
+<tr><td><a href="https://github.com/Snowflake-Labs/snowflake-demo-notebooks" target="_blank">Snowflake Demo Notebooks</a></td><td>Python, SQL, ingestion and performance notebook examples.</td></tr>
+<tr><td><a href="https://github.com/dbt-labs/python-snowpark-formula1" target="_blank">dbt + Snowpark Formula 1 project</a></td><td>SQL + Python models together on Snowflake.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card wide resource" data-cat="resources" data-level="foundation">
+<div class="ch"><div><h2>YouTube / video learning approach</h2></div></div>
+<div class="desc">Prefer Snowflake and dbt official/developer-advocate material for current platform behavior. Search for recent “Snowflake Data Engineering”, “SnowPro Core COF-C03”, “Dynamic Tables”, “Snowpipe Streaming”, and “dbt Snowflake” sessions. Treat older COF-C02 videos as conceptual supplements, not the authoritative 2026 syllabus.</div>
+<div class="tip">Recommended order: Snowflake Northstar → official docs labs → one end-to-end project → dbt Fundamentals → Snowflake-Labs dbt project → practice certification questions only after hands-on work.</div>
+</section>
+
+<div class="section">14. 30-Day Practice Roadmap</div>
+
+<section class="card wide" data-cat="cert resources" data-level="foundation">
+<div class="tbl"><table><thead><tr><th>Days</th><th>Focus</th><th>Output</th></tr></thead><tbody>
+<tr><td>1–4</td><td>Architecture, objects, warehouses, RBAC, stages/COPY</td><td>Load CSV/JSON/Parquet; create roles + warehouses</td></tr>
+<tr><td>5–8</td><td>Snowpipe, Streams/Tasks, Dynamic Tables</td><td>Batch + incremental pipeline</td></tr>
+<tr><td>9–11</td><td>Snowpipe Streaming/Openflow concepts</td><td>Streaming architecture design + lab if available</td></tr>
+<tr><td>12–14</td><td>Performance/cost</td><td>Query Profile comparison; warehouse sizing experiment</td></tr>
+<tr><td>15–17</td><td>Security/governance/sharing/Iceberg</td><td>Masking policy + share + Iceberg lab</td></tr>
+<tr><td>18–23</td><td>dbt fundamentals → incremental → snapshots/tests/CI</td><td>Build Retail Orders 360 dbt DAG</td></tr>
+<tr><td>24–26</td><td>System design</td><td>Speak 6 architecture answers without notes</td></tr>
+<tr><td>27–30</td><td>COF-C03 review + practice</td><td>Weak-domain revision + mock exams</td></tr>
+</tbody></table></div>
+</section>
+
+</div>
+
+<div class="section">15. End-to-End Delivery Lifecycle — Requirements to Operations</div>
+
+<section class="card wide" data-cat="system architecture" data-level="principal">
+<div class="ch"><div><h2>The complete Lead/Principal DE lifecycle</h2><div class="tags"><span class="tag principal">PRINCIPAL CORE</span><span class="tag must">MEMORISE FLOW</span></div></div></div>
+<div class="flow">1. Business / Product Requirement
+        ↓
+2. Functional + Non-functional Requirements
+        ↓
+3. Source Assessment / Data Profiling
+        ↓
+4. SLA / SLO / RPO / RTO Definition
+        ↓
+5. Architecture & Pattern Selection
+        ↓
+6. Data Contract + Data Model
+        ↓
+7. Ingestion Design
+        ↓
+8. Transformation / CDC / SCD Design
+        ↓
+9. Security / Governance / DQ Design
+        ↓
+10. Compute / Performance / Cost Design
+        ↓
+11. CI/CD + Environment Strategy
+        ↓
+12. Testing + Reconciliation
+        ↓
+13. Production Release / Backfill
+        ↓
+14. Monitoring / Alerting / Metrics
+        ↓
+15. Incident / Replay / Recovery
+        ↓
+16. Capacity / Cost / SLA Review
+        ↓
+17. Continuous Improvement</div>
+<div class="answer"><b>Principal interview opening:</b> “I don’t start by choosing Snowpipe, dbt or Dynamic Tables. I first establish the business outcome, latency and reliability requirements, understand source change semantics and data quality, and only then select the ingestion, storage, transformation and orchestration patterns. I also design replay, observability and cost controls before calling the solution production-ready.”</div>
+</section>
+
+<section class="card wide" data-cat="system" data-level="lead">
+<div class="ch"><div><h2>Phase 1 — Requirements gathering</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Area</th><th>Questions a Lead DE should ask</th></tr></thead><tbody>
+<tr><td>Business outcome</td><td>Who consumes the data? What decision/process depends on it? What does success look like?</td></tr>
+<tr><td>Freshness</td><td>Seconds, minutes, hourly, daily? Is the SLA really required or merely preferred?</td></tr>
+<tr><td>Volume</td><td>Current GB/TB/day, row count, peak rate, expected 12–24 month growth?</td></tr>
+<tr><td>Source</td><td>Database, API, Kafka, file, SaaS? Append-only or mutable? CDC/WAL available?</td></tr>
+<tr><td>History</td><td>Current-state only, full event history, or SCD2 attribute history?</td></tr>
+<tr><td>Deletes</td><td>Hard delete, soft delete, GDPR/retention deletion, source tombstones?</td></tr>
+<tr><td>Late data</td><td>How late can events/updates arrive? Can source timestamps be trusted?</td></tr>
+<tr><td>Schema change</td><td>Who owns schema? Are additive/breaking changes expected? Contract available?</td></tr>
+<tr><td>Consumers</td><td>BI, ML, reverse ETL, API/app, data sharing, downstream platform?</td></tr>
+<tr><td>Reliability</td><td>What is acceptable data loss/downtime? RPO/RTO?</td></tr>
+<tr><td>Security</td><td>PII/PCI/confidential fields, regional restrictions, masking requirements?</td></tr>
+<tr><td>Cost</td><td>Budget envelope, peak vs steady use, chargeback/showback needs?</td></tr>
+</tbody></table></div>
+<div class="tip"><b>Senior vs Principal:</b> Senior asks “what data do we need?” Principal also challenges whether the requested latency, retention and complexity are economically justified.</div>
+</section>
+
+<section class="card" data-cat="system architecture" data-level="lead">
+<div class="ch"><div><h2>Functional vs non-functional requirements</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td><b>Functional</b></td><td>What fields, transformations, joins, business rules, dimensions, facts and outputs are required?</td></tr>
+<tr><td><b>Non-functional</b></td><td>Latency, throughput, scalability, availability, security, recoverability, observability, maintainability and cost.</td></tr>
+</tbody></table></div>
+<div class="answer">Interview phrase: “Most poor data-platform designs solve the functional requirement but ignore non-functional requirements. The architecture is usually determined by the NFRs.”</div>
+</section>
+
+<section class="card" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>Source assessment / profiling checklist</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>Keys</td><td>Business key, primary key, duplicates, null keys.</td></tr>
+<tr><td>Change semantics</td><td>Insert-only, update, delete, soft-delete, CDC log.</td></tr>
+<tr><td>Timestamps</td><td>Created_at, updated_at, source event time, ingestion time.</td></tr>
+<tr><td>Volume distribution</td><td>Normal vs peak rate, skew by tenant/customer/date.</td></tr>
+<tr><td>Schema</td><td>Types, nested structures, optional fields, drift frequency.</td></tr>
+<tr><td>Quality</td><td>Nulls, invalid values, duplicate records, referential breaks.</td></tr>
+<tr><td>Operational constraints</td><td>API limits, source maintenance windows, WAL/log retention, extraction impact.</td></tr>
+</tbody></table></div>
+</section>
+
+<div class="section">16. Reference System Design Flows</div>
+
+<section class="card wide" data-cat="system ingest" data-level="lead">
+<div class="ch"><div><h2>System Design A — Daily / hourly batch</h2></div></div>
+<div class="flow">Source DB / SaaS / Files
+        ↓
+Extract / Export
+        ↓
+Object Storage (S3 / ADLS / GCS)
+        ↓
+COPY INTO Snowflake RAW
+        ↓
+Validation + Audit Counts
+        ↓
+dbt / Dynamic Tables / Tasks
+        ↓
+REFINED
+        ↓
+SCD / Facts / Dimensions
+        ↓
+CURATED / MART
+        ↓
+BI / ML / Sharing
+        ↓
+Freshness + DQ + Cost Monitoring</div>
+<div class="tip"><b>Choose when:</b> minutes-to-hours freshness is sufficient. This is generally simpler, easier to recover, and cheaper to operate than streaming.</div>
+</section>
+
+<section class="card wide" data-cat="system ingest" data-level="lead">
+<div class="ch"><div><h2>System Design B — Near-real-time file ingestion</h2></div></div>
+<div class="flow">Application / Source
+        ↓ produces files
+Cloud Object Storage
+        ↓ notifications
+Snowpipe
+        ↓
+RAW Snowflake Tables
+        ↓
+Dynamic Tables OR Streams + Tasks
+        ↓
+REFINED
+        ↓
+Serving / BI
+        ↓
+Pipe + freshness + DQ monitoring</div>
+<div class="tip"><b>Choose when:</b> source naturally produces files and low-minute freshness is enough.</div>
+</section>
+
+<section class="card wide" data-cat="system ingest" data-level="lead">
+<div class="ch"><div><h2>System Design C — Event streaming</h2></div></div>
+<div class="flow">App / Kafka / Event Bus
+        ↓
+Snowpipe Streaming / Connector
+        ↓
+RAW EVENTS
+        ↓
+Dedup + event-time handling
+        ↓
+Dynamic Tables / Streams+Tasks / dbt microbatch
+        ↓
+Near-real-time aggregates
+        ↓
+Operational analytics / downstream consumers
+
+Monitoring:
+ingestion latency • duplicate rate • event lag • reject rate • freshness</div>
+<div class="answer"><b>Principal answer:</b> “Streaming is not simply ‘batch but faster’. I explicitly design event time vs processing time, ordering expectations, late events, replay boundaries, dedup keys, state and consumer freshness.”</div>
+</section>
+
+<section class="card wide" data-cat="system ingest transform" data-level="principal">
+<div class="ch"><div><h2>System Design D — Database CDC / WAL</h2><div class="tags"><span class="tag principal">VERY COMMON INTERVIEW</span></div></div></div>
+<div class="flow">Postgres / MySQL / SQL Server / Oracle
+        ↓
+Transaction Log / WAL / CDC Feed
+        ↓
+CDC Connector / Openflow / Partner Tool
+        ↓
+RAW CDC TABLE
+  business_key
+  operation (I/U/D)
+  source_lsn / offset
+  source_timestamp
+  ingestion_timestamp
+        ↓
+Ordering + Deduplication
+        ↓
+MERGE / SCD handling
+        ↓
+CURRENT STATE + HISTORY
+        ↓
+Reconciliation / lag / offset monitoring</div>
+<div class="answer"><b>Speakable answer:</b> “For a large mutable operational table, I prefer log-based CDC over repeated full extracts because it captures inserts, updates and deletes with less source impact. I preserve source offset or LSN and operation metadata in raw so I can replay deterministically. Then I apply ordered changes into current-state or SCD models.”</div>
+</section>
+
+<section class="card wide" data-cat="system ingest" data-level="principal">
+<div class="ch"><div><h2>System Design E — API ingestion</h2></div></div>
+<div class="flow">REST / SaaS API
+        ↓
+Extraction Service / Connector
+        ↓
+Pagination
+Rate limiting / retries
+Checkpoint / cursor
+        ↓
+RAW JSON
+        ↓
+Schema normalization
+        ↓
+REFINED tables
+        ↓
+Curated models
+
+Operational state:
+last_success_cursor
+last_success_timestamp
+API response code metrics
+retry count
+records extracted</div>
+<div class="answer">“For APIs I separate transport reliability from transformation. The extractor owns pagination, authentication, rate limiting, retry/backoff and checkpointing. Raw responses are preserved when practical, and downstream transformation remains idempotent.”</div>
+</section>
+
+<section class="card wide" data-cat="system iceberg" data-level="principal">
+<div class="ch"><div><h2>System Design F — Open lakehouse / Iceberg</h2></div></div>
+<div class="flow">Sources
+   ↓
+Object Storage
+   ↓
+Iceberg Tables
+   ↙             ↘
+Snowflake        Spark / Databricks / Other Engines
+   ↓
+Governed semantic / curated models
+   ↓
+Consumers</div>
+<div class="answer">“I select Iceberg when cross-engine interoperability or lake ownership is a real architectural requirement. If Snowflake is the only meaningful consumer, native tables are often operationally simpler.”</div>
+</section>
+
+<div class="section">17. Data Modeling Process</div>
+
+<section class="card wide" data-cat="system transform" data-level="lead">
+<div class="ch"><div><h2>Modeling flow: raw → refined → serving</h2></div></div>
+<div class="flow">RAW
+  preserve source fidelity
+  add ingestion metadata
+        ↓
+STAGING
+  rename / cast / normalize / basic dedupe
+        ↓
+CONFORMED / REFINED
+  common keys
+  reference data
+  reusable business rules
+        ↓
+DIMENSIONAL / DOMAIN MODEL
+  dimensions
+  facts
+  SCD history
+        ↓
+MART / SEMANTIC
+  consumer-specific metrics and aggregates</div>
+<div class="tip">Avoid putting consumer-specific logic directly in raw ingestion. That couples transport to business semantics and makes replay/change harder.</div>
+</section>
+
+<section class="card" data-cat="system transform" data-level="lead">
+<div class="ch"><div><h2>Fact table questions</h2></div></div>
+<div class="desc">Always define grain first.</div>
+<div class="answer">“The grain is one row per <b>what</b>? Order? Order line? Customer-day? Store-item-week? I define the grain before measures and joins, otherwise double-counting is almost guaranteed.”</div>
+</section>
+
+<section class="card" data-cat="system transform" data-level="lead">
+<div class="ch"><div><h2>Dimension questions</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>SCD1</td><td>Current value only; overwrite history.</td></tr>
+<tr><td>SCD2</td><td>Track history with valid_from/valid_to/current.</td></tr>
+<tr><td>Degenerate dimension</td><td>Business identifier stored in fact without separate dimension.</td></tr>
+<tr><td>Conformed dimension</td><td>Shared consistent dimension across marts/facts.</td></tr>
+<tr><td>Late-arriving dimension</td><td>Fact arrives before dimension; use unknown/inferred handling then reconcile.</td></tr>
+</tbody></table></div>
+</section>
+
+<div class="section">18. Build, Test and Release Process</div>
+
+<section class="card wide" data-cat="system dbt" data-level="lead">
+<div class="ch"><div><h2>Environment + CI/CD process</h2></div></div>
+<div class="flow">Developer Branch
+    ↓
+DEV schema/database
+    ↓
+Unit / dbt tests / sample validation
+    ↓
+Pull Request
+    ↓
+CI
+  compile
+  lint
+  tests
+  changed models
+  dependency impact
+    ↓
+Integration / UAT
+    ↓
+Production deployment
+    ↓
+Post-deploy validation
+    ↓
+Monitor / rollback if required</div>
+<div class="tip">Use environment-specific roles/warehouses and controlled service identities. Avoid developers manually patching production SQL.</div>
+</section>
+
+<section class="card wide" data-cat="system" data-level="lead">
+<div class="ch"><div><h2>Testing pyramid for data pipelines</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Test type</th><th>Examples</th></tr></thead><tbody>
+<tr><td>Unit/business logic</td><td>Input rows → exact expected output for transforms.</td></tr>
+<tr><td>Schema/contract</td><td>Required columns, datatypes, allowed schema changes.</td></tr>
+<tr><td>Data quality</td><td>not_null, unique, accepted values, relationships, ranges.</td></tr>
+<tr><td>Reconciliation</td><td>source vs target counts/sums/hash totals by batch/date.</td></tr>
+<tr><td>Idempotency</td><td>Run same batch twice and prove no duplicate business result.</td></tr>
+<tr><td>Incremental</td><td>new, changed, deleted and late-arriving records.</td></tr>
+<tr><td>Performance</td><td>Expected volume meets SLA and cost bounds.</td></tr>
+<tr><td>Recovery</td><td>Partial failure + retry/backfill behaves correctly.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>Production readiness checklist</h2></div></div>
+<div style="padding:0 14px 12px">
+<label class="check"><input type="checkbox" class="practice" data-id="prd1">SLA/SLO agreed</label>
+<label class="check"><input type="checkbox" class="practice" data-id="prd2">Replay/backfill procedure tested</label>
+<label class="check"><input type="checkbox" class="practice" data-id="prd3">Idempotency proven</label>
+<label class="check"><input type="checkbox" class="practice" data-id="prd4">Schema evolution behavior defined</label>
+<label class="check"><input type="checkbox" class="practice" data-id="prd5">DQ thresholds + owners defined</label>
+<label class="check"><input type="checkbox" class="practice" data-id="prd6">Alert routing + runbook available</label>
+<label class="check"><input type="checkbox" class="practice" data-id="prd7">Warehouse/cost bounds configured</label>
+<label class="check"><input type="checkbox" class="practice" data-id="prd8">Security/PII policies reviewed</label>
+<label class="check"><input type="checkbox" class="practice" data-id="prd9">Rollback / fail-forward path defined</label>
+<label class="check"><input type="checkbox" class="practice" data-id="prd10">Operational dashboard ready</label>
+</div>
+</section>
+
+<div class="section">19. Metrics, Monitoring, SLOs & Operations</div>
+
+<section class="card wide" data-cat="system performance" data-level="principal">
+<div class="ch"><div><h2>Metrics that actually matter</h2><div class="tags"><span class="tag principal">OPERATIONS</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>Category</th><th>Metrics</th><th>Why</th></tr></thead><tbody>
+<tr><td>Freshness</td><td>source_event_time → available_time, last successful load</td><td>Is data available when consumers need it?</td></tr>
+<tr><td>Volume</td><td>rows/files/bytes per batch/hour/day</td><td>Detect missing or abnormal feeds.</td></tr>
+<tr><td>Quality</td><td>null %, duplicate %, invalid %, orphan count</td><td>Detect semantic/data defects.</td></tr>
+<tr><td>Completeness</td><td>source vs target counts/sums</td><td>Detect silent data loss.</td></tr>
+<tr><td>Reliability</td><td>success rate, failed runs, retry count, MTTR</td><td>Operational health.</td></tr>
+<tr><td>Performance</td><td>pipeline runtime, query latency, queue time, spill</td><td>SLA and capacity.</td></tr>
+<tr><td>Streaming</td><td>consumer/ingestion lag, late-event rate, duplicate rate</td><td>Real-time health.</td></tr>
+<tr><td>Cost</td><td>credits/day, credits/pipeline, credits/domain, cost/TB</td><td>FinOps and optimization.</td></tr>
+<tr><td>Usage</td><td>mart/query adoption, unused tables/models</td><td>Remove low-value cost and complexity.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card wide" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>SLA vs SLO vs SLI — simple explanation</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td><b>SLI</b></td><td>Measured indicator — e.g. pipeline freshness = 12 minutes.</td></tr>
+<tr><td><b>SLO</b></td><td>Internal target — e.g. 99.5% of hourly loads available within 20 minutes.</td></tr>
+<tr><td><b>SLA</b></td><td>Formal commitment to consumers/business, possibly with consequences.</td></tr>
+</tbody></table></div>
+<div class="tip">Principal engineers talk about measurable service levels, not simply “the pipeline runs every hour.”</div>
+</section>
+
+<section class="card" data-cat="system" data-level="lead">
+<div class="ch"><div><h2>Alerting strategy</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>P1</td><td>Critical business data unavailable/corrupt; immediate action.</td></tr>
+<tr><td>P2</td><td>SLA at risk, major degradation, recoverable without immediate business outage.</td></tr>
+<tr><td>P3</td><td>Warning/trend such as rising cost, quality drift, delayed non-critical feed.</td></tr>
+</tbody></table></div>
+<div class="warn">Do not alert on every failed SQL statement. Alert on meaningful service impact or actionable leading indicators; otherwise teams develop alert fatigue.</div>
+</section>
+
+<section class="card wide" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>Operational incident flow</h2></div></div>
+<div class="flow">Alert
+  ↓
+Confirm impact / scope
+  ↓
+Stop bad downstream publication if required
+  ↓
+Identify failure class
+  ├─ source missing
+  ├─ schema change
+  ├─ bad data
+  ├─ compute/performance
+  ├─ credentials/network
+  └─ code/deployment
+  ↓
+Recover / retry / replay / backfill
+  ↓
+Reconcile data
+  ↓
+Resume consumers
+  ↓
+Post-incident review
+  ↓
+Prevent recurrence</div>
+<div class="answer"><b>Principal answer:</b> “Recovery is not complete when the task turns green. I reconcile the recovered data, confirm downstream freshness, communicate consumer impact, and then remove the root cause or improve detection.”</div>
+</section>
+
+<section class="card" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>Runbook contents</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>Ownership</td><td>Team/contact/escalation.</td></tr>
+<tr><td>Dependencies</td><td>Sources, pipelines, tables, consumers.</td></tr>
+<tr><td>Expected schedule/SLO</td><td>Normal timings and thresholds.</td></tr>
+<tr><td>Common failures</td><td>Known symptoms and diagnosis.</td></tr>
+<tr><td>Recovery commands</td><td>Retry, replay, backfill, restart procedure.</td></tr>
+<tr><td>Validation</td><td>Checks proving recovery correctness.</td></tr>
+<tr><td>Escalation</td><td>When/whom to notify.</td></tr>
+</tbody></table></div>
+</section>
+
+<div class="section">20. Backfill, Replay & Recovery Design</div>
+
+<section class="card wide" data-cat="system transform" data-level="lead">
+<div class="ch"><div><h2>Backfill process</h2></div></div>
+<div class="flow">Define affected date/key range
+        ↓
+Freeze or isolate overlapping production writes if needed
+        ↓
+Re-extract / identify raw source
+        ↓
+Process into temporary/backfill target
+        ↓
+Validate counts + business metrics
+        ↓
+MERGE / replace target partitions/logical range
+        ↓
+Rebuild affected downstream models
+        ↓
+Final reconciliation + consumer signoff</div>
+<div class="tip">A good pipeline is designed so the same transformation can process both “today” and a historical date range. Backfill should not require inventing a second code path.</div>
+</section>
+
+<section class="card" data-cat="system transform" data-level="principal">
+<div class="ch"><div><h2>Idempotency</h2></div></div>
+<div class="answer">“Given the same source batch/event set, rerunning should produce the same business state. I achieve that with stable business/event keys, deterministic transformations and MERGE/overwrite semantics rather than blind append.”</div>
+</section>
+
+<section class="card" data-cat="system transform" data-level="principal">
+<div class="ch"><div><h2>Late-arriving data</h2></div></div>
+<div class="answer">“I distinguish event time from ingestion time. For batch incrementals I often use an overlap lookback and MERGE. For streaming I define allowed lateness and dedupe/reprocessing semantics. For SCD2 I decide whether late source changes revise historical validity or are applied prospectively.”</div>
+</section>
+
+<div class="section">21. Operations & FinOps Review</div>
+
+<section class="card wide" data-cat="system performance" data-level="principal">
+<div class="ch"><div><h2>Weekly / monthly platform review</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Review</th><th>Questions</th></tr></thead><tbody>
+<tr><td>SLA</td><td>Which datasets missed freshness/reliability targets?</td></tr>
+<tr><td>Incidents</td><td>Repeated failure patterns? MTTR improving?</td></tr>
+<tr><td>Quality</td><td>Which rules are trending worse? Which sources cause defects?</td></tr>
+<tr><td>Cost</td><td>Top warehouses/pipelines by credits? Cost per useful workload?</td></tr>
+<tr><td>Performance</td><td>Queue/spill/query regressions? Growth causing sizing issues?</td></tr>
+<tr><td>Capacity</td><td>Expected source/consumer growth next quarter?</td></tr>
+<tr><td>Usage</td><td>Unused marts/tables/tasks/dynamic tables to retire?</td></tr>
+<tr><td>Governance</td><td>New sensitive fields, access drift, ownership gaps?</td></tr>
+<tr><td>Technical debt</td><td>Manual operations, fragile jobs, duplicated logic, missing tests?</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card wide" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>Principal-level closing answer for any system design</h2><div class="tags"><span class="tag principal">PRACTISE SPEAKING</span></div></div>
+<div class="answer">“Once the happy-path architecture is clear, I would validate three things before finalizing it: failure behavior, operating cost and ownership. I want deterministic replay and backfill, measurable freshness and quality SLOs, workload-level cost visibility, least-privilege access, and a clear runbook. I would then benchmark representative volumes rather than assume theoretical sizing, and evolve the design based on observed workload characteristics.”</div>
+</section>
+
+
+<div class="section">22. AI-Enabled Data Engineering — Mature & Responsible Architecture</div>
+
+<section class="card wide" data-cat="system architecture" data-level="principal">
+<div class="ch"><div><h2>The maturity model: Assist → Recommend → Act with Approval → Constrained Autonomy</h2><div class="tags"><span class="tag principal">PRINCIPAL AI</span><span class="tag must">MEMORISE</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>Level</th><th>AI authority</th><th>Good DE examples</th><th>Control</th></tr></thead><tbody>
+<tr><td><b>1. Assist</b></td><td>Read-only; drafts/explains</td><td>Explain failed SQL, generate docs, summarize incidents, propose tests</td><td>Human consumes output</td></tr>
+<tr><td><b>2. Recommend</b></td><td>Reads platform metadata and proposes action</td><td>Recommend clustering review, warehouse resize, missing DQ checks, lineage impact</td><td>Human decides</td></tr>
+<tr><td><b>3. Act with approval</b></td><td>Can invoke controlled tools after approval</td><td>Run backfill, open PR, rerun failed task, add ticket, execute safe remediation</td><td>Human-in-the-loop gate</td></tr>
+<tr><td><b>4. Constrained autonomy</b></td><td>Acts automatically inside a narrow reversible boundary</td><td>Retry transient ingestion, collect diagnostics, quarantine malformed batch, scale temporary non-prod compute within budget</td><td>Policy + RBAC + limits + audit + rollback</td></tr>
+</tbody></table></div>
+<div class="answer"><b>Principal principle:</b> “Autonomy should increase only as the action becomes deterministic, bounded, reversible and observable. Generative reasoning should not automatically imply generative authority.”</div>
+</section>
+
+<section class="card wide" data-cat="architecture system" data-level="lead">
+<div class="ch"><div><h2>Current Snowflake AI building blocks — where a DE uses each</h2><div class="tags"><span class="tag new">2026</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>Capability</th><th>What it does</th><th>Data Engineering application</th></tr></thead><tbody>
+<tr><td><b>Cortex AI Functions</b></td><td>LLM/AI operations callable from SQL/Python such as completion, classification, extraction, filtering, translation and embeddings.</td><td>Classify support records, extract entities from text/documents, normalize free-text source attributes, enrich unstructured data.</td></tr>
+<tr><td><b>Cortex Search</b></td><td>Managed hybrid semantic + keyword retrieval over Snowflake data.</td><td>RAG over runbooks, data contracts, pipeline documentation, incidents, business definitions and support documents.</td></tr>
+<tr><td><b>Cortex Analyst</b></td><td>Natural-language questions over governed structured data using semantic models/views.</td><td>Business/self-service analytics on curated marts; engineering operational analytics over cost/SLA/DQ data.</td></tr>
+<tr><td><b>Cortex Agents</b></td><td>Managed agent orchestration: plan, call tools, execute work and answer.</td><td>DE operations assistant combining metrics, Search, Analyst and carefully constrained action tools.</td></tr>
+<tr><td><b>Semantic Views</b></td><td>Business semantic layer defining logical entities, metrics and relationships.</td><td>Prevent AI from guessing joins/metric definitions; provide trusted analytical semantics.</td></tr>
+<tr><td><b>AI Observability</b></td><td>Tracing, evaluations, cost/request telemetry and production monitoring.</td><td>Evaluate RAG/agents, inspect tool calls, regression-test AI changes and monitor AI cost.</td></tr>
+<tr><td><b>Cortex AI Guardrails</b></td><td>Runtime protection against prompt-injection/jailbreak threats.</td><td>Protect agents consuming untrusted files, tool outputs and external/user content.</td></tr>
+<tr><td><b>Model Registry + ML Observability</b></td><td>Manage model versions/metadata/deployment and monitor drift/performance.</td><td>Production ML pipelines, retraining governance, feature/data drift monitoring.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card wide" data-cat="system architecture" data-level="principal">
+<div class="ch"><div><h2>Reference architecture — Responsible Agentic Data Engineering Platform</h2></div></div>
+<div class="flow">Users / Engineers / Operations
+            ↓
+       AI Interface
+            ↓
+       Cortex Agent
+            │
+   ┌────────┼─────────┬──────────────┐
+   ↓        ↓         ↓              ↓
+Analyst   Search   Metadata Tool   Action Tools
+   ↓        ↓         ↓              ↓
+Metrics  Runbooks  Catalog/Lineage  Task retry
+DQ/SLA   Docs      Query history    PR creation
+Costs    Incidents Warehouse stats  Backfill request
+   │        │         │              │
+   └────────┴─────────┴──────────────┘
+                    ↓
+             Policy / Approval Layer
+                    ↓
+     ┌──────────────┼────────────────┐
+     ↓              ↓                ↓
+READ ONLY       HUMAN APPROVAL    AUTO SAFE ACTION
+diagnostics     production DML    transient retry
+summaries       backfill          quarantine
+recommendation  privilege change  bounded non-prod ops
+                    ↓
+            Audit + AI Observability
+                    ↓
+      evaluation • traces • cost • feedback
+                    ↓
+              Continuous Review</div>
+<div class="tip">The agent should usually receive <b>tools</b>, not unrestricted account access. Each tool should expose one bounded capability with its own role, validation and audit behavior.</div>
+</section>
+
+<div class="section">23. High-Value AI Use Cases for Data Engineering</div>
+
+<section class="card wide" data-cat="system" data-level="lead">
+<div class="ch"><div><h2>Where AI genuinely improves DE productivity</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Use case</th><th>AI role</th><th>Recommended authority</th></tr></thead><tbody>
+<tr><td>SQL/code explanation & generation</td><td>Draft transformations/tests/documentation</td><td>Assist; PR review before production</td></tr>
+<tr><td>Pipeline incident triage</td><td>Read logs/query history, correlate recent deployments, summarize likely cause</td><td>Recommend</td></tr>
+<tr><td>Data quality investigation</td><td>Explain anomalies, find correlated source/schema changes, draft root-cause summary</td><td>Recommend</td></tr>
+<tr><td>Schema-change impact analysis</td><td>Combine catalog/lineage + code/docs to identify affected models/consumers</td><td>Recommend</td></tr>
+<tr><td>Documentation generation</td><td>Create descriptions, data dictionary drafts, runbooks, change summaries</td><td>Assist</td></tr>
+<tr><td>Cost optimization assistant</td><td>Analyze warehouse/query usage and identify candidates for investigation</td><td>Recommend, never blindly resize</td></tr>
+<tr><td>Performance triage</td><td>Interpret Query Profile patterns and suggest investigations</td><td>Recommend</td></tr>
+<tr><td>Test generation</td><td>Suggest dbt/DQ tests from schema/profile/business rules</td><td>Assist + review</td></tr>
+<tr><td>Backfill planning</td><td>Determine dependency impact, affected date ranges and validation steps</td><td>Recommend; execution approved</td></tr>
+<tr><td>Operational support chatbot</td><td>RAG over runbooks, incidents, platform standards and ownership</td><td>Read-only</td></tr>
+<tr><td>Natural-language data access</td><td>Business questions through governed semantic layer</td><td>Read-only / governed Analyst</td></tr>
+<tr><td>Unstructured ingestion</td><td>Classify/extract fields from contracts, tickets, PDFs, emails, images</td><td>Automated only with quality thresholds + fallback</td></tr>
+<tr><td>Ticket/PR creation</td><td>Turn diagnosis into Jira/Git change proposal</td><td>Can auto-create draft; human approves merge/action</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>Agentic DQ investigator</h2></div></div>
+<div class="flow">DQ alert
+  ↓
+Agent reads:
+  source volume
+  failed tests
+  schema changes
+  recent deployments
+  upstream freshness
+  historical incidents
+  ↓
+Agent proposes:
+  likely cause
+  affected datasets
+  validation SQL
+  recommended remediation
+  ↓
+Human approves action if needed</div>
+<div class="tip">High value because investigation requires joining many context sources, but remediation may still be consequential.</div>
+</section>
+
+<section class="card" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>Agentic incident assistant</h2></div></div>
+<div class="answer">“A good first production agent is not an autonomous repair bot. It is an incident co-pilot: collect evidence, correlate it, rank likely causes, identify blast radius, retrieve the relevant runbook and prepare the exact remediation steps. This reduces MTTR while preserving human accountability.”</div>
+</section>
+
+<section class="card" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>AI for data contracts / metadata</h2></div></div>
+<div class="desc">Use AI to draft column descriptions, classify candidate PII, suggest owners/tags, detect semantic duplication and explain lineage. Do not let the model silently redefine contractual types, metric definitions or ownership.</div>
+</section>
+
+<div class="section">24. Where NOT to Use AI</div>
+
+<section class="card wide" data-cat="system security" data-level="principal">
+<div class="ch"><div><h2>Prefer deterministic engineering when the rule is deterministic</h2><div class="tags"><span class="tag principal">RESPONSIBLE AI</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>Problem</th><th>Use instead</th><th>Why</th></tr></thead><tbody>
+<tr><td>Required field not null</td><td>SQL/dbt constraint/test</td><td>Exact rule; AI adds uncertainty and cost.</td></tr>
+<tr><td>Duplicate primary key</td><td>SQL/DQ test</td><td>Deterministic.</td></tr>
+<tr><td>Reconciliation source count = target count</td><td>SQL/audit framework</td><td>Must be exact.</td></tr>
+<tr><td>Calculate tax/financial contractual formula</td><td>Version-controlled deterministic code</td><td>Auditability and numerical correctness.</td></tr>
+<tr><td>SCD2 versioning</td><td>MERGE/dbt deterministic model</td><td>Well-defined state transition.</td></tr>
+<tr><td>Security authorization</td><td>RBAC/policies</td><td>AI should not decide who is entitled to data.</td></tr>
+<tr><td>Production delete/drop</td><td>Explicit reviewed operational workflow</td><td>Irreversible/high blast radius.</td></tr>
+<tr><td>Data-retention/legal deletion interpretation</td><td>Policy + approved workflow</td><td>Legal/compliance consequences.</td></tr>
+<tr><td>Core pipeline orchestration</td><td>Tasks/dbt/orchestrator</td><td>Schedules/dependencies should remain deterministic.</td></tr>
+</tbody></table></div>
+<div class="answer"><b>Principal rule:</b> “Use AI where ambiguity and contextual reasoning create value. Use deterministic code where correctness can be expressed as a rule.”</div>
+</section>
+
+<div class="section">25. Human-in-the-Loop Decision Framework</div>
+
+<section class="card wide" data-cat="system security" data-level="principal">
+<div class="ch"><div><h2>Which AI actions require approval?</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Risk</th><th>Examples</th><th>Policy</th></tr></thead><tbody>
+<tr><td><b>Low</b></td><td>Read metadata, summarize logs, search docs, draft SQL</td><td>Automatic</td></tr>
+<tr><td><b>Medium</b></td><td>Retry known-idempotent task, quarantine clearly malformed file, create draft ticket</td><td>May automate under strict predefined policy</td></tr>
+<tr><td><b>High</b></td><td>Production MERGE/backfill, warehouse/config change, modify scheduled pipeline</td><td>Human approval</td></tr>
+<tr><td><b>Critical</b></td><td>DROP/TRUNCATE, privilege grants, secrets, PII export, legal deletion, broad production write</td><td>AI should not independently authorize; privileged controlled workflow</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card" data-cat="system security" data-level="principal">
+<div class="ch"><div><h2>Decision formula</h2></div></div>
+<div class="flow">Can the action damage data/security?
+        YES → approval
+
+Is the action hard to reverse?
+        YES → approval
+
+Is the agent reasoning probabilistic?
+        YES + consequential → approval
+
+Is outcome deterministic, bounded,
+idempotent and reversible?
+        YES → candidate for automation
+
+Can policy validate before execution?
+        NO → human review</div>
+</section>
+
+<section class="card" data-cat="system security" data-level="principal">
+<div class="ch"><div><h2>Separate reasoning from authority</h2></div></div>
+<div class="answer">“The AI may have broad <b>reasoning visibility</b> but narrow <b>execution authority</b>. For example, it can inspect pipeline metadata across the platform but only invoke an approved `retry_pipeline(pipeline_id)` tool, rather than receiving arbitrary SQL execution rights.”</div>
+</section>
+
+<div class="section">26. Agent Tool Design — Skills for a Data Engineering Agent</div>
+
+<section class="card wide" data-cat="system architecture" data-level="principal">
+<div class="ch"><div><h2>Recommended bounded tools / skills</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Tool</th><th>Purpose</th><th>Mode</th></tr></thead><tbody>
+<tr><td><code>get_pipeline_status(id)</code></td><td>Current run, duration, error</td><td>Read-only</td></tr>
+<tr><td><code>get_dq_results(dataset)</code></td><td>DQ failures and trends</td><td>Read-only</td></tr>
+<tr><td><code>get_lineage(object)</code></td><td>Upstream/downstream blast radius</td><td>Read-only</td></tr>
+<tr><td><code>get_query_profile(query_id)</code></td><td>Performance evidence</td><td>Read-only</td></tr>
+<tr><td><code>get_cost_usage(workload)</code></td><td>Credits/cost trend</td><td>Read-only</td></tr>
+<tr><td><code>search_runbooks(query)</code></td><td>RAG over operating documentation</td><td>Read-only</td></tr>
+<tr><td><code>validate_sql(sql)</code></td><td>Static/query-plan/preflight validation</td><td>Read-only</td></tr>
+<tr><td><code>retry_pipeline(id)</code></td><td>Retry known idempotent run</td><td>Policy constrained</td></tr>
+<tr><td><code>request_backfill(dataset, range)</code></td><td>Create approved change request</td><td>Human approval</td></tr>
+<tr><td><code>create_incident_ticket(...)</code></td><td>Create draft incident/change ticket</td><td>Low risk write</td></tr>
+<tr><td><code>create_pull_request(...)</code></td><td>Propose code/test fix</td><td>Human merge</td></tr>
+<tr><td><code>quarantine_batch(batch)</code></td><td>Isolate bad data without deletion</td><td>Bounded + reversible</td></tr>
+</tbody></table></div>
+<div class="tip">A “skill” should package instructions + data context + one or more bounded tools. Keep production actions narrow enough that they can be independently authorized and tested.</div>
+</section>
+
+<div class="section">27. Responsible AI Engineering Controls</div>
+
+<section class="card wide" data-cat="system security" data-level="principal">
+<div class="ch"><div><h2>Control stack</h2></div></div>
+<div class="flow">Identity
+  ↓
+RBAC / least privilege
+  ↓
+Trusted semantic + retrieval sources
+  ↓
+Prompt / instruction controls
+  ↓
+Tool allow-list
+  ↓
+Input validation
+  ↓
+AI reasoning
+  ↓
+Output / policy validation
+  ↓
+Human approval for consequential actions
+  ↓
+Execution
+  ↓
+Immutable audit trail
+  ↓
+Observability / evaluation / feedback</div>
+</section>
+
+<section class="card" data-cat="system security" data-level="principal">
+<div class="ch"><div><h2>Prompt injection</h2></div></div>
+<div class="desc">Any retrieved document, API response or tool output can contain malicious instructions. Treat retrieved content as untrusted data, not authority.</div>
+<div class="tip">Use platform guardrails where available, tool allow-lists, least privilege, instruction hierarchy and approval gates. Never rely on the prompt alone as the security boundary.</div>
+</section>
+
+<section class="card" data-cat="system security" data-level="principal">
+<div class="ch"><div><h2>AI data access</h2></div></div>
+<div class="tip">Keep Snowflake RBAC, masking and row policies as the source of truth. AI should inherit governed access—not bypass it through a highly privileged shared service account.</div>
+</section>
+
+<section class="card" data-cat="system security" data-level="principal">
+<div class="ch"><div><h2>Agent identity</h2></div></div>
+<div class="desc">Where supported, distinguish agent-driven access from normal human/service sessions so agent actions can be governed and audited separately.</div>
+</section>
+
+<div class="section">28. AI Evaluation — Before Production</div>
+
+<section class="card wide" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>An AI pipeline needs a test suite just like a data pipeline</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Evaluation</th><th>Examples</th></tr></thead><tbody>
+<tr><td>Groundedness</td><td>Does the answer stay supported by retrieved/structured data?</td></tr>
+<tr><td>Answer correctness</td><td>Known questions with reference answers/results.</td></tr>
+<tr><td>Tool selection</td><td>Did the agent call the correct tool?</td></tr>
+<tr><td>Tool arguments</td><td>Correct dataset, date range, environment?</td></tr>
+<tr><td>Planning consistency</td><td>Does reasoning align with configured instructions and actions?</td></tr>
+<tr><td>Retrieval quality</td><td>Relevant runbook/data-contract chunks returned?</td></tr>
+<tr><td>Safety</td><td>Injection/adversarial/unauthorized requests blocked?</td></tr>
+<tr><td>Refusal quality</td><td>Does the system refuse unsupported/high-risk actions correctly?</td></tr>
+<tr><td>Latency</td><td>P50/P95/P99 response and tool execution times.</td></tr>
+<tr><td>Cost</td><td>Tokens/credits per request and per successful task.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>Golden evaluation dataset</h2></div></div>
+<div class="flow">Real historical DE questions/incidents
+        ↓
+Curated expected:
+  answer / SQL
+  required evidence
+  expected tool
+  prohibited actions
+        ↓
+Regression evaluation
+        ↓
+New prompt/model/tool change
+        ↓
+Compare quality + safety + cost
+        ↓
+Promote only if acceptance gates pass</div>
+<div class="answer">“I would never promote an agent solely because a few demo questions looked impressive. I build a representative evaluation dataset from real operational scenarios and regression-test model, prompt, semantic-layer and tool changes.”</div>
+</section>
+
+<div class="section">29. AI Production Monitoring</div>
+
+<section class="card wide" data-cat="system performance" data-level="principal">
+<div class="ch"><div><h2>AI operational metrics</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Area</th><th>Metrics</th></tr></thead><tbody>
+<tr><td>Quality</td><td>answer acceptance, groundedness/eval score, correction rate</td></tr>
+<tr><td>Agent</td><td>tool-call success, wrong-tool rate, steps per task, escalation rate</td></tr>
+<tr><td>Human oversight</td><td>approval rate, rejection rate, human edits, auto-action rate</td></tr>
+<tr><td>Safety</td><td>guardrail blocks, injection attempts, unauthorized action attempts</td></tr>
+<tr><td>Retrieval</td><td>search latency, relevance, no-result rate, index freshness</td></tr>
+<tr><td>Reliability</td><td>AI request errors, tool failures, timeout rate</td></tr>
+<tr><td>Performance</td><td>P50/P95 latency</td></tr>
+<tr><td>Cost</td><td>tokens/credits per task, search/agent cost, cost per successful outcome</td></tr>
+<tr><td>Business value</td><td>MTTR reduction, engineer time saved, tickets deflected, documentation coverage</td></tr>
+</tbody></table></div>
+</section>
+
+<div class="section">30. AI + DE Example Project</div>
+
+<section class="card wide" data-cat="system architecture" data-level="principal">
+<div class="ch"><div><h2>Project: Data Platform Operations Agent</h2><div class="tags"><span class="tag must">GOOD PORTFOLIO PROJECT</span></div></div></div>
+<div class="flow">Snowflake Platform Metadata
+  query history
+  task history
+  pipe history
+  DQ results
+  warehouse usage
+          │
+          ├──────────────┐
+          ↓              ↓
+   Semantic Views    Cortex Search
+  operational KPIs   runbooks/docs/incidents
+          ↓              ↓
+          └──── Cortex Agent ────┐
+                                 ↓
+                     “Why is sales mart late?”
+                                 ↓
+                    Agent gathers evidence:
+                    - upstream task failed
+                    - schema changed
+                    - DQ test started failing
+                    - same incident occurred before
+                                 ↓
+                     Human-readable diagnosis
+                                 ↓
+                      Recommended remediation
+                                 ↓
+                   [Approve Retry / Create Ticket]
+                                 ↓
+                         Controlled tool
+                                 ↓
+                   Retry + reconciliation check
+                                 ↓
+                       Audit / evaluation</div>
+</section>
+
+<section class="card wide" data-cat="system architecture" data-level="principal">
+<div class="ch"><div><h2>What this project demonstrates in an interview</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>Snowflake DE</td><td>metadata views, ingestion, DQ, tasks, cost/performance</td></tr>
+<tr><td>AI/RAG</td><td>Cortex Search over runbooks/incidents</td></tr>
+<tr><td>Structured AI</td><td>Cortex Analyst/semantic views over operational metrics</td></tr>
+<tr><td>Agentic AI</td><td>Agent selects retrieval/analytical/action tools</td></tr>
+<tr><td>Responsible AI</td><td>approval gates, RBAC, bounded tools, guardrails</td></tr>
+<tr><td>Evaluation</td><td>golden incidents + regression suite</td></tr>
+<tr><td>Operations</td><td>traces, feedback, cost and quality monitoring</td></tr>
+<tr><td>Principal thinking</td><td>authority boundaries, failure modes, measurable productivity</td></tr>
+</tbody></table></div>
+</section>
+
+<div class="section">31. Interview Responses — AI + Data Engineering</div>
+
+<section class="card wide" data-cat="system" data-level="principal">
+<div class="ch"><div><h2>Human-speakable answers to practise</h2></div></div>
+<div class="two">
+
+<div><p class="q">How would you use agentic AI in data engineering?</p>
+<div class="answer">“I would start with high-context, low-authority use cases—incident triage, DQ investigation, lineage impact analysis and documentation. The agent can combine structured platform metrics with RAG over runbooks and historical incidents. I only add write actions once each action is bounded, idempotent, auditable and governed by approval or policy.”</div></div>
+
+<div><p class="q">Would you let an AI agent fix production pipelines?</p>
+<div class="answer">“Not with unrestricted authority. I separate diagnosis from execution. An agent can automatically gather evidence and recommend a fix. A deterministic, reversible action such as retrying an idempotent transient failure could eventually be automated under policy. Backfills, production DML, privilege changes and destructive operations require explicit control and usually human approval.”</div></div>
+
+<div><p class="q">When should we not use AI?</p>
+<div class="answer">“If I can express correctness as an exact rule, I prefer deterministic engineering. Null checks, reconciliation, SCD logic, access control and financial formulas should not depend on an LLM. AI is useful where interpretation, unstructured information or multi-source contextual reasoning is the difficult part.”</div></div>
+
+<div><p class="q">How do you make an agent production-ready?</p>
+<div class="answer">“I treat it like another production system: least-privilege identity, bounded tools, trusted semantic/retrieval context, prompt-injection protection, human approval for consequential actions, a representative evaluation suite, full traces and cost/quality monitoring. I also define fallback behavior when the model is uncertain or a tool fails.”</div></div>
+
+<div><p class="q">How does AI improve DE productivity?</p>
+<div class="answer">“The biggest gain is reducing time spent discovering context—reading logs, tracing lineage, finding owners, searching runbooks and correlating incidents. I measure value through MTTR, investigation time, documentation coverage, review effort and successful task completion rather than counting generated SQL lines.”</div></div>
+
+<div><p class="q">What is the Principal-level difference?</p>
+<div class="answer">“A Senior engineer can build the agent. At Principal level I define the operating model: which decisions remain deterministic, which can use probabilistic reasoning, what authority the agent receives, how access is governed, how quality is evaluated, who owns failures and how we prove business value.”</div></div>
+
+</div>
+</section>
+
+<div class="section">32. AI Design Checklist</div>
+
+<section class="card wide" data-cat="system security" data-level="principal">
+<div style="padding:0 14px 12px">
+<label class="check"><input type="checkbox" class="practice" data-id="ai1">Clear business problem and measurable productivity/value metric</label>
+<label class="check"><input type="checkbox" class="practice" data-id="ai2">Why AI is needed rather than deterministic code</label>
+<label class="check"><input type="checkbox" class="practice" data-id="ai3">Trusted structured and unstructured context defined</label>
+<label class="check"><input type="checkbox" class="practice" data-id="ai4">Agent identity + least privilege</label>
+<label class="check"><input type="checkbox" class="practice" data-id="ai5">Tools are bounded and allow-listed</label>
+<label class="check"><input type="checkbox" class="practice" data-id="ai6">Human approval policy for consequential actions</label>
+<label class="check"><input type="checkbox" class="practice" data-id="ai7">Prompt injection / adversarial controls</label>
+<label class="check"><input type="checkbox" class="practice" data-id="ai8">Golden evaluation dataset + acceptance thresholds</label>
+<label class="check"><input type="checkbox" class="practice" data-id="ai9">Trace, feedback, latency, cost and quality monitoring</label>
+<label class="check"><input type="checkbox" class="practice" data-id="ai10">Fallback / fail-safe behavior</label>
+<label class="check"><input type="checkbox" class="practice" data-id="ai11">Audit trail for actions and approvals</label>
+<label class="check"><input type="checkbox" class="practice" data-id="ai12">Periodic review of autonomy level and business value</label>
+</div>
+</section>
+
+<div class="section">33. AI Learning Resources — Official Snowflake</div>
+
+<section class="card wide resource" data-cat="resources" data-level="lead">
+<div class="tbl"><table><thead><tr><th>Official resource</th><th>Learn</th></tr></thead><tbody>
+<tr><td><a href="https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents" target="_blank">Cortex Agents</a></td><td>Managed agent platform, tools and execution model.</td></tr>
+<tr><td><a href="https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-search/cortex-search-overview" target="_blank">Cortex Search</a></td><td>RAG / semantic + keyword retrieval.</td></tr>
+<tr><td><a href="https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-analyst" target="_blank">Cortex Analyst</a></td><td>Natural-language analytics over governed structured data.</td></tr>
+<tr><td><a href="https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql" target="_blank">Cortex AI Functions</a></td><td>AI functions callable from SQL/Python.</td></tr>
+<tr><td><a href="https://docs.snowflake.com/en/user-guide/views-semantic/overview" target="_blank">Semantic Views</a></td><td>Trusted business semantics for AI/analytics.</td></tr>
+<tr><td><a href="https://docs.snowflake.com/en/user-guide/snowflake-cortex/ai-observability" target="_blank">AI Observability</a></td><td>Traces, evaluation, cost and monitoring.</td></tr>
+<tr><td><a href="https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-ai-guardrails" target="_blank">Cortex AI Guardrails</a></td><td>Prompt-injection and jailbreak protection.</td></tr>
+<tr><td><a href="https://docs.snowflake.com/en/developer-guide/snowflake-ml/model-registry/overview" target="_blank">Model Registry</a></td><td>ML lifecycle, governance and model observability.</td></tr>
+</tbody></table></div>
+</section>
+
+<div class="footer">2026-focused Snowflake Lead DE guide • Practice checkboxes persist in your browser</div>
+</main>
+
+<script>
+const cards=[...document.querySelectorAll('.card')];
+const search=document.getElementById('search'), level=document.getElementById('level');
+let cat='all';
+function filter(){
+ const q=search.value.toLowerCase().trim(), l=level.value;
+ cards.forEach(c=>{
+  const okQ=!q||c.innerText.toLowerCase().includes(q);
+  const okC=cat==='all'||(c.dataset.cat||'').split(' ').includes(cat);
+  const okL=l==='all'||c.dataset.level===l;
+  c.classList.toggle('hidden',!(okQ&&okC&&okL));
+ });
+}
+search.oninput=filter; level.onchange=filter;
+document.querySelectorAll('.pill').forEach(p=>p.onclick=()=>{
+ document.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));
+ p.classList.add('active');cat=p.dataset.cat;filter();
+});
+function expandAll(v){document.querySelectorAll('.card:not(.hidden) details').forEach(d=>d.open=v)}
+function toggleAnswers(){document.body.classList.toggle('hideanswer')}
+document.querySelectorAll('.copy').forEach(b=>b.onclick=async()=>{
+ const c=b.closest('.card');const txt=[...c.querySelectorAll('code')].map(x=>x.innerText).join('\n\n');
+ await navigator.clipboard.writeText(txt);let old=b.textContent;b.textContent='Copied';setTimeout(()=>b.textContent=old,900);
+});
+const checks=[...document.querySelectorAll('.practice')];
+checks.forEach(x=>{
+ x.checked=localStorage.getItem('sf_'+x.dataset.id)==='1';
+ x.onchange=()=>{localStorage.setItem('sf_'+x.dataset.id,x.checked?'1':'0');progress();}
+});
+function progress(){
+ const done=checks.filter(x=>x.checked).length;
+ document.getElementById('progress').textContent=`Progress ${done}/${checks.length}`;
+}
+progress();
+</script>
+</body>
+</html>
