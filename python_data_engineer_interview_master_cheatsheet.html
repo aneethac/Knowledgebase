@@ -1,0 +1,1064 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Python Data Engineer Interview Master Cheat Sheet</title>
+<style>
+:root{
+  --bg:#08111f;--panel:#0f1b30;--panel2:#14243e;--code:#07101c;
+  --text:#eef6ff;--muted:#9fb0c8;--line:#263b5e;
+  --cyan:#67e8f9;--violet:#b9a7ff;--green:#86efac;--yellow:#fde68a;--red:#fda4af;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:linear-gradient(180deg,#07101d,#0a1425 35%,#08111f);color:var(--text);
+font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.45}
+header{position:sticky;top:0;z-index:20;background:rgba(8,17,31,.96);backdrop-filter:blur(12px);
+border-bottom:1px solid var(--line);padding:14px 18px}
+.headrow{max-width:1550px;margin:auto;display:flex;gap:14px;align-items:flex-start;justify-content:space-between}
+h1{font-size:clamp(1.25rem,2.3vw,2rem);margin:0}.sub{color:var(--muted);font-size:.9rem;margin-top:4px}
+.controls{max-width:1550px;margin:12px auto 0;display:flex;gap:8px;flex-wrap:wrap}
+input,select,button{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;
+padding:9px 11px;font:inherit}input{flex:1;min-width:260px}button{cursor:pointer}button:hover{border-color:var(--cyan)}
+main{max-width:1550px;margin:auto;padding:18px}
+.nav{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px}
+.pill{border:1px solid var(--line);background:var(--panel);color:var(--muted);padding:6px 9px;border-radius:999px;cursor:pointer;font-size:.83rem}
+.pill.active,.pill:hover{background:var(--cyan);color:#06121a;border-color:var(--cyan)}
+.banner{border:1px solid #334d76;background:linear-gradient(90deg,#0e223a,#181d39);padding:14px 16px;border-radius:12px;margin:12px 0 18px}
+.banner b{color:var(--cyan)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(365px,1fr));gap:14px}
+.card{background:linear-gradient(180deg,var(--panel),#0c1729);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 10px 30px #0002}
+.card.hidden{display:none}.wide{grid-column:1/-1}
+.ch{padding:13px 14px;display:flex;gap:10px;justify-content:space-between;align-items:flex-start}
+h2{font-size:1.05rem;margin:0}.desc{padding:0 14px 12px;color:var(--muted);font-size:.88rem}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}.tag{font-size:.69rem;background:#1d3152;color:#cfe1ff;padding:2px 6px;border-radius:999px}
+.source{background:#25351f;color:#caffba}.added{background:#392b55;color:#e0d4ff}.memorise{background:#473613;color:#ffeaa4}
+details{border-top:1px solid var(--line)}summary{padding:10px 14px;color:var(--cyan);font-weight:750;cursor:pointer}
+pre{margin:0 11px 11px;padding:11px;background:var(--code);border:1px solid #1d304e;border-radius:9px;overflow:auto}
+code{font-family:"SFMono-Regular",Consolas,monospace;font-size:.83rem;color:#dcecff}
+.tip,.warn,.answer{margin:0 11px 11px;padding:9px 10px;border-left:3px solid var(--green);background:#0f291d;border-radius:6px;font-size:.84rem}
+.warn{border-left-color:var(--yellow);background:#2a230f}.answer{border-left-color:var(--violet);background:#1e1935}
+.copy{padding:5px 8px;font-size:.72rem}.section{grid-column:1/-1;margin:18px 0 0;font-size:1.25rem;color:#fff}
+table{width:100%;border-collapse:collapse;font-size:.82rem}th,td{padding:7px 8px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}th{color:var(--cyan)}
+.tbl{padding:0 12px 12px;overflow:auto}.q{font-weight:800;color:#fff}.small{font-size:.8rem;color:var(--muted)}
+.check{display:flex;gap:8px;align-items:flex-start;margin:7px 0}.check input{min-width:auto;flex:none;margin-top:3px}
+.progress{font-size:.8rem;color:var(--green);white-space:nowrap}.practice{counter-reset:p}
+.practice .check span:before{counter-increment:p;content:counter(p) ". ";color:var(--cyan);font-weight:700}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px 12px}
+kbd{padding:1px 5px;border:1px solid #40557c;border-bottom-width:2px;border-radius:4px;background:#1b2a46}
+.footer{text-align:center;color:var(--muted);padding:28px 10px}.hideanswer .answer{display:none}
+@media(max-width:780px){.grid{grid-template-columns:1fr}.two{grid-template-columns:1fr}.headrow{display:block}.progress{margin-top:6px}input{min-width:100%}}
+</style>
+</head>
+<body>
+<header>
+ <div class="headrow">
+  <div><h1>Python for Data Engineers — Interview Master Cheat Sheet</h1>
+  <div class="sub">Core Python • strings/JSON • pandas & SQL mapping • DE reasoning • DSA patterns • 3 master practice scripts</div></div>
+  <div class="progress" id="progress">Practice progress: 0%</div>
+ </div>
+ <div class="controls">
+  <input id="search" placeholder="Search: anti join, defaultdict, lag, malformed JSON, sliding window...">
+  <select id="level"><option value="all">All levels</option><option>basic</option><option>intermediate</option><option>advanced</option></select>
+  <button onclick="toggleAnswers()">Interview answers</button>
+  <button onclick="expandAll(true)">Expand</button><button onclick="expandAll(false)">Collapse</button>
+ </div>
+</header>
+<main>
+<div class="nav" id="nav">
+ <span class="pill active" data-cat="all">All</span>
+ <span class="pill" data-cat="python">Core Python</span><span class="pill" data-cat="string">Strings</span>
+ <span class="pill" data-cat="json">JSON</span><span class="pill" data-cat="pandas">pandas</span>
+ <span class="pill" data-cat="sql">SQL ↔ pandas</span><span class="pill" data-cat="interview">Interview</span>
+ <span class="pill" data-cat="dsa">DSA Patterns</span><span class="pill" data-cat="scripts">3 Scripts</span>
+</div>
+
+<div class="banner"><b>How to use this:</b> do not try to memorise every pandas method. Memorise the small reusable patterns marked <b>MEMORISE</b>, then practise the 3 master scripts until you can type them without looking. For interviews, say the reasoning out loud: input → validation → transformation → complexity → scale → edge cases.</div>
+
+<div class="grid">
+
+<div class="section">1. Core Python Operations You Should Know Cold</div>
+
+<section class="card" data-cat="python" data-level="basic"><div class="ch"><div><h2>List — search, append, update, remove</h2><div class="tags"><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Essential syntax</summary><pre><code>nums = [10, 20, 30]
+
+nums[0]                 # read
+nums[-1]                # last
+nums[1:3]               # slice
+
+20 in nums              # search membership
+nums.index(20)          # position (ValueError if absent)
+
+nums.append(40)         # add ONE item
+nums.extend([50, 60])   # add MANY items
+nums.insert(1, 15)      # insert at index
+
+nums[0] = 99            # modify
+
+nums.remove(20)         # remove by value
+x = nums.pop()          # remove/return last
+x = nums.pop(1)         # remove/return index
+del nums[0]
+
+len(nums)
+nums.count(40)
+sorted(nums)            # new sorted list
+nums.sort()             # modifies original</code></pre></details>
+<div class="tip"><b>Remember:</b> <code>append(x)</code> adds one object. <code>extend([...])</code> adds each element. Strings are also objects, so <code>append("abc")</code> adds the whole string as one list element.</div></section>
+
+<section class="card" data-cat="python" data-level="basic"><div class="ch"><div><h2>Dictionary — lookup, count, group</h2><div class="tags"><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Essential syntax</summary><pre><code>d = {"a": 10}
+
+d["a"]                  # direct access
+d.get("missing", 0)     # safe access
+
+d["b"] = 20             # NEW key
+d["a"] = 99             # UPDATE existing key
+"a" in d
+
+for k, v in d.items():
+    print(k, v)
+
+# Frequency counter
+count = {}
+for x in ["a", "b", "a"]:
+    count[x] = count.get(x, 0) + 1
+
+# Dictionary value can be a LIST
+groups = {}
+for dept, emp in [("IT","A"), ("IT","B"), ("HR","C")]:
+    groups.setdefault(dept, []).append(emp)
+# {'IT': ['A','B'], 'HR':['C']}</code></pre></details>
+<div class="tip"><b>Mental model:</b> dictionary = labelled boxes. Key is the label; value can be a number, string, list, another dictionary, etc.</div></section>
+
+<section class="card" data-cat="python" data-level="basic"><div class="ch"><div><h2>Set — seen / duplicate / fast membership</h2><div class="tags"><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Essential syntax</summary><pre><code>seen = set()
+
+for x in [1,2,2,3]:
+    if x in seen:
+        print("duplicate", x)
+    seen.add(x)
+
+a = {1,2,3}; b = {3,4}
+a | b   # union
+a & b   # intersection
+a - b   # in a, not b</code></pre></details>
+<div class="tip">Use a set when you only care whether something exists. Use a dict when you need extra information such as count, index, object, or grouping.</div></section>
+
+<section class="card" data-cat="python" data-level="intermediate"><div class="ch"><div><h2>List of lists / list of dictionaries</h2></div><button class="copy">Copy</button></div>
+<details open><summary>Patterns</summary><pre><code># List of lists
+rows = [[1,"Alice",100], [2,"Bob",200]]
+rows[0][1]                       # Alice
+rows.append([3,"Cara",300])
+high = [r for r in rows if r[2] >= 150]
+
+# List of dictionaries — common for JSON/API data
+events = [
+    {"id":1, "type":"click"},
+    {"id":2, "type":"view"}
+]
+events[0]["type"]
+clicks = [e for e in events if e.get("type") == "click"]
+
+for e in events:
+    e["processed"] = True</code></pre></details></section>
+
+<section class="card" data-cat="python" data-level="basic"><div class="ch"><div><h2>Loops — the useful forms</h2><div class="tags"><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>for / enumerate / zip / while</summary><pre><code>for x in values:
+    print(x)
+
+for i, x in enumerate(values):
+    print(i, x)
+
+for i in range(0, 10, 2):
+    print(i)
+
+for name, age in zip(names, ages):
+    print(name, age)
+
+for k, v in d.items():
+    print(k, v)
+
+i = 0
+while i < len(values):
+    print(values[i])
+    i += 1</code></pre></details></section>
+
+<div class="section">2. Strings + JSON — From Your Atlassian PDFs</div>
+
+<section class="card" data-cat="string interview" data-level="basic"><div class="ch"><div><h2>High-frequency string operations</h2><div class="tags"><span class="tag source">FROM PDF</span><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<div class="desc">Your PDF specifically calls out strip, split, join, replace, starts/ends, find/index, case conversion, count and slicing.</div>
+<details open><summary>String toolkit</summary><pre><code>s = "  JIRA,Success,123  "
+
+s.strip()                  # "JIRA,Success,123"
+s.split(",")               # split string -> list
+",".join(["a","b","c"])     # list -> string
+s.replace("JIRA","Jira")
+s.startswith("  JIRA")
+s.endswith("123  ")
+s.find("Success")           # -1 if missing
+# s.index("missing")        # raises ValueError
+s.lower()
+s.upper()
+s.casefold()                # stronger Unicode normalization
+s.count(",")
+s[2:6]
+s[::-1]                     # reverse
+
+# Strings are immutable:
+name = "jira"
+name.upper()                # does NOT modify name
+name = name.upper()         # assign returned string</code></pre></details>
+<div class="tip">Interview default: prefer simple string methods. Your PDF advises avoiding regex unless it clearly simplifies the problem.</div></section>
+
+<section class="card" data-cat="json interview" data-level="intermediate"><div class="ch"><div><h2>JSON parsing + defensive access</h2><div class="tags"><span class="tag source">FROM PDF</span><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>JSON essentials</summary><pre><code>import json
+
+raw = '{"project":"JIRA","status":"SUCCESS"}'
+
+try:
+    event = json.loads(raw)       # JSON string -> Python dict/list
+except json.JSONDecodeError:
+    event = {}
+
+project = event.get("project", "unknown")
+status = event.get("status", "").lower()
+
+output = json.dumps(event, indent=2)  # Python -> JSON string
+
+# Nested safe access
+issues = data.get("payload", {}).get("issues", [])
+
+for issue in issues:              # issues is expected to be a list
+    issue_id = issue.get("id")</code></pre></details>
+<div class="tip">The PDF’s key interview habit: use <code>dict.get()</code>, guard missing/null fields, understand whether each nested value is a list or a dict, and safely skip malformed input.</div></section>
+
+<section class="card" data-cat="json interview" data-level="intermediate"><div class="ch"><div><h2>Common DE transformations on JSON/events</h2><div class="tags"><span class="tag source">FROM PDF</span><span class="tag added">EXPANDED</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Examples</summary><pre><code>from datetime import datetime, timezone
+
+# Normalize
+event_type = event.get("type", "").strip().lower()
+
+# Filter
+if event_type != "issue_created":
+    continue
+
+# Deduplicate
+event_id = event.get("id")
+if event_id in seen:
+    continue
+seen.add(event_id)
+
+# Timestamp ISO -> datetime / epoch
+dt = datetime.fromisoformat("2026-08-10T10:00:00+00:00")
+epoch = int(dt.timestamp())
+
+# Flatten nested object
+flat = {
+    "issue_id": event.get("id"),
+    "project_key": event.get("project", {}).get("key"),
+    "user_id": event.get("actor", {}).get("id")
+}</code></pre></details></section>
+
+<section class="card wide" data-cat="interview json" data-level="advanced"><div class="ch"><div><h2>What Atlassian-style Senior DE interviewers are testing</h2><div class="tags"><span class="tag source">FROM PDFs</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>They want to see</th><th>How you demonstrate it while coding</th></tr></thead><tbody>
+<tr><td>Clean, readable, defensive Python</td><td>Name variables clearly; small logical steps; safe parsing/access; avoid clever one-liners.</td></tr>
+<tr><td>Messy real-world input</td><td>Handle blank lines, whitespace, malformed JSON, missing keys and nulls.</td></tr>
+<tr><td>JSON / semi-structured data</td><td>Know loads/dumps, nested dict/list access and flattening.</td></tr>
+<tr><td>Performance awareness</td><td>State time and space complexity; prefer one pass when possible.</td></tr>
+<tr><td>Scale reasoning</td><td>Explain the equivalent Spark/DataFrame pipeline for millions/billions of rows.</td></tr>
+<tr><td>Communication</td><td>State assumptions, narrate edge cases, test verbally, discuss trade-offs and production implications.</td></tr>
+</tbody></table></div></section>
+
+<section class="card wide" data-cat="interview" data-level="advanced"><div class="ch"><div><h2>Senior follow-up questions — easy interview answers</h2><div class="tags"><span class="tag source">QUESTIONS FROM PDF</span><span class="tag added">ANSWERS EXPANDED</span></div></div></div>
+<div class="two">
+<div><p class="q">What happens with billions of rows?</p><div class="answer">I would not collect them into Python memory. I would move the same logic to Spark/Databricks: explicit schema with <code>from_json</code>, column expressions for cleaning/filtering, then distributed <code>groupBy</code>. I would partition appropriately, avoid Python UDFs where native Spark functions exist, and monitor skew/shuffle volume.</div></div>
+<div><p class="q">How do you handle schema evolution?</p><div class="answer">Keep an explicit contract for required fields, tolerate optional additive fields, quarantine incompatible records, version schemas where necessary, and add tests/metrics for unexpected fields or type changes. In a lakehouse, evolve intentionally rather than blindly accepting every change.</div></div>
+<div><p class="q">How do you monitor bad records?</p><div class="answer">Do not silently lose them. Count rejected records, capture reason codes, write bad payloads to a quarantine/dead-letter location where appropriate, and alert when error rate breaches a threshold.</div></div>
+<div><p class="q">How would you test this?</p><div class="answer">Unit-test valid, blank, malformed, missing-key, null, duplicate and mixed-case inputs; test exact aggregate output; then integration-test file/topic input and output contracts. Add scale/performance tests separately.</div></div>
+<div><p class="q">How do you make it idempotent?</p><div class="answer">Use a stable business/event key and deterministic transformations. On retries, merge/upsert or overwrite the intended partition/batch rather than blindly append duplicates. Record processed batch/checkpoint metadata.</div></div>
+<div><p class="q">Why is this O(n)?</p><div class="answer">Each input record is visited once. Dictionary/set lookup and update are average O(1), so the total is O(n). Space depends on how many distinct keys/IDs I retain.</div></div>
+</div></section>
+
+<section class="card wide" data-cat="interview" data-level="advanced"><div class="ch"><div><h2>Python → Spark/Databricks translation</h2><div class="tags"><span class="tag source">FROM PDF</span><span class="tag added">EXPANDED</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>Local Python</th><th>Spark / Databricks thinking</th></tr></thead><tbody>
+<tr><td>raw_lines</td><td>Spark DataFrame / streaming DataFrame</td></tr>
+<tr><td><code>json.loads(line)</code></td><td><code>from_json(col("value"), schema)</code></td></tr>
+<tr><td>for-loop</td><td><code>select</code>, <code>withColumn</code>, <code>filter</code></td></tr>
+<tr><td><code>dict.get()</code> cleanup</td><td>column expressions, <code>coalesce</code>, lower/trim</td></tr>
+<tr><td><code>defaultdict(int)</code></td><td><code>groupBy(...).count()</code> / aggregations</td></tr>
+<tr><td><code>seen</code> set</td><td><code>dropDuplicates(keys)</code> or stateful streaming dedupe with watermark</td></tr>
+<tr><td>bad record list</td><td>quarantine/dead-letter Delta table + quality metrics</td></tr>
+</tbody></table></div></section>
+
+<div class="section">3. pandas + SQL Mapping — High-frequency Data Engineer Operations</div>
+
+<section class="card wide" data-cat="pandas sql" data-level="basic"><div class="ch"><div><h2>SQL → pandas master lookup</h2><div class="tags"><span class="tag memorise">MEMORISE THE SHAPE, NOT EVERY DETAIL</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>SQL</th><th>pandas</th></tr></thead><tbody>
+<tr><td>SELECT a,b</td><td><code>df[["a","b"]]</code></td></tr>
+<tr><td>WHERE x &gt; 10</td><td><code>df[df["x"] &gt; 10]</code></td></tr>
+<tr><td>AND / OR / NOT</td><td><code>&amp;</code> / <code>|</code> / <code>~</code> with parentheses</td></tr>
+<tr><td>IN</td><td><code>df["x"].isin(vals)</code></td></tr>
+<tr><td>LIKE</td><td><code>df["x"].str.contains(..., na=False)</code></td></tr>
+<tr><td>DISTINCT</td><td><code>drop_duplicates()</code></td></tr>
+<tr><td>ORDER BY</td><td><code>sort_values(...)</code></td></tr>
+<tr><td>GROUP BY</td><td><code>groupby(...).agg(...)</code></td></tr>
+<tr><td>HAVING</td><td>aggregate then filter result</td></tr>
+<tr><td>MIN/MAX/SUM/AVG/COUNT</td><td><code>min/max/sum/mean/size</code></td></tr>
+<tr><td>INNER/LEFT/RIGHT/FULL JOIN</td><td><code>pd.merge(..., how="inner/left/right/outer")</code></td></tr>
+<tr><td>LEFT ANTI</td><td><code>left[~left.id.isin(right.id)]</code> or merge indicator</td></tr>
+<tr><td>LEFT SEMI</td><td><code>left[left.id.isin(right.id)]</code></td></tr>
+<tr><td>UNION ALL</td><td><code>pd.concat([a,b], ignore_index=True)</code></td></tr>
+<tr><td>UNION</td><td>concat + <code>drop_duplicates()</code></td></tr>
+<tr><td>CASE WHEN</td><td><code>np.where</code> / <code>np.select</code></td></tr>
+<tr><td>COALESCE</td><td><code>fillna</code></td></tr>
+<tr><td>IS NULL</td><td><code>isna()</code></td></tr>
+<tr><td>ROW_NUMBER</td><td>sort + <code>groupby().cumcount()+1</code></td></tr>
+<tr><td>RANK / DENSE_RANK</td><td><code>rank(method="min"/"dense")</code></td></tr>
+<tr><td>LAG / LEAD</td><td><code>groupby()[col].shift(1/-1)</code></td></tr>
+<tr><td>SUM OVER ORDER BY</td><td><code>groupby()[col].cumsum()</code></td></tr>
+<tr><td>AVG OVER PARTITION</td><td><code>groupby()[col].transform("mean")</code></td></tr>
+<tr><td>Rolling AVG</td><td><code>rolling(n).mean()</code></td></tr>
+<tr><td>PIVOT / UNPIVOT</td><td><code>pivot_table</code> / <code>melt</code></td></tr>
+<tr><td>EXPLODE</td><td><code>df.explode("array_col")</code></td></tr>
+</tbody></table></div></section>
+
+<section class="card" data-cat="pandas sql" data-level="intermediate"><div class="ch"><div><h2>GroupBy + window patterns</h2><div class="tags"><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Patterns</summary><pre><code># Aggregation: rows collapse
+g = df.groupby("dept", as_index=False).agg(
+    min_salary=("salary","min"),
+    max_salary=("salary","max"),
+    total=("salary","sum"),
+    avg=("salary","mean"),
+    cnt=("salary","size")
+)
+
+# Window: keep every original row
+df["dept_avg"] = df.groupby("dept")["salary"].transform("mean")
+
+# Row number
+df = df.sort_values(["dept","salary"], ascending=[True,False])
+df["rn"] = df.groupby("dept").cumcount() + 1
+
+# Lag / lead
+df["prev"] = df.groupby("id")["value"].shift(1)
+df["next"] = df.groupby("id")["value"].shift(-1)
+
+# Cumulative
+df["running_sum"] = df.groupby("id")["value"].cumsum()
+
+# Rolling
+df["roll3"] = df.groupby("id")["value"].transform(
+    lambda s: s.rolling(3, min_periods=1).mean()
+)</code></pre></details>
+<div class="tip"><b>Easy distinction:</b> <code>agg</code> reduces rows. <code>transform</code> returns a value aligned to every original row.</div></section>
+
+<section class="card" data-cat="pandas sql" data-level="intermediate"><div class="ch"><div><h2>Joins including anti/semi</h2><div class="tags"><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Patterns</summary><pre><code>pd.merge(left, right, on="id", how="inner")
+pd.merge(left, right, on="id", how="left")
+pd.merge(left, right, on="id", how="right")
+pd.merge(left, right, on="id", how="outer")
+
+# Anti = only left rows WITHOUT a right match
+anti = left[~left["id"].isin(right["id"])]
+
+# Semi = only left rows WITH a right match
+semi = left[left["id"].isin(right["id"])]
+
+# Different keys
+pd.merge(left, right,
+         left_on="customer_id",
+         right_on="id",
+         how="left")</code></pre></details>
+<div class="tip"><b>Interview sentence:</b> “An anti join answers ‘which left-side records have no match?’ A semi join answers ‘which left-side records have at least one match?’”</div></section>
+
+<section class="card" data-cat="pandas" data-level="intermediate"><div class="ch"><div><h2>Dates, nulls, strings, type safety</h2></div><button class="copy">Copy</button></div>
+<details open><summary>Common cleaning</summary><pre><code>df["ts"] = pd.to_datetime(df["ts"], errors="coerce")
+df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
+
+df["year"] = df["ts"].dt.year
+df["month"] = df["ts"].dt.month
+df["day"] = df["ts"].dt.day
+
+df["name"] = df["name"].str.strip().str.lower()
+
+df["x"] = df["x"].fillna(0)
+df = df[df["id"].notna()]
+
+df["id"] = df["id"].astype("Int64")</code></pre></details></section>
+
+<section class="card" data-cat="pandas" data-level="intermediate"><div class="ch"><div><h2>DE extras: dedupe, top-N, pivot, explode, JSON</h2></div><button class="copy">Copy</button></div>
+<details open><summary>Useful patterns</summary><pre><code># Dedupe latest
+df = df.sort_values("updated_at").drop_duplicates("id", keep="last")
+
+# Top 3 per group
+top3 = (
+    df.sort_values(["dept","salary"], ascending=[True,False])
+      .groupby("dept")
+      .head(3)
+)
+
+# Pivot
+p = df.pivot_table(index="dept", columns="year",
+                   values="sales", aggfunc="sum", fill_value=0)
+
+# Unpivot
+long = wide.melt(id_vars=["id"], var_name="metric", value_name="value")
+
+# Explode list column
+flat = df.explode("tags", ignore_index=True)
+
+# Nested JSON -> table
+flat_json = pd.json_normalize(data)</code></pre></details></section>
+
+<div class="section">4. DSA Patterns — Separate Interview Practice Section</div>
+
+<section class="card wide" data-cat="dsa" data-level="basic"><div class="ch"><div><h2>What to memorise vs what to understand</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Pattern</th><th>Recognition signal</th><th>Core structure</th><th>Typical complexity</th></tr></thead><tbody>
+<tr><td>Dictionary / frequency counter</td><td>count, frequency, lookup, pair, group</td><td><code>d[x] = d.get(x,0)+1</code></td><td>O(n)</td></tr>
+<tr><td>Set / seen</td><td>duplicate, unique, already visited</td><td><code>if x in seen</code></td><td>O(n)</td></tr>
+<tr><td>Two Sum / complement map</td><td>pair equals target</td><td>store value → index; look for <code>target-x</code></td><td>O(n)</td></tr>
+<tr><td>Two pointers</td><td>sorted array, pair, ends moving inward</td><td><code>left/right</code></td><td>O(n)</td></tr>
+<tr><td>Sliding window</td><td>contiguous subarray/string, max/min window</td><td>expand right, shrink left</td><td>O(n)</td></tr>
+<tr><td>Prefix sum</td><td>many range sums / cumulative totals</td><td><code>prefix[i+1]=prefix[i]+x</code></td><td>build O(n), query O(1)</td></tr>
+<tr><td>Stack</td><td>matching brackets, nested structure, undo</td><td><code>append / pop</code></td><td>O(n)</td></tr>
+<tr><td>Binary search</td><td>sorted data / monotonic answer</td><td><code>lo, hi, mid</code></td><td>O(log n)</td></tr>
+<tr><td>Intervals</td><td>overlapping time ranges</td><td>sort by start, merge</td><td>O(n log n)</td></tr>
+<tr><td>Heap / Top K</td><td>top/bottom K, streaming largest/smallest</td><td><code>heapq</code></td><td>O(n log k)</td></tr>
+</tbody></table></div></section>
+
+<section class="card" data-cat="dsa" data-level="basic"><div class="ch"><div><h2>1. Frequency dictionary</h2><div class="tags"><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Skeleton</summary><pre><code>count = {}
+for x in nums:
+    count[x] = count.get(x, 0) + 1</code></pre></details>
+<div class="tip">Use for: duplicates, anagram, most frequent item, vote counts, grouping pre-step.</div></section>
+
+<section class="card" data-cat="dsa" data-level="basic"><div class="ch"><div><h2>2. Two Sum complement map</h2><div class="tags"><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Skeleton</summary><pre><code>seen = {}
+
+for i, x in enumerate(nums):
+    needed = target - x
+
+    if needed in seen:
+        return [seen[needed], i]
+
+    seen[x] = i</code></pre></details>
+<div class="tip"><code>seen[x] = i</code> means: “I have seen value <b>x</b>; remember its index <b>i</b>.” Later, if that value is the complement you need, you can return its earlier index.</div></section>
+
+<section class="card" data-cat="dsa" data-level="intermediate"><div class="ch"><div><h2>3. Two pointers</h2><div class="tags"><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Skeleton</summary><pre><code>left, right = 0, len(nums) - 1
+
+while left < right:
+    total = nums[left] + nums[right]
+
+    if total == target:
+        return [left, right]
+    elif total < target:
+        left += 1
+    else:
+        right -= 1</code></pre></details>
+<div class="tip">This pair-sum version assumes the array is sorted.</div></section>
+
+<section class="card" data-cat="dsa" data-level="intermediate"><div class="ch"><div><h2>4. Sliding window</h2><div class="tags"><span class="tag memorise">MEMORISE SHAPE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Fixed-size example</summary><pre><code>k = 3
+window_sum = sum(nums[:k])
+best = window_sum
+
+for right in range(k, len(nums)):
+    window_sum += nums[right]
+    window_sum -= nums[right - k]
+    best = max(best, window_sum)</code></pre></details>
+<div class="tip">Signal word: <b>contiguous</b>. Instead of recomputing every window from scratch, add the new right item and remove the old left item.</div></section>
+
+<section class="card" data-cat="dsa" data-level="intermediate"><div class="ch"><div><h2>5. Prefix sum</h2><div class="tags"><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Skeleton</summary><pre><code>prefix = [0]
+
+for x in nums:
+    prefix.append(prefix[-1] + x)
+
+# inclusive range left..right
+range_sum = prefix[right + 1] - prefix[left]</code></pre></details></section>
+
+<section class="card" data-cat="dsa" data-level="intermediate"><div class="ch"><div><h2>6. Stack</h2><div class="tags"><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Valid parentheses</summary><pre><code>pairs = {")":"(", "]":"[", "}":"{"}
+stack = []
+
+for ch in s:
+    if ch in pairs.values():
+        stack.append(ch)
+    elif ch in pairs:
+        if not stack or stack.pop() != pairs[ch]:
+            return False
+
+return not stack</code></pre></details></section>
+
+<section class="card" data-cat="dsa" data-level="intermediate"><div class="ch"><div><h2>7. Binary search</h2><div class="tags"><span class="tag memorise">MEMORISE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Skeleton</summary><pre><code>lo, hi = 0, len(nums) - 1
+
+while lo <= hi:
+    mid = (lo + hi) // 2
+
+    if nums[mid] == target:
+        return mid
+    elif nums[mid] < target:
+        lo = mid + 1
+    else:
+        hi = mid - 1
+
+return -1</code></pre></details></section>
+
+<section class="card" data-cat="dsa" data-level="advanced"><div class="ch"><div><h2>8. Merge intervals</h2><div class="tags"><span class="tag memorise">MEMORISE SHAPE</span></div></div><button class="copy">Copy</button></div>
+<details open><summary>Skeleton</summary><pre><code>intervals.sort(key=lambda x: x[0])
+merged = []
+
+for start, end in intervals:
+    if not merged or start > merged[-1][1]:
+        merged.append([start, end])
+    else:
+        merged[-1][1] = max(merged[-1][1], end)
+
+return merged</code></pre></details></section>
+
+<section class="card" data-cat="dsa" data-level="advanced"><div class="ch"><div><h2>9. Heap / Top K</h2><button class="copy">Copy</button></div>
+<details open><summary>Pattern</summary><pre><code>import heapq
+
+# k largest
+largest = heapq.nlargest(k, nums)
+
+# Maintain k largest in streaming input
+heap = []
+for x in nums:
+    if len(heap) < k:
+        heapq.heappush(heap, x)
+    elif x > heap[0]:
+        heapq.heapreplace(heap, x)</code></pre></details></section>
+
+<section class="card wide practice" data-cat="dsa interview" data-level="basic"><div class="ch"><div><h2>Practice order — tick only when you can code without looking</h2></div></div>
+<div style="padding:0 14px 12px">
+<label class="check"><input type="checkbox" class="practicebox" data-id="freq"><span>Frequency count + first unique character</span></label>
+<label class="check"><input type="checkbox" class="practicebox" data-id="set"><span>Contains duplicate using set</span></label>
+<label class="check"><input type="checkbox" class="practicebox" data-id="twosum"><span>Two Sum using dictionary complement</span></label>
+<label class="check"><input type="checkbox" class="practicebox" data-id="pointer"><span>Pair sum in sorted list using two pointers</span></label>
+<label class="check"><input type="checkbox" class="practicebox" data-id="window"><span>Maximum sum of K contiguous values</span></label>
+<label class="check"><input type="checkbox" class="practicebox" data-id="prefix"><span>Range sum using prefix sums</span></label>
+<label class="check"><input type="checkbox" class="practicebox" data-id="stack"><span>Valid parentheses using stack</span></label>
+<label class="check"><input type="checkbox" class="practicebox" data-id="binary"><span>Binary search</span></label>
+<label class="check"><input type="checkbox" class="practicebox" data-id="intervals"><span>Merge intervals</span></label>
+<label class="check"><input type="checkbox" class="practicebox" data-id="topk"><span>Top K using heap</span></label>
+</div></section>
+
+<div class="section">5. The Only 3 Larger Scripts to Practise Repeatedly</div>
+
+<section class="card wide" data-cat="scripts json interview" data-level="intermediate"><div class="ch"><div><h2>MASTER SCRIPT 1 — Event-log / JSON processing</h2><div class="tags"><span class="tag source">BASED ON YOUR PDF EXAMPLE</span><span class="tag added">EXPANDED</span></div></div><button class="copy">Copy</button></div>
+<div class="desc">Covers string cleaning, JSON parsing, safe access, nested data, dedupe, aggregation, timestamps, bad-record metrics and JSON output.</div>
+<details open><summary>Full script</summary><pre><code>import json
+from collections import defaultdict
+from datetime import datetime
+
+def process_events(raw_lines):
+    project_counts = defaultdict(int)
+    seen_ids = set()
+    stats = {
+        "input": 0,
+        "blank": 0,
+        "malformed": 0,
+        "duplicate": 0,
+        "accepted": 0
+    }
+
+    for line in raw_lines:
+        stats["input"] += 1
+
+        # 1) Clean string
+        line = line.strip()
+        if not line:
+            stats["blank"] += 1
+            continue
+
+        # 2) Parse JSON safely
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            stats["malformed"] += 1
+            continue
+
+        # 3) Defensive field access + normalize
+        event_id = event.get("id")
+        event_type = event.get("type", "").strip().lower()
+        status = event.get("status", "").strip().lower()
+        project = event.get("project", "unknown")
+
+        # Nested JSON example
+        actor_id = event.get("actor", {}).get("id")
+
+        # 4) Deduplicate when ID exists
+        if event_id is not None:
+            if event_id in seen_ids:
+                stats["duplicate"] += 1
+                continue
+            seen_ids.add(event_id)
+
+        # 5) Filter business condition
+        if event_type != "issue_created" or status != "success":
+            continue
+
+        # 6) Optional timestamp parsing
+        created_at = event.get("created_at")
+        created_epoch = None
+        if created_at:
+            try:
+                created_epoch = int(
+                    datetime.fromisoformat(
+                        created_at.replace("Z", "+00:00")
+                    ).timestamp()
+                )
+            except ValueError:
+                pass
+
+        # 7) Aggregate
+        project_counts[project] += 1
+        stats["accepted"] += 1
+
+        # Variables show how flattened output could look
+        flattened_record = {
+            "id": event_id,
+            "project": project,
+            "actor_id": actor_id,
+            "created_epoch": created_epoch
+        }
+
+    # 8) Serialize final result
+    result = {
+        "project_counts": dict(project_counts),
+        "stats": stats
+    }
+    return json.dumps(result, indent=2)
+
+
+raw_input = [
+    '{"id":1,"type":"Issue_Created","status":"SUCCESS","project":"JIRA","actor":{"id":"u1"},"created_at":"2026-08-10T00:00:00Z"}',
+    '{"id":2,"type":"issue_created","status":"success","project":"CONFLUENCE","actor":{"id":"u2"}}',
+    '{"id":2,"type":"issue_created","status":"success","project":"CONFLUENCE"}',
+    '{"id":3,"type":"issue_updated","status":"success","project":"JIRA"}',
+    ' malformed json ',
+    ''
+]
+
+print(process_events(raw_input))</code></pre></details>
+<div class="tip"><b>Say aloud:</b> “This is one pass, so O(n) time. The set and dictionary use memory proportional to unique IDs/projects. At large scale I would translate this to Spark DataFrame transformations, explicit schema, distributed aggregation and a quarantine path for bad records.”</div></section>
+
+<section class="card wide" data-cat="scripts pandas sql" data-level="advanced"><div class="ch"><div><h2>MASTER SCRIPT 2 — pandas + SQL operations in one example</h2><div class="tags"><span class="tag memorise">PRACTISE</span></div></div><button class="copy">Copy</button></div>
+<div class="desc">One employee/payroll-style dataset to rehearse filtering, grouping, joins, union, CASE, nulls, rank, lag/lead, cumulative/rolling, top-N, pivot and explode.</div>
+<details open><summary>Full script</summary><pre><code>import pandas as pd
+import numpy as np
+
+employees = pd.DataFrame({
+    "emp_id": [1,2,3,4,5,6],
+    "dept_id": [10,10,20,20,30,30],
+    "name": [" Ana ","Bob","Cara","Dev","Eva","Finn"],
+    "salary": [100,200,150,250,np.nan,180],
+    "event_date": [
+        "2026-01-01","2026-01-02","2026-01-01",
+        "2026-01-03","2026-01-02","2026-01-04"
+    ],
+    "skills": [
+        ["python","sql"], ["sql"], ["spark","python"],
+        ["python"], ["excel"], ["spark","sql"]
+    ]
+})
+
+departments = pd.DataFrame({
+    "dept_id": [10,20,40],
+    "dept_name": ["Engineering","Analytics","Finance"]
+})
+
+# CLEAN / CAST
+employees["name"] = employees["name"].str.strip()
+employees["event_date"] = pd.to_datetime(
+    employees["event_date"], errors="coerce"
+)
+employees["salary"] = pd.to_numeric(
+    employees["salary"], errors="coerce"
+)
+
+# SELECT / WHERE / IN / ORDER BY
+selected = employees[["emp_id","name","salary"]]
+filtered = employees[
+    (employees["salary"] >= 150) &
+    (employees["dept_id"].isin([10,20]))
+]
+ordered = employees.sort_values(
+    ["dept_id","salary"],
+    ascending=[True,False]
+)
+
+# NULL / COALESCE
+employees["salary_filled"] = employees["salary"].fillna(0)
+
+# CASE WHEN
+employees["salary_band"] = np.select(
+    [
+        employees["salary_filled"] >= 220,
+        employees["salary_filled"] >= 150
+    ],
+    ["high","medium"],
+    default="low"
+)
+
+# GROUP BY + AGGREGATION
+dept_summary = (
+    employees.groupby("dept_id", as_index=False)
+    .agg(
+        min_salary=("salary_filled","min"),
+        max_salary=("salary_filled","max"),
+        total_salary=("salary_filled","sum"),
+        avg_salary=("salary_filled","mean"),
+        emp_count=("emp_id","size")
+    )
+)
+
+# HAVING avg > 120
+having = dept_summary[dept_summary["avg_salary"] > 120]
+
+# JOINS
+inner_join = employees.merge(
+    departments, on="dept_id", how="inner"
+)
+left_join = employees.merge(
+    departments, on="dept_id", how="left"
+)
+right_join = employees.merge(
+    departments, on="dept_id", how="right"
+)
+full_join = employees.merge(
+    departments, on="dept_id", how="outer"
+)
+
+# LEFT SEMI / ANTI
+semi = employees[
+    employees["dept_id"].isin(departments["dept_id"])
+]
+anti = employees[
+    ~employees["dept_id"].isin(departments["dept_id"])
+]
+
+# UNION ALL / UNION
+batch2 = employees.iloc[:2].copy()
+union_all = pd.concat(
+    [employees, batch2], ignore_index=True
+)
+union_distinct = union_all.drop_duplicates()
+
+# WINDOW PREPARATION
+w = employees.sort_values(
+    ["dept_id","salary_filled"],
+    ascending=[True,False]
+).copy()
+
+# ROW_NUMBER / RANK / DENSE_RANK
+w["row_number"] = w.groupby("dept_id").cumcount() + 1
+w["rank"] = (
+    w.groupby("dept_id")["salary_filled"]
+     .rank(method="min", ascending=False)
+)
+w["dense_rank"] = (
+    w.groupby("dept_id")["salary_filled"]
+     .rank(method="dense", ascending=False)
+)
+
+# AVG OVER (PARTITION BY dept)
+w["dept_avg"] = (
+    w.groupby("dept_id")["salary_filled"]
+     .transform("mean")
+)
+
+# Time-ordered LAG / LEAD / RUNNING / ROLLING
+t = employees.sort_values(
+    ["dept_id","event_date"]
+).copy()
+
+t["lag_salary"] = (
+    t.groupby("dept_id")["salary_filled"].shift(1)
+)
+t["lead_salary"] = (
+    t.groupby("dept_id")["salary_filled"].shift(-1)
+)
+t["running_sum"] = (
+    t.groupby("dept_id")["salary_filled"].cumsum()
+)
+t["rolling_avg_2"] = (
+    t.groupby("dept_id")["salary_filled"]
+     .transform(lambda s: s.rolling(2, min_periods=1).mean())
+)
+
+# TOP N PER GROUP
+top1_per_dept = (
+    employees.sort_values(
+        ["dept_id","salary_filled"],
+        ascending=[True,False]
+    )
+    .groupby("dept_id")
+    .head(1)
+)
+
+# EXPLODE nested list
+employee_skills = employees[
+    ["emp_id","skills"]
+].explode("skills", ignore_index=True)
+
+# PIVOT example
+pivot = employees.pivot_table(
+    index="dept_id",
+    columns="salary_band",
+    values="emp_id",
+    aggfunc="count",
+    fill_value=0
+)
+
+print(dept_summary)
+print(left_join)
+print(w[["emp_id","dept_id","salary_filled",
+         "row_number","rank","dense_rank","dept_avg"]])
+print(t[["emp_id","dept_id","event_date",
+         "lag_salary","lead_salary",
+         "running_sum","rolling_avg_2"]])</code></pre></details></section>
+
+<section class="card wide" data-cat="scripts dsa" data-level="intermediate"><div class="ch"><div><h2>MASTER SCRIPT 3 — DSA pattern workbook</h2><div class="tags"><span class="tag memorise">TYPE REPEATEDLY</span></div></div><button class="copy">Copy</button></div>
+<div class="desc">All core patterns in one runnable file. Practise one function at a time, then rewrite the whole file from memory.</div>
+<details open><summary>Full script</summary><pre><code>from collections import Counter
+import heapq
+
+
+# 1) FREQUENCY DICTIONARY
+def frequency(nums):
+    count = {}
+    for x in nums:
+        count[x] = count.get(x, 0) + 1
+    return count
+
+
+# 2) FIRST UNIQUE CHARACTER
+def first_unique(s):
+    count = Counter(s)
+    for i, ch in enumerate(s):
+        if count[ch] == 1:
+            return i
+    return -1
+
+
+# 3) CONTAINS DUPLICATE — SET
+def contains_duplicate(nums):
+    seen = set()
+    for x in nums:
+        if x in seen:
+            return True
+        seen.add(x)
+    return False
+
+
+# 4) TWO SUM — DICTIONARY
+def two_sum(nums, target):
+    seen = {}
+
+    for i, x in enumerate(nums):
+        needed = target - x
+
+        if needed in seen:
+            return [seen[needed], i]
+
+        seen[x] = i
+
+    return []
+
+
+# 5) TWO POINTERS — SORTED ARRAY
+def pair_sum_sorted(nums, target):
+    left, right = 0, len(nums) - 1
+
+    while left < right:
+        total = nums[left] + nums[right]
+
+        if total == target:
+            return [left, right]
+        elif total < target:
+            left += 1
+        else:
+            right -= 1
+
+    return []
+
+
+# 6) FIXED SLIDING WINDOW
+def max_sum_k(nums, k):
+    if k <= 0 or k > len(nums):
+        return None
+
+    window_sum = sum(nums[:k])
+    best = window_sum
+
+    for right in range(k, len(nums)):
+        window_sum += nums[right]
+        window_sum -= nums[right - k]
+        best = max(best, window_sum)
+
+    return best
+
+
+# 7) PREFIX SUM + RANGE QUERY
+def build_prefix(nums):
+    prefix = [0]
+    for x in nums:
+        prefix.append(prefix[-1] + x)
+    return prefix
+
+def range_sum(prefix, left, right):
+    return prefix[right + 1] - prefix[left]
+
+
+# 8) VALID PARENTHESES — STACK
+def valid_parentheses(s):
+    pairs = {")":"(", "]":"[", "}":"{"}
+    stack = []
+
+    for ch in s:
+        if ch in "([{":
+            stack.append(ch)
+        elif ch in pairs:
+            if not stack or stack.pop() != pairs[ch]:
+                return False
+
+    return not stack
+
+
+# 9) BINARY SEARCH
+def binary_search(nums, target):
+    lo, hi = 0, len(nums) - 1
+
+    while lo <= hi:
+        mid = (lo + hi) // 2
+
+        if nums[mid] == target:
+            return mid
+        elif nums[mid] < target:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+
+    return -1
+
+
+# 10) MERGE INTERVALS
+def merge_intervals(intervals):
+    intervals.sort(key=lambda x: x[0])
+    merged = []
+
+    for start, end in intervals:
+        if not merged or start > merged[-1][1]:
+            merged.append([start, end])
+        else:
+            merged[-1][1] = max(merged[-1][1], end)
+
+    return merged
+
+
+# 11) TOP K — HEAP
+def top_k(nums, k):
+    return heapq.nlargest(k, nums)
+
+
+if __name__ == "__main__":
+    nums = [1,2,2,3,4,4,4,5]
+
+    print("frequency:", frequency(nums))
+    print("first unique:", first_unique("leetcode"))
+    print("duplicate:", contains_duplicate(nums))
+    print("two sum:", two_sum([2,7,11,15], 9))
+    print("two pointers:", pair_sum_sorted([1,2,4,6,8], 10))
+    print("max sum k:", max_sum_k([2,1,5,1,3,2], 3))
+
+    p = build_prefix([10,20,30,40])
+    print("range sum 1..3:", range_sum(p, 1, 3))
+
+    print("valid brackets:", valid_parentheses("([]{})"))
+    print("binary search:", binary_search([1,3,5,7,9], 7))
+    print("intervals:", merge_intervals(
+        [[1,3],[2,6],[8,10],[9,12]]
+    ))
+    print("top k:", top_k([4,1,8,2,9,3], 3))</code></pre></details></section>
+
+<div class="section">6. Interview Memory Cards</div>
+
+<section class="card" data-cat="interview dsa" data-level="basic"><div class="ch"><div><h2>Big-O you actually need</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Operation</th><th>Typical</th></tr></thead><tbody>
+<tr><td>List index access</td><td>O(1)</td></tr><tr><td>List search <code>x in list</code></td><td>O(n)</td></tr>
+<tr><td>Dict/set lookup</td><td>Average O(1)</td></tr><tr><td>Single loop</td><td>O(n)</td></tr>
+<tr><td>Nested full loops</td><td>Usually O(n²)</td></tr><tr><td>Sorting</td><td>O(n log n)</td></tr>
+<tr><td>Binary search</td><td>O(log n)</td></tr></tbody></table></div>
+<div class="tip">Before optimising, identify what repeats. Replacing a repeated list search with a set/dict lookup often changes an O(n²) solution to O(n).</div></section>
+
+<section class="card" data-cat="interview" data-level="advanced"><div class="ch"><div><h2>Senior coding narration template</h2><div class="tags"><span class="tag source">PDF THEMES</span><span class="tag added">EASY SCRIPT</span></div></div></div>
+<div style="padding:0 14px 12px">
+<ol>
+<li><b>Assumption:</b> “I’ll assume each line should contain one JSON event and malformed records should not stop the batch.”</li>
+<li><b>Approach:</b> “I’ll process each record once, normalize fields, safely parse, filter, then aggregate.”</li>
+<li><b>Edge cases:</b> “I’m considering blanks, malformed JSON, missing fields, nulls and duplicates.”</li>
+<li><b>Complexity:</b> “This is O(n) time; memory is O(k) for distinct keys/IDs retained.”</li>
+<li><b>Production:</b> “I’d capture rejected-record metrics rather than silently discard them.”</li>
+<li><b>Scale:</b> “For large volume I’d express this with Spark native transformations and distributed groupBy.”</li>
+</ol></div></section>
+
+<section class="card" data-cat="interview" data-level="advanced"><div class="ch"><div><h2>Pro tips I added</h2><div class="tags"><span class="tag added">ADDED</span></div></div></div>
+<div style="padding:0 14px 12px">
+<ul>
+<li>Prefer <b>native/vectorized</b> pandas or Spark expressions over row-wise Python loops/UDFs for large tabular data.</li>
+<li>For joins, validate key uniqueness before assuming one-to-one; accidental many-to-many joins can explode row counts.</li>
+<li>For dedupe, define <b>which record wins</b> (latest timestamp, highest version, trusted source) rather than calling <code>drop_duplicates()</code> blindly.</li>
+<li>For windows, always make the ordering explicit before lag, lead, cumulative or rolling calculations.</li>
+<li>For production ingestion, distinguish <b>bad syntax</b>, <b>bad schema</b>, and <b>bad business data</b>; they usually need different handling.</li>
+<li>In an interview, a clear O(n) solution with tests and explanation is usually stronger than an obscure “clever” solution.</li>
+</ul></div></section>
+
+</div>
+<div class="footer">Built as a self-contained file. Your practice checkboxes are saved locally in the browser.</div>
+</main>
+
+<script>
+const cards=[...document.querySelectorAll('.card')];
+const search=document.getElementById('search');
+const level=document.getElementById('level');
+let cat='all';
+function apply(){
+ const q=search.value.trim().toLowerCase(), lvl=level.value;
+ cards.forEach(c=>{
+   const okQ=!q||c.innerText.toLowerCase().includes(q);
+   const okC=cat==='all'||(c.dataset.cat||'').split(' ').includes(cat);
+   const okL=lvl==='all'||c.dataset.level===lvl;
+   c.classList.toggle('hidden',!(okQ&&okC&&okL));
+ });
+}
+search.oninput=apply;level.onchange=apply;
+document.querySelectorAll('.pill').forEach(p=>p.onclick=()=>{
+ document.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));
+ p.classList.add('active');cat=p.dataset.cat;apply();
+});
+function expandAll(v){document.querySelectorAll('.card:not(.hidden) details').forEach(d=>d.open=v)}
+function toggleAnswers(){document.body.classList.toggle('hideanswer')}
+document.querySelectorAll('.copy').forEach(b=>b.onclick=async()=>{
+ const c=b.closest('.card');const txt=[...c.querySelectorAll('code')].map(x=>x.innerText).join('\n\n');
+ await navigator.clipboard.writeText(txt);const o=b.textContent;b.textContent='Copied';setTimeout(()=>b.textContent=o,1000);
+});
+const boxes=[...document.querySelectorAll('.practicebox')];
+boxes.forEach(b=>{
+ b.checked=localStorage.getItem('practice_'+b.dataset.id)==='1';
+ b.onchange=()=>{localStorage.setItem('practice_'+b.dataset.id,b.checked?'1':'0');updateProgress();}
+});
+function updateProgress(){
+ const done=boxes.filter(b=>b.checked).length;
+ const pct=boxes.length?Math.round(done*100/boxes.length):0;
+ document.getElementById('progress').textContent=`Practice progress: ${pct}% (${done}/${boxes.length})`;
+}
+updateProgress();
+</script>
+</body>
+</html>
