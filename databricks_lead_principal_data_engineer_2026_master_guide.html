@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Databricks Lead & Principal Data Engineer Master Guide — 2026</title>
+<style>
+:root{--bg:#07101d;--p:#101b2e;--p2:#15243c;--t:#eef5ff;--m:#9fb2ca;--l:#29415f;--c:#67e8f9;--g:#86efac;--y:#fde68a;--v:#c4b5fd;--r:#fda4af}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:linear-gradient(#06101d,#091729 45%,#07101d);color:var(--t);font:15px/1.48 Inter,system-ui,Segoe UI,Arial}
+header{position:sticky;top:0;z-index:20;background:#07101df5;border-bottom:1px solid var(--l);padding:14px}.wrap,main{max-width:1600px;margin:auto}
+h1{margin:0;font-size:clamp(1.3rem,2.5vw,2.15rem)}.sub,.desc{color:var(--m)}.controls,.nav,.tags{display:flex;gap:7px;flex-wrap:wrap}.controls{margin-top:10px}
+input,select,button,.pill{background:var(--p);color:var(--t);border:1px solid var(--l);border-radius:9px;padding:8px 10px}input{flex:1;min-width:280px}button,.pill{cursor:pointer}.pill{font-size:.8rem}.pill.active,.pill:hover{background:var(--c);color:#04101a}
+main{padding:18px}.banner{padding:14px;border:1px solid #3a5575;border-radius:12px;background:linear-gradient(90deg,#10283d,#201d3f);margin:12px 0 18px}.banner b{color:var(--c)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(370px,1fr));gap:14px}.section{grid-column:1/-1;font-size:1.25rem;margin:20px 0 0}
+.card{background:linear-gradient(var(--p),#0c1727);border:1px solid var(--l);border-radius:14px;overflow:hidden}.card.hidden{display:none}.wide{grid-column:1/-1}
+.ch{display:flex;justify-content:space-between;gap:10px;padding:13px 14px}.ch h2{margin:0;font-size:1.04rem}.desc{padding:0 14px 11px;font-size:.88rem}
+.tag{font-size:.68rem;border-radius:999px;padding:2px 6px;background:#213753}.must{background:#493817;color:#fff0aa}.new{background:#3c294f}.principal{background:#183d31;color:#caffdf}.cert{background:#3c2432;color:#ffd6e7}
+details{border-top:1px solid var(--l)}summary{cursor:pointer;padding:10px 14px;color:var(--c);font-weight:750}pre,.flow{background:#07101b;border:1px solid #20344e;border-radius:9px;padding:11px;margin:0 11px 11px;overflow:auto}
+code,.flow{font-family:Consolas,monospace;font-size:.82rem}.flow{white-space:pre-wrap;color:#d9ebff}.tip,.answer,.warn{margin:0 11px 11px;padding:9px 10px;border-radius:6px;background:#11291f;border-left:3px solid var(--g);font-size:.84rem}.answer{background:#1e1935;border-left-color:var(--v)}.warn{background:#30270e;border-left-color:var(--y)}
+.tbl{padding:0 12px 12px;overflow:auto}table{border-collapse:collapse;width:100%;font-size:.81rem}th,td{border-bottom:1px solid var(--l);padding:7px 8px;text-align:left;vertical-align:top}th{color:var(--c)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px 12px}.q{font-weight:800}.check{display:flex;gap:8px;margin:7px 0}.check input{min-width:auto;flex:none}.progress{color:var(--g)}a{color:var(--c)}.hideanswer .answer{display:none}.footer{text-align:center;color:var(--m);padding:28px}
+@media(max-width:800px){.grid,.two{grid-template-columns:1fr}input{min-width:100%}}
+</style></head>
+<body>
+<header><div class="wrap"><h1>Databricks Lead & Principal Data Engineer — 2026 Master Guide</h1>
+<div class="sub">Current platform + Data Engineer Professional certification + system design + operations + AI/agentic DE + interview delivery</div>
+<div class="controls"><input id="search" placeholder="Search: AUTO CDC, Lakeflow Connect, liquid clustering, AQE, skew, Unity Catalog, Agent...">
+<select id="level"><option value="all">All depth</option><option value="foundation">Foundation</option><option value="lead">Lead</option><option value="principal">Principal</option><option value="cert">Certification</option></select>
+<button onclick="toggleAnswers()">Interview answers</button><button onclick="expandAll(true)">Expand</button><button onclick="expandAll(false)">Collapse</button><span class="progress" id="progress"></span></div></div></header>
+<main>
+<div class="nav">
+<span class="pill active" data-cat="all">All</span><span class="pill" data-cat="architecture">Architecture</span><span class="pill" data-cat="ingest">Ingestion</span>
+<span class="pill" data-cat="spark">Spark</span><span class="pill" data-cat="delta">Delta</span><span class="pill" data-cat="stream">Streaming</span>
+<span class="pill" data-cat="govern">Unity Catalog</span><span class="pill" data-cat="perf">Performance</span><span class="pill" data-cat="devops">DevOps</span>
+<span class="pill" data-cat="ops">Operations</span><span class="pill" data-cat="system">System Design</span><span class="pill" data-cat="ai">AI/Agents</span>
+<span class="pill" data-cat="cert">Certification</span><span class="pill" data-cat="resources">Resources</span>
+</div>
+<div class="banner"><b>How to use this:</b> do not memorize product names alone. For every capability be able to say: <b>problem → choice → implementation → trade-off → failure/recovery → monitoring → cost</b>. That is the difference between a platform user and a Lead/Principal engineer.</div>
+<div class="grid">
+
+<div class="section">1. Platform Mental Model & 2026 Terminology</div>
+<section class="card wide" data-cat="architecture cert" data-level="foundation"><div class="ch"><div><h2>Databricks Data Intelligence Platform map</h2><div class="tags"><span class="tag must">START HERE</span></div></div></div>
+<div class="flow">Sources
+  ↓
+Lakeflow Connect / Auto Loader / Kafka / APIs / Federation
+  ↓
+Lakeflow Spark Declarative Pipelines / Structured Streaming / Spark SQL-PySpark
+  ↓
+Delta Lake + Managed Iceberg
+  ↓
+Unity Catalog governance + lineage + sharing
+  ↓
+Databricks SQL / BI / ML / AI / Apps
+  ↓
+Lakeflow Jobs + Declarative Automation Bundles + CI/CD
+  ↓
+System Tables + Lakeflow event logs + monitoring + FinOps</div></section>
+
+<section class="card wide" data-cat="architecture" data-level="lead"><div class="ch"><div><h2>Old name → current name cheat sheet</h2><div class="tags"><span class="tag new">2026 IMPORTANT</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>You may know</th><th>Current direction</th><th>Meaning</th></tr></thead><tbody>
+<tr><td>Delta Live Tables / DLT</td><td><b>Lakeflow Spark Declarative Pipelines</b></td><td>Declarative batch/streaming pipelines, streaming tables, materialized views, flows, expectations, CDC.</td></tr>
+<tr><td>Databricks Workflows</td><td><b>Lakeflow Jobs</b></td><td>Orchestration for notebooks, SQL, pipelines, Python, dbt, conditionals and dependencies.</td></tr>
+<tr><td>Databricks Asset Bundles</td><td><b>Declarative Automation Bundles</b></td><td>IaC-style definition, validation, deployment and execution of Databricks resources.</td></tr>
+<tr><td>APPLY CHANGES INTO</td><td><b>AUTO CDC</b></td><td>Declarative CDC processing including SCD1/SCD2.</td></tr>
+<tr><td>Manual OPTIMIZE/VACUUM focus</td><td><b>Predictive Optimization + liquid clustering</b></td><td>Increasingly managed table maintenance and adaptive layout.</td></tr>
+<tr><td>External Hive metastore focus</td><td><b>Unity Catalog</b></td><td>Central governance plane for data, AI, lineage, sharing and access.</td></tr>
+</tbody></table></div></section>
+
+<div class="section">2. Ingestion — How to Choose</div>
+<section class="card wide" data-cat="ingest system" data-level="lead"><div class="ch"><div><h2>Ingestion decision matrix</h2><div class="tags"><span class="tag must">INTERVIEW CORE</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>Source/use case</th><th>Preferred starting point</th><th>Why / trade-off</th></tr></thead><tbody>
+<tr><td>Supported SaaS/database source</td><td><b>Lakeflow Connect managed connector</b></td><td>Start with most managed layer: source auth, CDC, retries/schema handling where supported. Drop lower only when requirements demand it.</td></tr>
+<tr><td>Files continuously arriving S3/ADLS/GCS</td><td><b>Auto Loader + Lakeflow pipelines</b></td><td>Incremental discovery, checkpoint/state management, schema evolution; file-events mode preferred for many workloads.</td></tr>
+<tr><td>Historical cloud files / backfill</td><td><b>Auto Loader</b> or batch COPY/read</td><td>Auto Loader scales to very large file counts and can process existing files.</td></tr>
+<tr><td>Kafka/Kinesis/PubSub/Pulsar</td><td><b>Managed connector or Structured Streaming/Lakeflow</b></td><td>Choice depends on required customization, event-time/state semantics and connector support.</td></tr>
+<tr><td>Operational DB but no need to copy yet</td><td><b>Lakehouse Federation</b></td><td>Query external DB through UC for exploration/low-volume federation; do not confuse with ingestion.</td></tr>
+<tr><td>REST API/custom source</td><td><b>Custom extraction + raw landing</b></td><td>Own pagination, rate limits, cursor/checkpoint, retries, idempotency and schema contracts.</td></tr>
+</tbody></table></div></section>
+
+<section class="card" data-cat="ingest stream" data-level="lead"><div class="ch"><div><h2>Auto Loader</h2><button class="copy">Copy</button></div>
+<details open><summary>Core PySpark</summary><pre><code>df = (
+  spark.readStream
+    .format("cloudFiles")
+    .option("cloudFiles.format", "json")
+    .option("cloudFiles.schemaLocation", schema_path)
+    .load(source_path)
+)
+
+(df.writeStream
+   .option("checkpointLocation", checkpoint)
+   .trigger(availableNow=True)
+   .toTable("bronze.events"))</code></pre></details>
+<div class="tip">Know: directory listing vs file-events/notification mode, schema inference/evolution, rescued data, checkpoints, exactly-once file ingestion semantics, out-of-order files, backfill.</div></section>
+
+<section class="card" data-cat="ingest" data-level="lead"><div class="ch"><div><h2>Lakeflow Connect</h2><div class="tags"><span class="tag new">CURRENT PLATFORM</span></div></div></div>
+<div class="desc">Managed ingestion for enterprise apps, databases, cloud storage and message buses. Principal rule: start with the most managed layer that meets requirements; custom-build only for a concrete gap.</div>
+<div class="answer">“I treat connector ownership as a lifecycle cost. If Lakeflow Connect supports the source, CDC semantics, latency and schema behavior I need, I prefer it to maintaining custom extractors. Custom code is justified by unsupported semantics, transformations at ingress, latency or networking constraints.”</div></section>
+
+<section class="card" data-cat="ingest system" data-level="principal"><div class="ch"><div><h2>API ingestion pattern</h2></div></div>
+<div class="flow">REST API → Auth → Pagination → Rate limit/backoff → Cursor/checkpoint
+→ Raw JSON/Delta → Normalize → DQ → Curated
+
+Persist:
+request/batch id • cursor • response status • extracted rows
+source timestamp • ingestion timestamp • retry count</div>
+<div class="tip">Never make the LLM or notebook state your checkpoint. Operational extraction state must be durable and deterministic.</div></section>
+
+<div class="section">3. Delta Lake — Production Knowledge</div>
+<section class="card wide" data-cat="delta cert" data-level="lead"><div class="ch"><div><h2>Delta capabilities you must be able to explain</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>ACID + transaction log</td><td>Reliable concurrent table operations and atomic commits over object storage.</td></tr>
+<tr><td>MERGE</td><td>Upsert/delete/change application; SCD and CDC building block.</td></tr>
+<tr><td>Schema enforcement/evolution</td><td>Control expected schema and additive/type evolution deliberately.</td></tr>
+<tr><td>Time Travel</td><td>Query historical table versions/timestamps within retention.</td></tr>
+<tr><td>Change Data Feed</td><td>Expose row-level changes between table versions for downstream incremental processing.</td></tr>
+<tr><td>Deletion vectors</td><td>Represent row changes without immediately rewriting whole data files; improve mutation performance.</td></tr>
+<tr><td>Liquid clustering</td><td>Flexible/adaptive data layout; preferred over rigid partition/Z-order thinking for many new tables.</td></tr>
+<tr><td>Predictive optimization</td><td>Managed maintenance based on UC-observed access patterns.</td></tr>
+<tr><td>Clone</td><td>Useful for dev/test and controlled data copies; know shallow/deep concepts where applicable.</td></tr>
+</tbody></table></div></section>
+
+<section class="card" data-cat="delta transform" data-level="lead"><div class="ch"><div><h2>MERGE / SCD1</h2><button class="copy">Copy</button></div>
+<details open><summary>SQL</summary><pre><code>MERGE INTO silver.customer t
+USING staged_customer s
+ON t.customer_id = s.customer_id
+WHEN MATCHED THEN UPDATE SET *
+WHEN NOT MATCHED THEN INSERT *;</code></pre></details></section>
+
+<section class="card" data-cat="delta stream" data-level="lead"><div class="ch"><div><h2>AUTO CDC / SCD</h2><div class="tags"><span class="tag new">2026</span></div></div></div>
+<div class="desc">Lakeflow pipelines can declaratively apply CDC and materialize SCD Type 1 or Type 2. Current 2026 releases also add areas such as bitemporal tracking and liquid clustering support on AUTO CDC targets.</div>
+<div class="answer">“For source CDC I preserve sequencing and delete semantics in bronze, then use AUTO CDC when its declarative semantics match the requirement. I use custom MERGE only when business-specific conflict, temporal or replay behavior exceeds the managed pattern.”</div></section>
+
+<section class="card" data-cat="delta perf" data-level="principal"><div class="ch"><div><h2>Partitioning vs liquid clustering</h2></div></div>
+<div class="answer">“I no longer default to physical date partitioning just because the table is large. I consider access patterns, cardinality, data growth and platform-managed optimization. Liquid clustering reduces the rigidity and maintenance burden of static partition/Z-order strategies and can evolve with query patterns.”</div></section>
+
+<div class="section">4. Spark Internals & Performance — Interview Depth</div>
+<section class="card wide" data-cat="spark perf cert" data-level="lead"><div class="ch"><div><h2>Spark execution mental model</h2><div class="tags"><span class="tag must">MEMORISE</span></div></div></div>
+<div class="flow">Action
+ ↓
+Logical Plan
+ ↓ Catalyst Optimizer
+Physical Plan
+ ↓
+Job
+ ↓
+Stages separated by shuffle boundaries
+ ↓
+Tasks ≈ partitions
+ ↓
+Executors execute tasks</div>
+<div class="tip">Lead interviews expect you to connect a slow workload to shuffle, partition count, skew, joins, spill, serialization and file layout—not simply say “increase cluster size.”</div></section>
+
+<section class="card wide" data-cat="spark perf" data-level="lead"><div class="ch"><div><h2>Performance diagnosis matrix</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Symptom</th><th>Likely cause</th><th>Actions</th></tr></thead><tbody>
+<tr><td>Huge shuffle</td><td>Wide join/group/window</td><td>Filter/project early, improve join strategy, repartition only intentionally.</td></tr>
+<tr><td>One/few tasks very slow</td><td>Data skew</td><td>AQE/skew join, salt extreme keys, pre-aggregate, isolate hot keys.</td></tr>
+<tr><td>Disk spill</td><td>Working set > execution memory</td><td>Reduce shuffle/data, improve partitions/join, then consider larger compute.</td></tr>
+<tr><td>Too many tiny tasks/files</td><td>Overpartitioning/small files</td><td>Managed optimization, compaction, fewer output partitions.</td></tr>
+<tr><td>OOM driver</td><td>collect/toPandas/large metadata</td><td>Keep distributed, limit collection, reduce driver-side state.</td></tr>
+<tr><td>Broadcast failure</td><td>“Small” side not actually small</td><td>Check statistics/size; avoid forced broadcast blindly.</td></tr>
+<tr><td>Slow Python UDF</td><td>Python serialization boundary</td><td>Prefer built-in Spark SQL functions; vectorized/Pandas UDF only if necessary.</td></tr>
+</tbody></table></div></section>
+
+<section class="card" data-cat="spark perf" data-level="lead"><div class="ch"><div><h2>Join selection</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>Broadcast hash join</td><td>Small side can be replicated; removes large shuffle.</td></tr>
+<tr><td>Sort merge join</td><td>Common large-large equi-join; shuffle + sort.</td></tr>
+<tr><td>Shuffle hash</td><td>Can be chosen for suitable partitioned inputs.</td></tr>
+<tr><td>AQE</td><td>Runtime plan adaptation: coalesce partitions, skew handling, join strategy changes.</td></tr>
+</tbody></table></div></section>
+
+<section class="card" data-cat="spark perf" data-level="principal"><div class="ch"><div><h2>Repartition vs coalesce</h2></div></div>
+<div class="answer">“I use repartition when I intentionally need a new distribution, accepting a shuffle. I use coalesce mainly to reduce partitions without a full redistribution when that is safe. I avoid using either as a ritual; partition count should follow data volume and downstream work.”</div></section>
+
+<section class="card" data-cat="spark perf" data-level="lead"><div class="ch"><div><h2>Photon + serverless</h2></div></div>
+<div class="desc">Know when Databricks-native optimized execution/serverless reduces operational tuning, but still understand Spark/data-layout fundamentals because poor joins, skew and excessive scans remain architecture problems.</div></section>
+
+<div class="section">5. Structured Streaming</div>
+<section class="card wide" data-cat="stream cert" data-level="lead"><div class="ch"><div><h2>Streaming concepts</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>Micro-batch</td><td>Default Structured Streaming execution model for many workloads.</td></tr>
+<tr><td>Checkpoint</td><td>Progress/state for restart/recovery. Treat as pipeline state.</td></tr>
+<tr><td>Event time</td><td>When event occurred at source.</td></tr>
+<tr><td>Processing time</td><td>When platform processes it.</td></tr>
+<tr><td>Watermark</td><td>Bound state and define tolerated lateness for stateful operations.</td></tr>
+<tr><td>Stateful operations</td><td>Aggregations, dedupe, stream-stream joins; require state management.</td></tr>
+<tr><td>Trigger AvailableNow</td><td>Incremental batch: process all currently available data then stop.</td></tr>
+<tr><td>foreachBatch</td><td>Custom logic per micro-batch; use carefully for idempotency.</td></tr>
+</tbody></table></div></section>
+
+<section class="card" data-cat="stream system" data-level="principal"><div class="ch"><div><h2>Streaming design answer</h2></div></div>
+<div class="answer">“I start with the freshness SLA. Streaming adds state, checkpoint, late-data and operational complexity, so I do not choose it for a five-minute business requirement if incremental batch satisfies the SLA. When streaming is justified, I define event-time semantics, allowed lateness, deduplication key, replay boundary and state growth before implementation.”</div></section>
+
+<div class="section">6. Lakeflow Spark Declarative Pipelines</div>
+<section class="card wide" data-cat="stream ingest architecture" data-level="lead"><div class="ch"><div><h2>Objects and concepts</h2><div class="tags"><span class="tag new">CURRENT</span></div></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>Streaming table</td><td>Incrementally processes streaming/input changes.</td></tr>
+<tr><td>Materialized view</td><td>Materialized query result maintained by the pipeline.</td></tr>
+<tr><td>Flow</td><td>Defines data flow into streaming targets/sinks.</td></tr>
+<tr><td>Expectations</td><td>Data-quality assertions with operational behavior/metrics.</td></tr>
+<tr><td>AUTO CDC</td><td>Declarative CDC / SCD processing.</td></tr>
+<tr><td>Event log</td><td>Operational telemetry for pipeline updates, DQ and execution.</td></tr>
+<tr><td>Serverless pipelines</td><td>Managed compute; 2026 platform adds more autoscaling/standalone declarative capabilities.</td></tr>
+</tbody></table></div></section>
+
+<section class="card" data-cat="stream system" data-level="principal"><div class="ch"><div><h2>Lakeflow pipeline vs raw Structured Streaming</h2></div></div>
+<div class="answer">“I prefer declarative pipelines for common production patterns because they reduce orchestration, quality and state-management code. I drop to Structured Streaming when I need an API or stateful behavior the declarative layer cannot express. Managed-first is an operating-model decision, not a loss of engineering rigor.”</div></section>
+
+<div class="section">7. Medallion, Modeling & Load Modes</div>
+<section class="card wide" data-cat="architecture system delta" data-level="lead"><div class="ch"><div><h2>Bronze → Silver → Gold responsibilities</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Layer</th><th>Responsibility</th></tr></thead><tbody>
+<tr><td>Bronze</td><td>Source fidelity, replayable raw history, ingestion metadata, minimal assumptions.</td></tr>
+<tr><td>Silver</td><td>Typed, deduplicated, conformed, CDC/SCD, quality rules, reusable domain entities.</td></tr>
+<tr><td>Gold</td><td>Consumer-facing facts/dimensions, aggregates, semantic products, ML/BI features.</td></tr>
+</tbody></table></div></section>
+
+<section class="card wide" data-cat="system delta" data-level="lead"><div class="ch"><div><h2>Full vs append vs watermark vs CDC</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Mode</th><th>Use</th><th>Trade-off</th></tr></thead><tbody>
+<tr><td>Full</td><td>Small/reference data or deterministic rebuild</td><td>Simple; expensive at scale.</td></tr>
+<tr><td>Append</td><td>Immutable facts/events</td><td>Simple/replayable; handle duplicates/late data.</td></tr>
+<tr><td>Watermark/high-watermark</td><td>Reliable updated_at/sequence</td><td>Efficient; overlap needed for late/out-of-order updates.</td></tr>
+<tr><td>CDC</td><td>Mutable operational data incl. deletes</td><td>Efficient/complete; sequencing/recovery more complex.</td></tr>
+<tr><td>SCD2</td><td>Historical attribute state</td><td>Auditability; temporal logic/storage complexity.</td></tr>
+</tbody></table></div></section>
+
+<div class="section">8. Unity Catalog, Security & Governance</div>
+<section class="card wide" data-cat="govern cert" data-level="lead"><div class="ch"><div><h2>Unity Catalog mental model</h2><div class="tags"><span class="tag must">CORE</span></div></div></div>
+<div class="flow">Metastore
+  ↓
+Catalog
+  ↓
+Schema
+  ↓
+Tables / Views / Volumes / Functions / Models / Connections ...
+
+Governance:
+RBAC • ownership • lineage • row filters • column masks
+tags/classification • audit • sharing • external locations/credentials</div></section>
+
+<section class="card" data-cat="govern" data-level="lead"><div class="ch"><div><h2>Managed vs external tables</h2></div></div>
+<div class="answer">“For data whose lifecycle Databricks owns, I prefer UC managed tables because platform-managed storage and predictive optimization reduce operational burden. I choose external tables when external ownership/interoperability/lifecycle requirements justify it.”</div></section>
+
+<section class="card" data-cat="govern system" data-level="principal"><div class="ch"><div><h2>Federation vs ingest</h2></div></div>
+<div class="answer">“Federation is useful when I need governed access without copying data, especially for exploration or lower-volume queries. For high-throughput repeated analytics, SLAs, historical replay or source isolation, I usually ingest/materialize because federation retains dependency on the operational source.”</div></section>
+
+<section class="card" data-cat="govern" data-level="lead"><div class="ch"><div><h2>Delta Sharing / Open Sharing</h2></div></div>
+<div class="desc">Know provider/recipient concepts, governed sharing without building copy pipelines, and why sharing is preferable to proliferating extracts for many cross-organization use cases.</div></section>
+
+<div class="section">9. Iceberg & Open Lakehouse</div>
+<section class="card wide" data-cat="architecture delta" data-level="principal"><div class="ch"><div><h2>Delta vs Iceberg decision</h2></div></div>
+<div class="answer">“I treat open table format as an interoperability decision. If Databricks owns the lifecycle and most workloads execute on Databricks, Delta managed tables are the simplest path. If multiple engines need a shared open table asset or an Iceberg estate already exists, managed/external Iceberg capabilities become relevant. I do not choose a format because it is fashionable.”</div></section>
+
+<div class="section">10. Compute & Cost</div>
+<section class="card wide" data-cat="perf system cert" data-level="lead"><div class="ch"><div><h2>Compute selection</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Workload</th><th>Typical choice</th><th>Reason</th></tr></thead><tbody>
+<tr><td>SQL/BI</td><td>Serverless SQL warehouse where available</td><td>Managed scaling, fast startup, workload isolation.</td></tr>
+<tr><td>Production ETL</td><td>Serverless jobs/pipelines or job compute</td><td>Ephemeral workload compute, policy-controlled.</td></tr>
+<tr><td>Interactive engineering</td><td>Serverless notebook or interactive compute</td><td>Developer iteration.</td></tr>
+<tr><td>Special library/hardware/runtime need</td><td>Classic/job compute</td><td>More explicit control when serverless constraints matter.</td></tr>
+</tbody></table></div></section>
+
+<section class="card" data-cat="perf" data-level="principal"><div class="ch"><div><h2>Cost optimization order</h2></div></div>
+<div class="flow">Remove unnecessary work
+ ↓
+Reduce data scanned/shuffled
+ ↓
+Use managed table optimization
+ ↓
+Fix skew/join/state problems
+ ↓
+Select correct compute mode
+ ↓
+Right-size concurrency/resources
+ ↓
+Tune schedule/frequency
+ ↓
+Measure cost per pipeline/domain/output</div></section>
+
+<div class="section">11. Requirements → Production → Operations</div>
+<section class="card wide" data-cat="system ops" data-level="principal"><div class="ch"><div><h2>Full delivery lifecycle</h2><div class="tags"><span class="tag principal">PRINCIPAL CORE</span></div></div></div>
+<div class="flow">Business outcome
+ ↓
+Functional + non-functional requirements
+ ↓
+Source profiling / change semantics
+ ↓
+Freshness SLA • SLO • RPO • RTO
+ ↓
+Architecture / build-vs-managed decision
+ ↓
+Data contract + grain + model
+ ↓
+Ingestion + replay strategy
+ ↓
+Transform / CDC / SCD / late-data design
+ ↓
+Security / UC / DQ
+ ↓
+Compute / performance / cost
+ ↓
+CI/CD / environments / IaC
+ ↓
+Testing / reconciliation / backfill test
+ ↓
+Production release
+ ↓
+Metrics / alerts / runbook
+ ↓
+Incident / recovery / reconciliation
+ ↓
+FinOps + capacity + continuous improvement</div></section>
+
+<section class="card wide" data-cat="system" data-level="lead"><div class="ch"><div><h2>Requirement questions</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>Business</td><td>Who consumes it? What decision fails if data is late/wrong?</td></tr>
+<tr><td>Volume</td><td>GB/TB/day, events/sec, file count, growth, peak.</td></tr>
+<tr><td>Latency</td><td>Seconds/minutes/hour/day—and is it contractual?</td></tr>
+<tr><td>Source semantics</td><td>Append/update/delete, CDC, ordering, timestamp reliability.</td></tr>
+<tr><td>History</td><td>Current state vs event history vs SCD2/bitemporal.</td></tr>
+<tr><td>Recovery</td><td>How far can we replay? Source retention? RPO/RTO?</td></tr>
+<tr><td>Security</td><td>PII, residency, masking, consumer entitlements.</td></tr>
+<tr><td>Cost</td><td>Budget, workload ownership, showback/chargeback.</td></tr>
+</tbody></table></div></section>
+
+<div class="section">12. Reference System Designs</div>
+<section class="card wide" data-cat="system ingest" data-level="lead"><div class="ch"><div><h2>A. Batch / incremental lakehouse</h2></div></div>
+<div class="flow">DB/SaaS/Files → Lakeflow Connect / landing
+→ Bronze Delta → Silver DQ + dedupe + CDC
+→ Gold facts/dims → SQL/BI/ML
+→ Lakeflow Jobs
+→ SLA/DQ/cost monitoring</div></section>
+
+<section class="card wide" data-cat="system stream" data-level="lead"><div class="ch"><div><h2>B. Event streaming</h2></div></div>
+<div class="flow">Kafka/Event Bus → Lakeflow/Structured Streaming
+→ Bronze events + checkpoint
+→ watermark/dedupe/stateful transforms
+→ Silver streaming tables
+→ real-time Gold aggregates
+→ consumers
+
+Monitor: input rate • processing rate • lag • state size
+late records • duplicates • checkpoint failures • freshness</div></section>
+
+<section class="card wide" data-cat="system ingest" data-level="principal"><div class="ch"><div><h2>C. Database CDC</h2></div></div>
+<div class="flow">Operational DB → WAL/CDC → Lakeflow Connect/CDC tool
+→ Bronze change log (I/U/D + sequence + source time)
+→ AUTO CDC / MERGE
+→ Current state + SCD history
+→ reconciliation + lag + delete monitoring</div></section>
+
+<section class="card wide" data-cat="system ingest" data-level="principal"><div class="ch"><div><h2>D. API ingestion</h2></div></div>
+<div class="flow">REST API → extractor → durable cursor/checkpoint
+→ Raw JSON Delta → normalization → Silver → Gold
+Retries + backoff + rate limits + dead-letter/quarantine
+→ API health + row-count + freshness metrics</div></section>
+
+<section class="card wide" data-cat="system architecture" data-level="principal"><div class="ch"><div><h2>E. Federation-first discovery → materialized production</h2></div></div>
+<div class="flow">External DB → Lakehouse Federation → profile/prototype
+                         ↓ when workload justifies
+                 Managed ingestion → Delta
+                 → production transformations</div>
+<div class="tip">Useful Principal pattern: avoid copying first, but materialize once source load, repeated scans, history, SLA or isolation justify it.</div></section>
+
+<div class="section">13. Data Quality & Contracts</div>
+<section class="card wide" data-cat="ops system" data-level="lead"><div class="ch"><div><h2>Quality by layer</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>Ingress</td><td>File/API validity, schema, source counts, malformed/quarantine, duplicate delivery.</td></tr>
+<tr><td>Bronze→Silver</td><td>not-null, uniqueness, domain, dedupe, referential rules, CDC sequencing.</td></tr>
+<tr><td>Gold</td><td>Business reconciliation, metric invariants, freshness, SCD correctness.</td></tr>
+<tr><td>Contract</td><td>Schema + semantics + owner + SLA + compatibility policy.</td></tr>
+</tbody></table></div></section>
+
+<section class="card" data-cat="ops stream" data-level="lead"><div class="ch"><div><h2>Lakeflow expectations</h2></div></div>
+<div class="desc">Use declarative expectations where they fit, but distinguish between <b>observe</b>, <b>drop/quarantine</b>, and <b>fail</b> behavior based on business criticality. DQ policy is a product decision, not only syntax.</div></section>
+
+<div class="section">14. CI/CD, Git & Platform Engineering</div>
+<section class="card wide" data-cat="devops cert" data-level="lead"><div class="ch"><div><h2>Declarative Automation Bundles lifecycle</h2><div class="tags"><span class="tag new">RENAMED</span></div></div></div>
+<div class="flow">Git branch → code + YAML resources
+→ databricks bundle validate
+→ CI tests/lint
+→ deploy DEV target
+→ integration tests
+→ PR approval
+→ deploy TEST/PROD target
+→ run job/pipeline
+→ monitor deployment + workload</div>
+<div class="tip">Bundles are the deployment packaging/IaC mechanism; they do not replace Git, your CI engine, Terraform for all infrastructure, or runtime orchestration semantics.</div></section>
+
+<section class="card" data-cat="devops" data-level="principal"><div class="ch"><div><h2>Terraform vs Bundles</h2></div></div>
+<div class="answer">“I use Terraform for account/workspace/platform infrastructure and long-lived governance objects where appropriate; Bundles for application/workload resources and code deployment. The exact boundary depends on team ownership, but I avoid two tools owning the same resource.”</div></section>
+
+<section class="card" data-cat="devops" data-level="lead"><div class="ch"><div><h2>Production identities</h2></div></div>
+<div class="desc">Use service principals/workload identity rather than personal credentials. Separate deploy identity from runtime identity when useful. Apply least privilege through UC and workspace/resource permissions.</div></section>
+
+<div class="section">15. Observability, Metrics & Operations</div>
+<section class="card wide" data-cat="ops perf" data-level="principal"><div class="ch"><div><h2>Operational metrics</h2></div></div>
+<div class="tbl"><table><thead><tr><th>Category</th><th>Metrics</th></tr></thead><tbody>
+<tr><td>Freshness</td><td>source event → Bronze → Silver → Gold availability</td></tr>
+<tr><td>Completeness</td><td>source vs target counts/sums/checksums</td></tr>
+<tr><td>DQ</td><td>null/duplicate/invalid/orphan/expectation rates</td></tr>
+<tr><td>Streaming</td><td>input rows/sec, processed rows/sec, backlog/lag, state growth, late data</td></tr>
+<tr><td>Performance</td><td>duration, shuffle, spill, skew, task distribution, scan/file metrics</td></tr>
+<tr><td>Reliability</td><td>success %, retries, failures, MTTR, backfill frequency</td></tr>
+<tr><td>Cost</td><td>DBUs/cost by job/team/domain, serverless spend, idle/inefficient compute</td></tr>
+<tr><td>Usage</td><td>consumer queries, unused Gold products, stale assets</td></tr>
+</tbody></table></div></section>
+
+<section class="card" data-cat="ops" data-level="lead"><div class="ch"><div><h2>Observability sources</h2></div></div>
+<div class="desc">Know Lakeflow pipeline event logs, job run history, Spark UI/query profile, Unity Catalog lineage, system tables for billing/audit/query/job/compute domains, and external enterprise monitoring integrations.</div></section>
+
+<section class="card wide" data-cat="ops system" data-level="principal"><div class="ch"><div><h2>Incident flow</h2></div></div>
+<div class="flow">Alert → assess business impact → contain bad publication
+→ classify source/schema/data/code/compute/security issue
+→ diagnose from evidence → retry/replay/backfill
+→ reconcile → restore downstream freshness
+→ communicate → RCA → prevention</div>
+<div class="answer">“A green rerun is not recovery. Recovery is complete after data reconciliation, downstream freshness confirmation and consumer impact closure.”</div></section>
+
+<section class="card" data-cat="ops" data-level="principal"><div class="ch"><div><h2>Backfill & idempotency</h2></div></div>
+<div class="answer">“I design the normal pipeline so historical ranges can be replayed using the same transformation semantics. Stable keys, deterministic transforms and MERGE/replace-range semantics make retries idempotent. A separate emergency-only backfill code path is a smell.”</div></section>
+
+<div class="section">16. AI & Agentic Data Engineering on Databricks</div>
+<section class="card wide" data-cat="ai system" data-level="principal"><div class="ch"><div><h2>Responsible autonomy model</h2><div class="tags"><span class="tag principal">DO NOT SKIP</span></div></div></div>
+<div class="tbl"><table><thead><tr><th>Level</th><th>DE use</th><th>Authority</th></tr></thead><tbody>
+<tr><td>Assist</td><td>Explain Spark plan, generate tests/docs, summarize incident</td><td>Read only</td></tr>
+<tr><td>Recommend</td><td>Suggest skew fix, DQ root cause, lineage impact, cost candidate</td><td>Human decides</td></tr>
+<tr><td>Approve-to-act</td><td>Backfill, retry, config change, PR</td><td>Human gate</td></tr>
+<tr><td>Constrained autonomous</td><td>Known transient retry, diagnostics, reversible quarantine</td><td>Policy + narrow tool + audit</td></tr>
+</tbody></table></div>
+<div class="answer">“Probabilistic reasoning does not imply production authority. I give an agent broad diagnostic visibility but narrow, bounded execution tools.”</div></section>
+
+<section class="card wide" data-cat="ai architecture" data-level="lead"><div class="ch"><div><h2>Current Databricks AI stack for a DE</h2><div class="tags"><span class="tag new">2026</span></div></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>AI Playground / foundation models</td><td>Prototype prompts/models and application behavior.</td></tr>
+<tr><td>Vector Search / retrieval</td><td>RAG over runbooks, data contracts, incidents, documentation.</td></tr>
+<tr><td>AI agents / Custom Agents</td><td>Tool-calling and multi-agent applications.</td></tr>
+<tr><td>MLflow 3 Tracing</td><td>Capture agent/LLM/tool traces in dev and production.</td></tr>
+<tr><td>MLflow GenAI Evaluation</td><td>Evaluation datasets, scorers/LLM judges, human feedback, regression gates.</td></tr>
+<tr><td>Unity AI Gateway</td><td>Govern models, agents, MCP/tool traffic, permissions, guardrails, routing and usage.</td></tr>
+<tr><td>Unity Catalog</td><td>Govern data, models, functions/tools and trace storage.</td></tr>
+</tbody></table></div></section>
+
+<section class="card wide" data-cat="ai system" data-level="principal"><div class="ch"><div><h2>Project: Databricks Data Platform Operations Agent</h2><div class="tags"><span class="tag must">PORTFOLIO</span></div></div></div>
+<div class="flow">System Tables + Lakeflow event logs + DQ metrics + UC lineage
+                     │
+Runbooks / RCAs / standards → Vector retrieval
+                     │
+                     ↓
+                DE Operations Agent
+                     ↓
+“Why is product_feature_gold late?”
+                     ↓
+Agent gathers:
+job/pipeline failure • source freshness • schema change
+DQ failures • recent deployment • Spark/query evidence
+lineage blast radius • historical incident
+                     ↓
+Diagnosis + evidence + remediation plan
+                     ↓
+[Create incident] [Request retry] [Request backfill]
+                     ↓
+Approval/policy → bounded tool → reconciliation
+                     ↓
+MLflow trace + evaluation + human feedback</div></section>
+
+<section class="card wide" data-cat="ai system" data-level="principal"><div class="ch"><div><h2>Where NOT to use AI</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td>Null/unique/reconciliation rules</td><td>Deterministic SQL/DQ.</td></tr>
+<tr><td>SCD/CDC application</td><td>Deterministic AUTO CDC/MERGE.</td></tr>
+<tr><td>Authorization</td><td>Unity Catalog RBAC/policies.</td></tr>
+<tr><td>Financial/regulatory calculations</td><td>Version-controlled deterministic code.</td></tr>
+<tr><td>DROP/TRUNCATE/privilege grants/PII export</td><td>Controlled privileged workflow; never free-form agent authority.</td></tr>
+</tbody></table></div></section>
+
+<section class="card" data-cat="ai" data-level="principal"><div class="ch"><div><h2>AI production evaluation</h2></div></div>
+<div class="desc">Build a golden evaluation dataset from real DE questions/incidents. Measure groundedness/correctness, retrieval quality, tool choice/arguments, safety, refusal behavior, latency, cost, human approval/rejection and MTTR impact. Use MLflow 3 tracing + GenAI evaluation and reuse scorers for production monitoring.</div></section>
+
+<div class="section">17. Lead vs Principal Interview Delivery</div>
+<section class="card wide" data-cat="system" data-level="principal"><div class="ch"><div><h2>Same problem, different level</h2></div></div>
+<div class="two">
+<div><p class="q">Lead/Senior</p><div class="answer">“I would use Auto Loader into Bronze, validate schema and duplicates, MERGE changes into Silver, build Gold marts, orchestrate with Lakeflow Jobs and monitor freshness, DQ and failures.”</div></div>
+<div><p class="q">Principal</p><div class="answer">“I first validate the required freshness and source change semantics. I choose the highest managed ingestion layer that satisfies them, preserve replayable source state, define contracts and ownership at domain boundaries, and design idempotency/recovery before scheduling. I isolate compute and cost by workload, enforce governance through UC, and define measurable SLOs and operational ownership before production.”</div></div>
+</div></section>
+
+<section class="card wide" data-cat="system" data-level="principal"><div class="ch"><div><h2>Principal answer framework</h2><div class="tags"><span class="tag must">PRACTISE</span></div></div></div>
+<div class="flow">1. Clarify business outcome + SLA
+2. Quantify volume/growth/concurrency
+3. Understand source/change semantics
+4. State architecture and why
+5. Explain alternatives rejected
+6. Explain correctness/replay/idempotency
+7. Explain security/governance
+8. Explain performance/cost
+9. Explain monitoring/operations
+10. Explain evolution/scale/failure trade-offs</div></section>
+
+<div class="section">18. Certification — Data Engineer Professional</div>
+<section class="card wide" data-cat="cert" data-level="cert"><div class="ch"><div><h2>Current exam target</h2><div class="tags"><span class="tag cert">PROFESSIONAL</span></div></div></div>
+<div class="desc">The latest official Professional exam guide I found remains the November 30, 2025 version: 59 scored multiple-choice questions, 120 minutes. It covers production-grade Databricks DE: Delta Lake, Unity Catalog, Auto Loader, Lakeflow Spark Declarative Pipelines, compute/serverless, Lakeflow Jobs, medallion, Spark/Python/SQL, streaming, observability, governance, performance, CLI/REST and deployment bundles. Check the official certification page again shortly before booking because Databricks updates exam guides.</div></section>
+
+<section class="card wide" data-cat="cert" data-level="cert"><div class="ch"><div><h2>Professional readiness checklist</h2></div></div>
+<div style="padding:0 14px 12px">
+<label class="check"><input class="practice" data-id="d1" type="checkbox">Spark execution, joins, shuffle, skew, AQE, partitions, UDF trade-offs</label>
+<label class="check"><input class="practice" data-id="d2" type="checkbox">Delta ACID, MERGE, CDF, schema, time travel, clone, maintenance</label>
+<label class="check"><input class="practice" data-id="d3" type="checkbox">Auto Loader production patterns + schema/checkpoint/backfill</label>
+<label class="check"><input class="practice" data-id="d4" type="checkbox">Structured Streaming event time, watermark, state, checkpoints, triggers</label>
+<label class="check"><input class="practice" data-id="d5" type="checkbox">Lakeflow pipelines, flows, expectations, AUTO CDC, streaming tables/MVs</label>
+<label class="check"><input class="practice" data-id="d6" type="checkbox">Lakeflow Jobs dependencies, parameters, retries, notifications</label>
+<label class="check"><input class="practice" data-id="d7" type="checkbox">Unity Catalog privileges, managed/external, lineage, policies, sharing</label>
+<label class="check"><input class="practice" data-id="d8" type="checkbox">Compute/serverless/Photon/performance/cost decisions</label>
+<label class="check"><input class="practice" data-id="d9" type="checkbox">CLI, REST, Declarative Automation Bundles, CI/CD</label>
+<label class="check"><input class="practice" data-id="d10" type="checkbox">Monitoring, event logs, system tables, incident/recovery</label>
+</div></section>
+
+<div class="section">19. Practical Project</div>
+<section class="card wide" data-cat="system ingest stream delta govern devops ops ai" data-level="principal"><div class="ch"><div><h2>Retail Data Intelligence Platform</h2><div class="tags"><span class="tag must">BUILD END TO END</span></div></div></div>
+<div class="flow">Postgres Orders CDC ── Lakeflow Connect ─┐
+Kafka Clickstream ─ Structured Streaming ─┼→ BRONZE
+ADLS Supplier Files ─ Auto Loader ─────────┘
+                           ↓
+                 Lakeflow Declarative Pipeline
+                 expectations + dedupe + AUTO CDC
+                           ↓
+                         SILVER
+              customer SCD2 • orders • events
+                           ↓
+                           GOLD
+             sales marts • customer 360 • features
+                           ↓
+        SQL/BI • ML • AI Agent • Delta Sharing
+
+Cross-cutting:
+Unity Catalog • row/column policy • lineage • managed tables
+Liquid clustering • predictive optimization • serverless/Photon
+Lakeflow Jobs • Declarative Automation Bundles • CI/CD
+System tables • DQ/SLO dashboard • cost attribution • runbooks
+MLflow 3 agent tracing/evaluation • Unity AI Gateway</div></section>
+
+<div class="section">20. Resources</div>
+<section class="card wide" data-cat="resources" data-level="foundation"><div class="ch"><div><h2>Official resources to prioritize</h2></div></div>
+<div class="tbl"><table><tbody>
+<tr><td><a target="_blank" href="https://docs.databricks.com/aws/en/ingestion/overview">Lakeflow Connect</a></td><td>Managed-first ingestion choices.</td></tr>
+<tr><td><a target="_blank" href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader">Auto Loader</a></td><td>File ingestion, file events, schema, production operation.</td></tr>
+<tr><td><a target="_blank" href="https://docs.databricks.com/aws/en/ldp/concepts/pipelines">Lakeflow Spark Declarative Pipelines</a></td><td>Current declarative pipeline concepts.</td></tr>
+<tr><td><a target="_blank" href="https://docs.databricks.com/aws/en/lakehouse-architecture/reference">Reference Architectures</a></td><td>Platform, federation, sharing and architecture diagrams.</td></tr>
+<tr><td><a target="_blank" href="https://docs.databricks.com/aws/en/lakehouse-architecture/performance-efficiency/best-practices">Performance best practices</a></td><td>Managed tables, predictive optimization, performance efficiency.</td></tr>
+<tr><td><a target="_blank" href="https://docs.databricks.com/aws/en/agents">AI Agents</a></td><td>Current agent development lifecycle.</td></tr>
+<tr><td><a target="_blank" href="https://docs.databricks.com/aws/en/mlflow3/genai/eval-monitor">MLflow 3 GenAI Evaluation</a></td><td>Tracing, evaluation datasets, judges, production monitoring.</td></tr>
+<tr><td><a target="_blank" href="https://docs.databricks.com/aws/en/ai-gateway/">Unity AI Gateway</a></td><td>Enterprise AI governance and runtime controls.</td></tr>
+<tr><td><a target="_blank" href="https://www.databricks.com/learn/certification/data-engineer-professional">Data Engineer Professional</a></td><td>Certification page; verify current exam guide before exam.</td></tr>
+<tr><td><a target="_blank" href="https://github.com/databricks">Databricks GitHub</a></td><td>Official samples, SDKs and reference projects.</td></tr>
+</tbody></table></div></section>
+
+<div class="section">21. 30-Day Principal-Focused Practice Plan</div>
+<section class="card wide" data-cat="resources cert" data-level="foundation"><div class="tbl"><table><thead><tr><th>Days</th><th>Focus</th><th>Deliverable</th></tr></thead><tbody>
+<tr><td>1–4</td><td>Spark internals + Delta</td><td>Explain 5 slow-job scenarios and tune them.</td></tr>
+<tr><td>5–8</td><td>Auto Loader + Lakeflow Connect + APIs</td><td>Three ingestion designs with trade-offs.</td></tr>
+<tr><td>9–12</td><td>Streaming + Lakeflow pipelines + AUTO CDC</td><td>CDC/SCD2 + late-data project.</td></tr>
+<tr><td>13–15</td><td>Unity Catalog + sharing + federation</td><td>Security/governance architecture.</td></tr>
+<tr><td>16–18</td><td>Compute/performance/cost</td><td>Benchmark and diagnosis notebook.</td></tr>
+<tr><td>19–21</td><td>Jobs + Bundles + CI/CD + Terraform boundary</td><td>Deploy project dev→prod.</td></tr>
+<tr><td>22–24</td><td>Observability/replay/incidents</td><td>SLO dashboard + runbook + backfill drill.</td></tr>
+<tr><td>25–27</td><td>AI operations agent</td><td>Read-only diagnosis agent + evaluation dataset.</td></tr>
+<tr><td>28–30</td><td>Professional cert + system design speaking</td><td>6 mock designs + 10 Principal answers without notes.</td></tr>
+</tbody></table></div></section>
+
+</div><div class="footer">Databricks Lead/Principal Data Engineer Master Guide • 2026 • progress stored locally</div>
+</main>
+<script>
+const cards=[...document.querySelectorAll('.card')],search=document.getElementById('search'),level=document.getElementById('level');let cat='all';
+function filter(){let q=search.value.toLowerCase(),l=level.value;cards.forEach(c=>{let okq=!q||c.innerText.toLowerCase().includes(q),okc=cat==='all'||(c.dataset.cat||'').split(' ').includes(cat),okl=l==='all'||c.dataset.level===l;c.classList.toggle('hidden',!(okq&&okc&&okl))})}
+search.oninput=filter;level.onchange=filter;document.querySelectorAll('.pill').forEach(p=>p.onclick=()=>{document.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));p.classList.add('active');cat=p.dataset.cat;filter()});
+function expandAll(v){document.querySelectorAll('.card:not(.hidden) details').forEach(d=>d.open=v)}function toggleAnswers(){document.body.classList.toggle('hideanswer')}
+document.querySelectorAll('.copy').forEach(b=>b.onclick=async()=>{let t=[...b.closest('.card').querySelectorAll('code')].map(x=>x.innerText).join('\n\n');await navigator.clipboard.writeText(t);let o=b.textContent;b.textContent='Copied';setTimeout(()=>b.textContent=o,800)});
+const checks=[...document.querySelectorAll('.practice')];checks.forEach(x=>{x.checked=localStorage.getItem('dbx_'+x.dataset.id)==='1';x.onchange=()=>{localStorage.setItem('dbx_'+x.dataset.id,x.checked?'1':'0');prog()}});function prog(){document.getElementById('progress').textContent=`Progress ${checks.filter(x=>x.checked).length}/${checks.length}`}prog();
+</script></body></html>
