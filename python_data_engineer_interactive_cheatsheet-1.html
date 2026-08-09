@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Python for Data Engineers — Interactive Cheat Sheet</title>
+<style>
+:root{
+  --bg:#0b1020; --panel:#121a2f; --panel2:#18233e; --text:#eef4ff; --muted:#a9b7d0;
+  --accent:#6ee7ff; --accent2:#a78bfa; --good:#86efac; --warn:#fbbf24; --border:#2a385d;
+  --code:#080d19;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#09101e,#0b1020 35%,#0c1426);color:var(--text)}
+header{position:sticky;top:0;z-index:10;background:rgba(11,16,32,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:18px 20px}
+h1{margin:0 0 6px;font-size:clamp(1.35rem,2.5vw,2.1rem)}
+.subtitle{color:var(--muted);font-size:.95rem}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+input,select,button{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font:inherit}
+input{min-width:260px;flex:1}
+button{cursor:pointer}
+button:hover{border-color:var(--accent)}
+main{max-width:1500px;margin:auto;padding:22px}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.pill{padding:7px 10px;border-radius:999px;background:var(--panel);border:1px solid var(--border);color:var(--muted);cursor:pointer}
+.pill.active,.pill:hover{color:#061019;background:var(--accent);border-color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px}
+.card{background:linear-gradient(180deg,var(--panel),#10182c);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:0 10px 35px rgba(0,0,0,.18)}
+.card.hidden{display:none}
+.card-head{padding:15px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.card h2{font-size:1.05rem;margin:0}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.tag{font-size:.72rem;padding:3px 7px;border-radius:999px;background:#203055;color:#c9d8ff}
+.desc{padding:0 16px 12px;color:var(--muted);font-size:.9rem}
+details{border-top:1px solid var(--border)}
+summary{cursor:pointer;padding:11px 16px;color:var(--accent);font-weight:700}
+pre{margin:0 12px 12px;padding:12px;border-radius:10px;background:var(--code);overflow:auto;border:1px solid #1c2945}
+code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;font-size:.86rem;color:#d8e8ff}
+.kv{padding:0 16px 12px}
+table{width:100%;border-collapse:collapse;font-size:.84rem}
+th,td{border-bottom:1px solid var(--border);padding:8px;vertical-align:top;text-align:left}
+th{color:var(--accent)}
+.tip{margin:0 12px 12px;padding:9px 10px;border-left:3px solid var(--good);background:#10251d;color:#d9ffe5;border-radius:6px;font-size:.84rem}
+.warn{border-left-color:var(--warn);background:#2b220e;color:#fff4cd}
+.section-title{margin:28px 0 12px;font-size:1.25rem;color:#fff}
+kbd{background:#1f2a46;border:1px solid #3b4c77;border-bottom-width:2px;border-radius:5px;padding:1px 5px}
+.footer{color:var(--muted);text-align:center;padding:30px 10px}
+.sqlmap{grid-column:1/-1}
+.copybtn{font-size:.74rem;padding:5px 8px}
+.matchcount{color:var(--muted);font-size:.85rem;align-self:center}
+@media(max-width:600px){main{padding:12px}.grid{grid-template-columns:1fr}input{min-width:100%}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Python for Data Engineers — Interactive Cheat Sheet</h1>
+  <div class="subtitle">Core Python + pandas + SQL-to-pandas patterns, optimized for interview prep and daily DE work.</div>
+  <div class="controls">
+    <input id="search" placeholder="Search e.g. anti join, append, rolling avg, explode..." />
+    <select id="level">
+      <option value="all">All levels</option>
+      <option value="basic">Basic</option>
+      <option value="intermediate">Intermediate</option>
+      <option value="advanced">Advanced</option>
+    </select>
+    <button onclick="expandAll(true)">Expand all</button>
+    <button onclick="expandAll(false)">Collapse all</button>
+    <span class="matchcount" id="matchcount"></span>
+  </div>
+</header>
+<main>
+<nav id="filters">
+  <span class="pill active" data-cat="all">All</span>
+  <span class="pill" data-cat="python">Core Python</span>
+  <span class="pill" data-cat="list">Lists</span>
+  <span class="pill" data-cat="dict">Dictionaries</span>
+  <span class="pill" data-cat="set">Sets</span>
+  <span class="pill" data-cat="loops">Loops</span>
+  <span class="pill" data-cat="pandas">pandas</span>
+  <span class="pill" data-cat="sql">SQL ↔ pandas</span>
+  <span class="pill" data-cat="de">Data Engineering</span>
+</nav>
+
+<div class="grid">
+
+<section class="card" data-cat="python list" data-level="basic">
+<div class="card-head"><div><h2>List — create, read, search, modify</h2><div class="tags"><span class="tag">list</span><span class="tag">basic</span></div></div><button class="copybtn">Copy</button></div>
+<div class="desc">Ordered, mutable collection. Duplicates allowed.</div>
+<details open><summary>Syntax</summary><pre><code>nums = [10, 20, 30]
+
+# Access
+nums[0]          # 10
+nums[-1]         # 30
+nums[1:3]        # [20, 30]
+
+# Search
+20 in nums       # True
+nums.index(20)   # 1
+
+# Add
+nums.append(40)
+nums.extend([50, 60])
+nums.insert(1, 15)
+
+# Modify
+nums[0] = 99
+
+# Remove
+nums.remove(20)  # by value
+nums.pop()       # last item
+nums.pop(1)      # by index
+del nums[0]
+
+# Count / length
+len(nums)
+nums.count(40)
+
+# Sort
+nums.sort()
+nums.sort(reverse=True)
+sorted(nums)     # new list
+
+# Reverse
+nums.reverse()
+
+# Copy
+copy_nums = nums.copy()</code></pre></details>
+<div class="tip">DE pattern: use a list when order matters or when collecting rows/items sequentially.</div>
+</section>
+
+<section class="card" data-cat="python list" data-level="basic">
+<div class="card-head"><div><h2>List comprehensions</h2><div class="tags"><span class="tag">list</span><span class="tag">filter</span><span class="tag">transform</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Patterns</summary><pre><code>nums = [1,2,3,4,5]
+
+squares = [x*x for x in nums]
+evens = [x for x in nums if x % 2 == 0]
+labels = ["even" if x % 2 == 0 else "odd" for x in nums]
+
+# Flatten one level
+nested = [[1,2],[3,4]]
+flat = [x for row in nested for x in row]</code></pre></details>
+</section>
+
+<section class="card" data-cat="python dict" data-level="basic">
+<div class="card-head"><div><h2>Dictionary — key/value operations</h2><div class="tags"><span class="tag">dict</span><span class="tag">lookup O(1) avg</span></div></div><button class="copybtn">Copy</button></div>
+<div class="desc">Best for fast lookup, frequency counting, mapping, grouping, caching.</div>
+<details open><summary>Syntax</summary><pre><code>d = {"a": 10, "b": 20}
+
+# Read
+d["a"]
+d.get("c")            # None
+d.get("c", 0)         # default
+
+# Add / update
+d["c"] = 30
+d["a"] = 99
+d.update({"d": 40, "e": 50})
+
+# Check
+"a" in d
+
+# Delete
+del d["b"]
+d.pop("c", None)
+
+# Keys / values / pairs
+d.keys()
+d.values()
+d.items()
+
+# Loop
+for k, v in d.items():
+    print(k, v)
+
+# Frequency counter
+counts = {}
+for x in ["a","b","a"]:
+    counts[x] = counts.get(x, 0) + 1
+
+# Group values into lists
+groups = {}
+for dept, emp in [("IT","A"),("IT","B"),("HR","C")]:
+    groups.setdefault(dept, []).append(emp)</code></pre></details>
+</section>
+
+<section class="card" data-cat="python set" data-level="basic">
+<div class="card-head"><div><h2>Set — uniqueness and membership</h2><div class="tags"><span class="tag">set</span><span class="tag">dedupe</span><span class="tag">membership</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Syntax</summary><pre><code>s = {1,2,3}
+
+s.add(4)
+s.remove(2)       # error if absent
+s.discard(9)      # safe if absent
+
+3 in s            # fast membership
+
+a = {1,2,3}
+b = {3,4,5}
+a | b             # union
+a & b             # intersection
+a - b             # difference
+a ^ b             # symmetric difference
+
+unique = list(set([1,1,2,3]))</code></pre></details>
+<div class="tip">Interview pattern: set is ideal for “have I seen this before?” and duplicate detection.</div>
+</section>
+
+<section class="card" data-cat="python list dict" data-level="intermediate">
+<div class="card-head"><div><h2>List of lists</h2><div class="tags"><span class="tag">nested</span><span class="tag">matrix</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Syntax</summary><pre><code>rows = [
+    [1, "Alice", 100],
+    [2, "Bob", 200]
+]
+
+rows[0]           # first row
+rows[0][1]        # "Alice"
+
+for row in rows:
+    id_, name, salary = row
+
+# Search
+matches = [r for r in rows if r[2] > 150]
+
+# Append a row
+rows.append([3, "Cara", 300])
+
+# Update
+rows[1][2] = 250</code></pre></details>
+</section>
+
+<section class="card" data-cat="python list dict de" data-level="intermediate">
+<div class="card-head"><div><h2>List of dictionaries</h2><div class="tags"><span class="tag">JSON-like</span><span class="tag">API</span><span class="tag">records</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Syntax</summary><pre><code>rows = [
+    {"id": 1, "name": "Alice", "salary": 100},
+    {"id": 2, "name": "Bob", "salary": 200}
+]
+
+rows[0]["name"]
+
+# Search / filter
+high = [r for r in rows if r["salary"] >= 150]
+
+# Add field
+for r in rows:
+    r["tax"] = r["salary"] * 0.3
+
+# Update one record
+for r in rows:
+    if r["id"] == 2:
+        r["salary"] = 250
+
+# Convert to pandas
+import pandas as pd
+df = pd.DataFrame(rows)</code></pre></details>
+</section>
+
+<section class="card" data-cat="python loops" data-level="basic">
+<div class="card-head"><div><h2>For loops — common forms</h2><div class="tags"><span class="tag">for</span><span class="tag">enumerate</span><span class="tag">zip</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Patterns</summary><pre><code># Values
+for x in [10,20,30]:
+    print(x)
+
+# Index + value
+for i, x in enumerate([10,20,30]):
+    print(i, x)
+
+# Range
+for i in range(5):        # 0..4
+    pass
+
+for i in range(1, 10, 2): # 1,3,5,7,9
+    pass
+
+# Two lists together
+names = ["A","B"]
+ages = [30,40]
+for name, age in zip(names, ages):
+    print(name, age)
+
+# Dictionary
+for k, v in {"a":1,"b":2}.items():
+    print(k, v)
+
+# break / continue
+for x in range(10):
+    if x == 3:
+        continue
+    if x == 7:
+        break</code></pre></details>
+</section>
+
+<section class="card" data-cat="python loops" data-level="basic">
+<div class="card-head"><div><h2>While loops</h2><div class="tags"><span class="tag">while</span><span class="tag">pointer</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Patterns</summary><pre><code>i = 0
+while i < 5:
+    print(i)
+    i += 1
+
+# Two pointers
+left, right = 0, len(nums) - 1
+while left < right:
+    if nums[left] + nums[right] == target:
+        break
+    elif nums[left] + nums[right] < target:
+        left += 1
+    else:
+        right -= 1</code></pre></details>
+</section>
+
+<section class="card" data-cat="python de" data-level="intermediate">
+<div class="card-head"><div><h2>Functions, lambda, map/filter</h2><div class="tags"><span class="tag">functions</span><span class="tag">lambda</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Syntax</summary><pre><code>def add(a, b=0):
+    return a + b
+
+square = lambda x: x * x
+
+nums = [1,2,3]
+list(map(lambda x: x*2, nums))
+list(filter(lambda x: x > 1, nums))
+
+# Usually more readable:
+[x*2 for x in nums]
+[x for x in nums if x > 1]</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas de" data-level="basic">
+<div class="card-head"><div><h2>pandas — create/read/inspect</h2><div class="tags"><span class="tag">DataFrame</span><span class="tag">I/O</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Core</summary><pre><code>import pandas as pd
+
+df = pd.DataFrame({
+    "id": [1,2,3],
+    "dept": ["IT","HR","IT"],
+    "salary": [100,200,150]
+})
+
+df.head()
+df.tail()
+df.shape
+df.columns
+df.dtypes
+df.info()
+df.describe(include="all")
+
+# Files
+df = pd.read_csv("file.csv")
+df = pd.read_parquet("file.parquet")
+df = pd.read_json("file.json")
+
+df.to_csv("out.csv", index=False)
+df.to_parquet("out.parquet", index=False)</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="basic">
+<div class="card-head"><div><h2>Select columns, aliases, expressions</h2><div class="tags"><span class="tag">SELECT</span><span class="tag">alias</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>SQL ↔ pandas</summary><pre><code>-- SQL
+SELECT id, salary, salary * 1.1 AS new_salary
+FROM t;
+
+# pandas
+df[["id", "salary"]]
+
+out = df.assign(
+    new_salary = df["salary"] * 1.1
+)[["id", "salary", "new_salary"]]
+
+# Rename
+df.rename(columns={"salary": "base_salary"})</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="basic">
+<div class="card-head"><div><h2>WHERE / filtering</h2><div class="tags"><span class="tag">WHERE</span><span class="tag">filter</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code>-- SQL
+WHERE salary > 100 AND dept = 'IT'
+
+# pandas
+df[(df["salary"] > 100) & (df["dept"] == "IT")]
+
+# OR
+df[(df["dept"] == "IT") | (df["dept"] == "HR")]
+
+# NOT
+df[~(df["dept"] == "IT")]
+
+# query()
+df.query("salary > 100 and dept == 'IT'")</code></pre></details>
+<div class="tip warn">With pandas boolean conditions, use <b>&amp;</b>, <b>|</b>, <b>~</b> and wrap each condition in parentheses.</div>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="basic">
+<div class="card-head"><div><h2>IN / NOT IN</h2><div class="tags"><span class="tag">IN</span><span class="tag">isin</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code>-- SQL
+WHERE dept IN ('IT', 'HR')
+
+# pandas
+df[df["dept"].isin(["IT", "HR"])]
+
+-- SQL
+WHERE dept NOT IN ('IT', 'HR')
+
+# pandas
+df[~df["dept"].isin(["IT", "HR"])]</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="basic">
+<div class="card-head"><div><h2>ORDER BY</h2><div class="tags"><span class="tag">sort</span><span class="tag">ORDER BY</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code>-- SQL
+ORDER BY dept ASC, salary DESC
+
+# pandas
+df.sort_values(
+    ["dept", "salary"],
+    ascending=[True, False]
+)</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="basic">
+<div class="card-head"><div><h2>GROUP BY + min/max/sum/avg/count</h2><div class="tags"><span class="tag">GROUP BY</span><span class="tag">aggregate</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code>-- SQL
+SELECT dept,
+       MIN(salary),
+       MAX(salary),
+       SUM(salary),
+       AVG(salary),
+       COUNT(*)
+FROM t
+GROUP BY dept;
+
+# pandas
+out = (
+    df.groupby("dept", as_index=False)
+      .agg(
+          min_salary=("salary","min"),
+          max_salary=("salary","max"),
+          total_salary=("salary","sum"),
+          avg_salary=("salary","mean"),
+          row_count=("salary","size")
+      )
+)</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="intermediate">
+<div class="card-head"><div><h2>HAVING</h2><div class="tags"><span class="tag">HAVING</span><span class="tag">group filter</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Example</summary><pre><code>-- SQL
+SELECT dept, AVG(salary) avg_salary
+FROM t
+GROUP BY dept
+HAVING AVG(salary) > 150;
+
+# pandas
+g = (
+    df.groupby("dept", as_index=False)
+      .agg(avg_salary=("salary","mean"))
+)
+out = g[g["avg_salary"] > 150]</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="intermediate">
+<div class="card-head"><div><h2>Joins — inner / left / right / full</h2><div class="tags"><span class="tag">JOIN</span><span class="tag">merge</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code># Same key name
+pd.merge(left, right, on="id", how="inner")
+pd.merge(left, right, on="id", how="left")
+pd.merge(left, right, on="id", how="right")
+pd.merge(left, right, on="id", how="outer")
+
+# Different key names
+pd.merge(
+    left, right,
+    left_on="customer_id",
+    right_on="id",
+    how="left"
+)
+
+# Multi-column join
+pd.merge(left, right, on=["id","date"], how="left")</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="intermediate">
+<div class="card-head"><div><h2>LEFT ANTI / LEFT SEMI join</h2><div class="tags"><span class="tag">anti join</span><span class="tag">semi join</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Patterns</summary><pre><code># LEFT ANTI: rows in left with NO match in right
+anti = (
+    left.merge(right[["id"]].drop_duplicates(),
+               on="id", how="left", indicator=True)
+        .query("_merge == 'left_only'")
+        .drop(columns="_merge")
+)
+
+# Simpler anti for single key
+anti = left[~left["id"].isin(right["id"])]
+
+# LEFT SEMI: rows in left WITH a match in right
+semi = left[left["id"].isin(right["id"])]</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="basic">
+<div class="card-head"><div><h2>UNION / UNION ALL</h2><div class="tags"><span class="tag">UNION</span><span class="tag">concat</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code>-- SQL UNION ALL
+SELECT * FROM a
+UNION ALL
+SELECT * FROM b;
+
+# pandas
+pd.concat([a, b], ignore_index=True)
+
+-- SQL UNION (deduplicate)
+SELECT * FROM a
+UNION
+SELECT * FROM b;
+
+# pandas
+pd.concat([a, b], ignore_index=True).drop_duplicates()</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="intermediate">
+<div class="card-head"><div><h2>DISTINCT / duplicate handling</h2><div class="tags"><span class="tag">DISTINCT</span><span class="tag">dedupe</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code># SQL: SELECT DISTINCT dept FROM t
+df[["dept"]].drop_duplicates()
+
+# Keep first / last duplicate
+df.drop_duplicates(subset=["id"], keep="first")
+df.drop_duplicates(subset=["id"], keep="last")
+
+# Find duplicate rows
+df[df.duplicated(subset=["id"], keep=False)]</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="intermediate">
+<div class="card-head"><div><h2>NULL / COALESCE / CASE WHEN</h2><div class="tags"><span class="tag">NULL</span><span class="tag">CASE</span><span class="tag">COALESCE</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code># IS NULL
+df[df["salary"].isna()]
+
+# IS NOT NULL
+df[df["salary"].notna()]
+
+# COALESCE(salary, 0)
+df["salary"] = df["salary"].fillna(0)
+
+# CASE WHEN
+import numpy as np
+df["band"] = np.where(
+    df["salary"] >= 200,
+    "high",
+    "low"
+)
+
+# Multiple CASE branches
+conds = [
+    df["salary"] >= 200,
+    df["salary"] >= 100
+]
+choices = ["high", "medium"]
+df["band"] = np.select(conds, choices, default="low")</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="intermediate">
+<div class="card-head"><div><h2>String operations / LIKE</h2><div class="tags"><span class="tag">LIKE</span><span class="tag">string</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code># LIKE 'A%'
+df[df["name"].str.startswith("A", na=False)]
+
+# LIKE '%son%'
+df[df["name"].str.contains("son", case=False, na=False)]
+
+# LOWER / UPPER / TRIM
+df["name"].str.lower()
+df["name"].str.upper()
+df["name"].str.strip()
+
+# REPLACE
+df["name"].str.replace("old", "new", regex=False)
+
+# SPLIT
+df["domain"] = df["email"].str.split("@").str[1]</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql de" data-level="intermediate">
+<div class="card-head"><div><h2>Date / timestamp operations</h2><div class="tags"><span class="tag">datetime</span><span class="tag">datepart</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code>df["ts"] = pd.to_datetime(df["ts"], errors="coerce")
+
+df["date"] = df["ts"].dt.date
+df["year"] = df["ts"].dt.year
+df["month"] = df["ts"].dt.month
+df["day"] = df["ts"].dt.day
+df["dow"] = df["ts"].dt.day_name()
+
+# Difference
+df["days_diff"] = (df["end_ts"] - df["start_ts"]).dt.days
+
+# Add time
+df["plus_7d"] = df["ts"] + pd.Timedelta(days=7)
+
+# Floor to day/hour
+df["hour"] = df["ts"].dt.floor("h")</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="advanced">
+<div class="card-head"><div><h2>ROW_NUMBER / RANK / DENSE_RANK</h2><div class="tags"><span class="tag">window</span><span class="tag">rank</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code># ROW_NUMBER() OVER(PARTITION BY dept ORDER BY salary DESC)
+df2 = df.sort_values(["dept","salary"], ascending=[True,False]).copy()
+df2["row_number"] = df2.groupby("dept").cumcount() + 1
+
+# RANK()
+df["rank"] = (
+    df.groupby("dept")["salary"]
+      .rank(method="min", ascending=False)
+)
+
+# DENSE_RANK()
+df["dense_rank"] = (
+    df.groupby("dept")["salary"]
+      .rank(method="dense", ascending=False)
+)</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="advanced">
+<div class="card-head"><div><h2>LAG / LEAD</h2><div class="tags"><span class="tag">window</span><span class="tag">shift</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code>df = df.sort_values(["id","date"])
+
+# LAG(value, 1)
+df["prev_value"] = df.groupby("id")["value"].shift(1)
+
+# LEAD(value, 1)
+df["next_value"] = df.groupby("id")["value"].shift(-1)
+
+# Change from previous row
+df["delta"] = df["value"] - df["prev_value"]</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="advanced">
+<div class="card-head"><div><h2>Running sum / cumulative aggregates</h2><div class="tags"><span class="tag">cumsum</span><span class="tag">window</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code>df = df.sort_values(["id","date"])
+
+# SUM(value) OVER(PARTITION BY id ORDER BY date)
+df["running_sum"] = df.groupby("id")["value"].cumsum()
+
+# Running max/min
+df["running_max"] = df.groupby("id")["value"].cummax()
+df["running_min"] = df.groupby("id")["value"].cummin()
+
+# Running count
+df["running_count"] = df.groupby("id").cumcount() + 1</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="advanced">
+<div class="card-head"><div><h2>Rolling average / rolling window</h2><div class="tags"><span class="tag">rolling</span><span class="tag">moving average</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code>df = df.sort_values(["id","date"])
+
+# 3-row moving average per id
+df["rolling_avg_3"] = (
+    df.groupby("id")["value"]
+      .transform(lambda s: s.rolling(3, min_periods=1).mean())
+)
+
+# 7-row rolling sum
+df["rolling_sum_7"] = (
+    df.groupby("id")["value"]
+      .transform(lambda s: s.rolling(7, min_periods=1).sum())
+)</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas sql" data-level="advanced">
+<div class="card-head"><div><h2>Window aggregates with transform()</h2><div class="tags"><span class="tag">OVER PARTITION BY</span><span class="tag">transform</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code># AVG(salary) OVER(PARTITION BY dept)
+df["dept_avg"] = (
+    df.groupby("dept")["salary"]
+      .transform("mean")
+)
+
+# MAX(salary) OVER(PARTITION BY dept)
+df["dept_max"] = (
+    df.groupby("dept")["salary"]
+      .transform("max")
+)
+
+# Difference from group average
+df["diff_from_avg"] = df["salary"] - df["dept_avg"]</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas de" data-level="intermediate">
+<div class="card-head"><div><h2>map / replace / apply</h2><div class="tags"><span class="tag">mapping</span><span class="tag">apply</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code>dept_map = {"IT":"Technology", "HR":"People"}
+
+# Dictionary lookup mapping
+df["dept_full"] = df["dept"].map(dept_map)
+
+# Replace exact values
+df["dept"] = df["dept"].replace({"IT":"Tech"})
+
+# Apply function to Series
+df["salary_k"] = df["salary"].apply(lambda x: x / 1000)
+
+# Prefer vectorized operations when possible:
+df["salary_k"] = df["salary"] / 1000</code></pre></details>
+<div class="tip warn">For large DataFrames, prefer vectorized pandas operations over row-wise <code>apply(axis=1)</code>.</div>
+</section>
+
+<section class="card" data-cat="pandas de sql" data-level="intermediate">
+<div class="card-head"><div><h2>Pivot / unpivot</h2><div class="tags"><span class="tag">pivot</span><span class="tag">melt</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code># PIVOT
+pivoted = df.pivot_table(
+    index="dept",
+    columns="year",
+    values="salary",
+    aggfunc="sum",
+    fill_value=0
+)
+
+# UNPIVOT
+long_df = wide_df.melt(
+    id_vars=["id"],
+    var_name="metric",
+    value_name="value"
+)</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas de" data-level="intermediate">
+<div class="card-head"><div><h2>explode — array/list to rows</h2><div class="tags"><span class="tag">explode</span><span class="tag">nested data</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Example</summary><pre><code>df = pd.DataFrame({
+    "id": [1,2],
+    "tags": [["a","b"], ["c"]]
+})
+
+out = df.explode("tags", ignore_index=True)
+
+# Result:
+# id  tags
+# 1   a
+# 1   b
+# 2   c</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas de" data-level="intermediate">
+<div class="card-head"><div><h2>Indexing — loc / iloc</h2><div class="tags"><span class="tag">loc</span><span class="tag">iloc</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code># Label/condition based
+df.loc[df["salary"] > 100, ["id","salary"]]
+
+# Update safely
+df.loc[df["dept"] == "IT", "bonus"] = 1000
+
+# Position based
+df.iloc[0]        # first row
+df.iloc[:, 0:2]   # first 2 columns</code></pre></details>
+</section>
+
+<section class="card" data-cat="pandas de" data-level="intermediate">
+<div class="card-head"><div><h2>Data quality quick checks</h2><div class="tags"><span class="tag">DQ</span><span class="tag">validation</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Patterns</summary><pre><code># Null counts
+df.isna().sum()
+
+# Unique counts
+df.nunique()
+
+# Duplicate keys
+df[df.duplicated(["id"], keep=False)]
+
+# Value distribution
+df["status"].value_counts(dropna=False)
+
+# Range check
+bad = df[~df["age"].between(0, 120)]
+
+# Referential integrity
+orphans = fact[~fact["customer_id"].isin(dim["customer_id"])]</code></pre></details>
+</section>
+
+<section class="card" data-cat="python de" data-level="intermediate">
+<div class="card-head"><div><h2>Useful built-ins for DE interviews</h2><div class="tags"><span class="tag">sorted</span><span class="tag">min/max</span><span class="tag">any/all</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code>nums = [4,1,9,2]
+
+min(nums)
+max(nums)
+sum(nums)
+len(nums)
+sorted(nums)
+
+min(nums, key=lambda x: abs(x-5))
+max(rows, key=lambda r: r["salary"])
+
+any(x > 8 for x in nums)
+all(x > 0 for x in nums)
+
+list(enumerate(nums))
+list(zip(["a","b"], [1,2]))</code></pre></details>
+</section>
+
+<section class="card" data-cat="python de" data-level="intermediate">
+<div class="card-head"><div><h2>collections helpers</h2><div class="tags"><span class="tag">Counter</span><span class="tag">defaultdict</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Examples</summary><pre><code>from collections import Counter, defaultdict
+
+# Frequency count
+c = Counter(["a","b","a"])
+c["a"]            # 2
+c.most_common(2)
+
+# Grouping
+groups = defaultdict(list)
+for dept, emp in [("IT","A"),("IT","B")]:
+    groups[dept].append(emp)</code></pre></details>
+</section>
+
+<section class="card" data-cat="python de" data-level="intermediate">
+<div class="card-head"><div><h2>Exceptions + safe parsing</h2><div class="tags"><span class="tag">try/except</span><span class="tag">ETL safety</span></div></div><button class="copybtn">Copy</button></div>
+<details open><summary>Example</summary><pre><code>def to_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+records = ["10", "x", None]
+parsed = [to_int(x) for x in records]</code></pre></details>
+</section>
+
+<section class="card sqlmap" data-cat="sql pandas de" data-level="basic">
+<div class="card-head"><div><h2>SQL → pandas quick lookup</h2><div class="tags"><span class="tag">master mapping</span></div></div></div>
+<div class="kv">
+<table>
+<thead><tr><th>SQL</th><th>pandas</th><th>Typical syntax</th></tr></thead>
+<tbody>
+<tr><td>SELECT columns</td><td>column selection</td><td><code>df[["a","b"]]</code></td></tr>
+<tr><td>WHERE</td><td>boolean filter</td><td><code>df[df["x"] &gt; 0]</code></td></tr>
+<tr><td>IN</td><td>isin</td><td><code>df[df["x"].isin(vals)]</code></td></tr>
+<tr><td>LIKE</td><td>str.contains</td><td><code>df[df["x"].str.contains("abc", na=False)]</code></td></tr>
+<tr><td>DISTINCT</td><td>drop_duplicates</td><td><code>df.drop_duplicates()</code></td></tr>
+<tr><td>GROUP BY</td><td>groupby</td><td><code>df.groupby("k").agg(...)</code></td></tr>
+<tr><td>HAVING</td><td>filter aggregated result</td><td><code>g[g["avg"] &gt; 10]</code></td></tr>
+<tr><td>ORDER BY</td><td>sort_values</td><td><code>df.sort_values("x")</code></td></tr>
+<tr><td>INNER JOIN</td><td>merge</td><td><code>merge(..., how="inner")</code></td></tr>
+<tr><td>LEFT JOIN</td><td>merge</td><td><code>merge(..., how="left")</code></td></tr>
+<tr><td>RIGHT JOIN</td><td>merge</td><td><code>merge(..., how="right")</code></td></tr>
+<tr><td>FULL JOIN</td><td>merge</td><td><code>merge(..., how="outer")</code></td></tr>
+<tr><td>LEFT ANTI</td><td>isin / merge indicator</td><td><code>left[~left.id.isin(right.id)]</code></td></tr>
+<tr><td>LEFT SEMI</td><td>isin</td><td><code>left[left.id.isin(right.id)]</code></td></tr>
+<tr><td>UNION ALL</td><td>concat</td><td><code>pd.concat([a,b])</code></td></tr>
+<tr><td>UNION</td><td>concat + dedupe</td><td><code>pd.concat([a,b]).drop_duplicates()</code></td></tr>
+<tr><td>CASE WHEN</td><td>np.where / np.select</td><td><code>np.where(cond,a,b)</code></td></tr>
+<tr><td>COALESCE</td><td>fillna</td><td><code>df["x"].fillna(0)</code></td></tr>
+<tr><td>ROW_NUMBER</td><td>cumcount</td><td><code>groupby(...).cumcount()+1</code></td></tr>
+<tr><td>RANK</td><td>rank(method="min")</td><td><code>groupby(...).rank()</code></td></tr>
+<tr><td>DENSE_RANK</td><td>rank(method="dense")</td><td><code>rank(method="dense")</code></td></tr>
+<tr><td>LAG / LEAD</td><td>shift</td><td><code>groupby(...).shift(1/-1)</code></td></tr>
+<tr><td>SUM OVER</td><td>cumsum / transform</td><td><code>groupby(...).cumsum()</code></td></tr>
+<tr><td>AVG OVER</td><td>transform("mean")</td><td><code>groupby(...).transform("mean")</code></td></tr>
+<tr><td>Rolling AVG</td><td>rolling.mean</td><td><code>rolling(7).mean()</code></td></tr>
+<tr><td>PIVOT</td><td>pivot_table</td><td><code>df.pivot_table(...)</code></td></tr>
+<tr><td>UNPIVOT</td><td>melt</td><td><code>df.melt(...)</code></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="card sqlmap" data-cat="de pandas" data-level="advanced">
+<div class="card-head"><div><h2>Data Engineer extras worth memorising</h2><div class="tags"><span class="tag">ETL</span><span class="tag">interview</span><span class="tag">production</span></div></div></div>
+<div class="kv">
+<table>
+<thead><tr><th>Need</th><th>Pattern</th></tr></thead>
+<tbody>
+<tr><td>Parse bad numeric values safely</td><td><code>pd.to_numeric(df["x"], errors="coerce")</code></td></tr>
+<tr><td>Parse bad dates safely</td><td><code>pd.to_datetime(df["x"], errors="coerce")</code></td></tr>
+<tr><td>Standardize column names</td><td><code>df.columns = df.columns.str.strip().str.lower().str.replace(" ","_")</code></td></tr>
+<tr><td>Drop columns</td><td><code>df.drop(columns=["tmp"])</code></td></tr>
+<tr><td>Rename columns</td><td><code>df.rename(columns={"old":"new"})</code></td></tr>
+<tr><td>Type cast</td><td><code>df["id"] = df["id"].astype("Int64")</code></td></tr>
+<tr><td>Sample rows</td><td><code>df.sample(5)</code></td></tr>
+<tr><td>Top N</td><td><code>df.nlargest(5, "salary")</code></td></tr>
+<tr><td>Bottom N</td><td><code>df.nsmallest(5, "salary")</code></td></tr>
+<tr><td>Per-group top N</td><td><code>df.sort_values("salary", ascending=False).groupby("dept").head(3)</code></td></tr>
+<tr><td>Cross join</td><td><code>a.merge(b, how="cross")</code></td></tr>
+<tr><td>JSON records</td><td><code>pd.json_normalize(data)</code></td></tr>
+<tr><td>Chunked CSV read</td><td><code>for chunk in pd.read_csv("x.csv", chunksize=100_000): ...</code></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+</div>
+<div class="footer">Tip: search by either Python term or SQL concept. Use <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>F</kbd> too, but the built-in search filters whole cards.</div>
+</main>
+
+<script>
+const cards = [...document.querySelectorAll('.card')];
+const search = document.getElementById('search');
+const level = document.getElementById('level');
+const pills = [...document.querySelectorAll('.pill')];
+const matchcount = document.getElementById('matchcount');
+let activeCat = 'all';
+
+function filterCards(){
+  const q = search.value.trim().toLowerCase();
+  const lvl = level.value;
+  let visible = 0;
+  cards.forEach(card => {
+    const text = card.innerText.toLowerCase();
+    const cats = card.dataset.cat || '';
+    const cardLvl = card.dataset.level || '';
+    const okQ = !q || text.includes(q);
+    const okCat = activeCat === 'all' || cats.split(' ').includes(activeCat);
+    const okLvl = lvl === 'all' || cardLvl === lvl;
+    const show = okQ && okCat && okLvl;
+    card.classList.toggle('hidden', !show);
+    if(show) visible++;
+  });
+  matchcount.textContent = `${visible} section${visible===1?'':'s'} shown`;
+}
+search.addEventListener('input', filterCards);
+level.addEventListener('change', filterCards);
+pills.forEach(p => p.addEventListener('click', () => {
+  pills.forEach(x => x.classList.remove('active'));
+  p.classList.add('active');
+  activeCat = p.dataset.cat;
+  filterCards();
+}));
+
+function expandAll(open){
+  document.querySelectorAll('.card:not(.hidden) details').forEach(d => d.open = open);
+}
+
+document.querySelectorAll('.copybtn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const card = btn.closest('.card');
+    const code = [...card.querySelectorAll('code')].map(x => x.innerText).join('\n\n');
+    await navigator.clipboard.writeText(code);
+    const old = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(()=>btn.textContent=old, 1200);
+  });
+});
+
+filterCards();
+</script>
+</body>
+</html>
