@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlassian Principal Data Engineer — Interactive Interview Gym</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#17213d;--muted:#65708a;--line:#dde3ef;--p:#6554d9;--blue:#0c66e4;--green:#216e4e;--amber:#a54800;--pink:#ae2e24;}
+*{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55}
+header{padding:30px 20px;background:linear-gradient(120deg,#172b4d,#403294 58%,#6554c0);color:#fff}
+header h1{margin:0;font-size:clamp(30px,5vw,56px);line-height:1} header p{max-width:950px;font-size:18px}
+.badges{display:flex;gap:7px;flex-wrap:wrap} .badge{padding:6px 10px;border:1px solid #ffffff45;border-radius:999px;background:#ffffff15;font-size:12px}
+nav{position:sticky;top:0;z-index:20;display:flex;gap:6px;overflow:auto;padding:9px 12px;background:#fffffff0;backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+nav button{border:0;background:transparent;padding:9px 11px;border-radius:9px;white-space:nowrap;font-weight:700;color:var(--ink);cursor:pointer}nav button.active{background:#e9e4ff;color:#3d2d9d}
+main{max-width:1500px;margin:auto;padding:15px}.page{display:none}.page.active{display:block}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:19px;margin:14px 0}
+h2{font-size:28px;margin:4px 0 10px}h3{margin-top:19px}.muted{color:var(--muted)}.kicker{font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:900;color:#5e4db2}
+.mindmap{white-space:pre;overflow:auto;background:#15192c;color:#eef2ff;border-radius:15px;padding:18px;font:14px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);margin:12px 0}th,td{padding:9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#f0edff;color:#46359c}
+code,pre{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}pre{background:#15192c;color:#eef2ff;border-radius:12px;padding:14px;overflow:auto}
+.callout{border-left:5px solid var(--blue);background:#edf5ff;padding:13px;border-radius:12px;margin:12px 0}.green{border-color:var(--green);background:#e9f7ef}.amber{border-color:#e56910;background:#fff4e5}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.card{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
+.problem-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.problem{background:#fff;border:1px solid var(--line);border-radius:16px;padding:15px}.problem-head{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.tag{font-size:11px;background:#e9e4ff;color:#44349a;border-radius:999px;padding:4px 7px;font-weight:800}.tag.soft{background:#eef4ff;color:#0c66e4}.qid{margin-left:auto;color:var(--muted);font-size:12px}
+details{border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin:8px 0}summary{cursor:pointer;font-weight:700}
+.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.mini-grid>div{background:#f7f8fb;padding:10px;border-radius:10px}
+.status-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.status,.btn{border:0;border-radius:9px;padding:8px 10px;background:#e9e4ff;color:#44349a;font-weight:800;cursor:pointer}.btn.primary{background:#6554c0;color:white}.status.selected{outline:2px solid #6554c0}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}select,input{border:1px solid var(--line);border-radius:9px;padding:8px;background:white}
+.drill{border:1px solid var(--line);border-radius:15px;padding:16px;background:#fff;max-width:850px}.timer{font-size:38px;font-weight:900;letter-spacing:.05em}
+.score{font-size:28px;font-weight:900}.flash{font-size:22px;font-weight:800;min-height:82px;padding:18px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.script{background:#f7f5ff;border-left:5px solid #6554c0;padding:13px;border-radius:12px}
+.checklist label{display:block;padding:7px 0}input[type=checkbox]{margin-right:8px}
+@media(max-width:900px){.grid2,.grid3,.problem-grid,.mini-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<div class="kicker" style="color:#c7bfff">PRINCIPAL DATA ENGINEER • ATLASSIAN-FOCUSED</div>
+<h1>⚡ Data Engineer Interview Gym</h1>
+<p>One self-contained interactive guide for Python, Pandas, SQL, DSA, data-engineering coding, complexity, principal-level trade-offs and timed interview recall.</p>
+<div class="badges"><span class="badge">Python</span><span class="badge">Pandas</span><span class="badge">SQL</span><span class="badge">DSA</span><span class="badge">DE Scenarios</span><span class="badge">Principal Signal</span></div>
+</header>
+
+<nav>
+<button class="active" data-page="home">🧠 Mindmap</button>
+<button data-page="python">🐍 Python + Pandas</button>
+<button data-page="sql">🗄️ SQL</button>
+<button data-page="dsa">🧩 DSA</button>
+<button data-page="de">⚙️ DE Coding</button>
+<button data-page="problems">💻 Worked Problems</button>
+<button data-page="drills">🎯 Drills</button>
+<button data-page="mock">⏱️ Mock</button>
+<button data-page="revision">🔁 Revision</button>
+</nav>
+
+<main>
+<section id="home" class="page active">
+<div class="panel"><div class="kicker">THE ONE MAP TO REDRAW</div><h2>Principal Data Engineer interview map</h2><div class="mindmap">
+ATLASSIAN PRINCIPAL DATA ENGINEER
+│
+├── 1. PYTHON CORE
+│   ├── list / dict / set / tuple
+│   ├── enumerate / zip / sorted
+│   ├── comprehensions
+│   ├── generators
+│   ├── functions / lambdas
+│   └── complexity awareness
+│
+├── 2. PANDAS
+│   ├── select/filter
+│   ├── assign/transform
+│   ├── groupby/agg
+│   ├── merge/join
+│   ├── drop_duplicates
+│   ├── sort_values
+│   ├── rank / rolling
+│   └── vectorization vs apply
+│
+├── 3. SQL
+│   ├── joins
+│   ├── group by / having
+│   ├── window functions
+│   ├── dedupe/latest record
+│   ├── top-N per group
+│   ├── running totals
+│   ├── gaps/islands
+│   └── query performance reasoning
+│
+├── 4. DSA FOR DATA ENGINEERS
+│   ├── Hash Map / Set
+│   ├── Two Pointers
+│   ├── Sliding Window
+│   ├── Prefix Sum
+│   ├── Sorting / Intervals
+│   ├── Stack / Queue
+│   ├── Binary Search
+│   ├── Heap / Top-K
+│   └── BFS / DFS basics
+│
+├── 5. DATA-ENGINEERING CODING
+│   ├── dedupe millions of events
+│   ├── incremental state
+│   ├── top-K per key
+│   ├── late/duplicate events
+│   ├── sessionization
+│   ├── rolling metrics
+│   ├── joins at scale
+│   └── memory/time trade-offs
+│
+└── 6. INTERVIEW DELIVERY
+    Clarify
+      ↓
+    Example
+      ↓
+    Brute Force
+      ↓
+    Bottleneck
+      ↓
+    Better Pattern
+      ↓
+    Code
+      ↓
+    Test
+      ↓
+    Time + Space Complexity
+      ↓
+    Data-scale Trade-off
+</div></div>
+<div class="panel"><div class="kicker">TOOL / PATTERN DECISION</div><h2>Before coding, identify the data shape</h2><div class="mindmap">
+WHAT KIND OF DATA PROBLEM IS THIS?
+│
+├── Need FAST LOOKUP / DEDUPE / COUNT?
+│      └── dict / set
+│
+├── Need ROW/COLUMN transformation on tabular data?
+│      └── Pandas vectorized operation
+│
+├── Need GROUP aggregate?
+│      ├── SQL GROUP BY
+│      └── Pandas groupby().agg()
+│
+├── Need LATEST / RANK / RUNNING TOTAL?
+│      ├── SQL WINDOW FUNCTION
+│      └── Pandas sort + groupby/rank/rolling
+│
+├── Need PAIR in sorted data / compact in-place?
+│      └── Two Pointers
+│
+├── Need CONTIGUOUS TIME/RANGE WINDOW?
+│      └── Sliding Window / rolling()
+│
+├── Need MANY RANGE SUMS?
+│      └── Prefix Sum / cumulative sum
+│
+├── Need OVERLAPPING TIME RANGES?
+│      └── Sort + Merge Intervals
+│
+├── Need TOP K only?
+│      └── Heap / SQL rank / nlargest
+│
+├── Need CONNECTIVITY / DEPENDENCY?
+│      └── BFS / DFS
+│
+└── DATA IS HUGE?
+       Ask:
+       - Can I stream?
+       - Can I avoid materializing?
+       - Can I aggregate early?
+       - Can I partition?
+       - What is the memory bound?
+</div></div>
+<div class="panel grid2"><div><h2>What Atlassian is testing</h2><p>Atlassian's engineering coding stage currently emphasizes coding proficiency, problem-solving, data structures and code design. For a Principal Data Engineer, your strongest signal is not exotic algorithms—it is <b>correct reasoning, clean code, data-scale awareness, SQL fluency and explicit trade-offs</b>.</p></div><div><h2>Your interview sentence</h2><div class="script">“I’ll clarify the input and constraints, give the simplest correct approach first, identify its bottleneck, then choose the data structure or tabular operation that removes that bottleneck. I’ll test edge cases and close with time, space and scale trade-offs.”</div></div></div>
+</section>
+
+<section id="python" class="page">
+<div class="panel"><div class="kicker">PYTHON RECALL</div><h2>Structures you must use without thinking</h2>
+<table><tr><th>Tool</th><th>Mental model</th><th>DE use</th><th>Recall</th></tr><tr><td><b>dict</b></td><td>key → value</td><td>frequency, lookup, state by key</td><td><code>freq[x] = freq.get(x, 0) + 1</code></td></tr><tr><td><b>set</b></td><td>unique values</td><td>dedupe / seen</td><td><code>if x in seen: ...; seen.add(x)</code></td></tr><tr><td><b>list</b></td><td>ordered mutable</td><td>rows, stack</td><td><code>append / pop / slicing</code></td></tr><tr><td><b>deque</b></td><td>fast both ends</td><td>queue, BFS, sliding window</td><td><code>append / popleft</code></td></tr><tr><td><b>heapq</b></td><td>min heap</td><td>Top-K / priority</td><td><code>heappush / heappop</code></td></tr><tr><td><b>enumerate</b></td><td>index + value</td><td>avoid manual counters</td><td><code>for i,x in enumerate(xs)</code></td></tr><tr><td><b>zip</b></td><td>parallel iteration</td><td>pair columns/lists</td><td><code>for a,b in zip(a1,a2)</code></td></tr><tr><td><b>sorted(key=...)</b></td><td>custom ordering</td><td>sort rows/tuples</td><td><code>sorted(rows, key=lambda x: x[1])</code></td></tr></table></div>
+<div class="panel"><div class="kicker">PANDAS DECISION MAP</div><h2>Common interview operations</h2>
+<table><tr><th>Intent</th><th>Pandas pattern</th><th>Use</th></tr><tr><td><b>Select</b></td><td><code>df[[&#x27;col1&#x27;,&#x27;col2&#x27;]]</code></td><td>project columns</td></tr><tr><td><b>Filter</b></td><td><code>df[df[&#x27;amount&#x27;] &gt; 100]</code></td><td>row predicate</td></tr><tr><td><b>Assign</b></td><td><code>df.assign(net=df.amount-df.cost)</code></td><td>derive column</td></tr><tr><td><b>Group</b></td><td><code>df.groupby(&#x27;customer&#x27;)[&#x27;amount&#x27;].sum()</code></td><td>aggregation</td></tr><tr><td><b>Multi-agg</b></td><td><code>df.groupby(&#x27;k&#x27;).agg(total=(&#x27;v&#x27;,&#x27;sum&#x27;), cnt=(&#x27;v&#x27;,&#x27;size&#x27;))</code></td><td>multiple metrics</td></tr><tr><td><b>Merge</b></td><td><code>left.merge(right, on=&#x27;id&#x27;, how=&#x27;left&#x27;)</code></td><td>join</td></tr><tr><td><b>Dedupe</b></td><td><code>df.sort_values(&#x27;ts&#x27;).drop_duplicates(&#x27;id&#x27;, keep=&#x27;last&#x27;)</code></td><td>latest record</td></tr><tr><td><b>Rank</b></td><td><code>df[&#x27;r&#x27;]=df.groupby(&#x27;dept&#x27;)[&#x27;salary&#x27;].rank(method=&#x27;dense&#x27;, ascending=False)</code></td><td>top-N</td></tr><tr><td><b>Rolling</b></td><td><code>df.set_index(&#x27;ts&#x27;).groupby(&#x27;id&#x27;)[&#x27;v&#x27;].rolling(&#x27;7D&#x27;).sum()</code></td><td>time window</td></tr><tr><td><b>Vectorize</b></td><td><code>df[&#x27;x&#x27;] = df[&#x27;a&#x27;] * 2</code></td><td>prefer over row-wise apply</td></tr></table>
+<div class="callout amber"><b>Principal rule:</b> Never force Pandas onto data that does not fit the memory/latency model. Say when you would move the operation to SQL/Spark/distributed execution.</div></div>
+<div class="panel"><h2>Pandas performance mindmap</h2><div class="mindmap">PANDAS PERFORMANCE
+│
+├── Prefer vectorized expressions
+│     df["net"] = df["a"] - df["b"]
+│
+├── Avoid Python row loops when possible
+│     iterrows() / row-wise apply()
+│
+├── Filter early
+├── Select only needed columns
+├── Understand merge cardinality
+├── Use categorical dtype when useful
+├── Avoid unnecessary copies
+└── If it doesn't fit memory → CHANGE TOOL, not clever syntax</div></div>
+</section>
+
+<section id="sql" class="page">
+<div class="panel"><div class="kicker">SQL MINDMAP</div><h2>SQL pattern recognition</h2><div class="mindmap">
+SQL INTERVIEW DECISION TREE
+│
+├── Combine tables?
+│   └── JOIN
+│
+├── Aggregate groups?
+│   └── GROUP BY
+│
+├── Filter aggregate?
+│   └── HAVING
+│
+├── Need detail rows + aggregate/rank?
+│   └── WINDOW FUNCTION
+│
+├── Latest row per customer?
+│   └── ROW_NUMBER() OVER(PARTITION BY ... ORDER BY ts DESC)
+│
+├── Top N per group?
+│   └── RANK / DENSE_RANK / ROW_NUMBER
+│
+├── Previous / next event?
+│   └── LAG / LEAD
+│
+├── Running total / rolling metric?
+│   └── SUM() OVER(...)
+│
+├── Missing relationship?
+│   └── LEFT JOIN + IS NULL / NOT EXISTS
+│
+├── Consecutive ranges?
+│   └── LAG + difference / gaps &amp; islands
+│
+└── Slow?
+    Filter early → reduce columns → inspect join cardinality
+    → avoid unnecessary DISTINCT → index/partition awareness
+</div></div>
+<div class="panel"><h2>Must-know SQL interview patterns</h2><table><tr><th>Pattern</th><th>Primary tool</th><th>Examples</th></tr><tr><td><b>Top N per group</b></td><td>ROW_NUMBER / RANK / DENSE_RANK</td><td>salary by dept, top products by category</td></tr><tr><td><b>Latest row per key</b></td><td>ROW_NUMBER() OVER(PARTITION BY key ORDER BY ts DESC)</td><td>CDC latest state</td></tr><tr><td><b>Running total</b></td><td>SUM(x) OVER(PARTITION BY k ORDER BY ts)</td><td>cumulative sales/events</td></tr><tr><td><b>Previous event</b></td><td>LAG / LEAD</td><td>event gap, churn/sessionization</td></tr><tr><td><b>Customers without orders</b></td><td>LEFT JOIN + IS NULL / NOT EXISTS</td><td>anti-join</td></tr><tr><td><b>Dedupe</b></td><td>ROW_NUMBER partition by business key</td><td>remove repeated events</td></tr><tr><td><b>Conditional aggregate</b></td><td>SUM(CASE WHEN ... THEN 1 END)</td><td>multiple metrics in one pass</td></tr><tr><td><b>Gaps &amp; islands</b></td><td>LAG/ROW_NUMBER + grouping trick</td><td>consecutive activity ranges</td></tr><tr><td><b>Percent of total</b></td><td>SUM(x)/SUM(SUM(x)) OVER()</td><td>share contribution</td></tr><tr><td><b>Median / percentile</b></td><td>PERCENTILE_CONT where supported</td><td>distribution questions</td></tr></table></div>
+<div class="panel"><h2>SQL explanation framework</h2><div class="script">1. Clarify grain of each table → 2. State expected output grain → 3. Choose join/filter/aggregate/window → 4. Handle duplicates/NULLs/ties → 5. Write query → 6. Check row multiplication → 7. Discuss physical cost only after logical correctness.</div></div>
+</section>
+
+<section id="dsa" class="page">
+<div class="panel"><div class="kicker">DSA FOR DATA ENGINEERS</div><h2>Pattern recognition table</h2>
+<table><tr><th>Pattern</th><th>Clues</th><th>DE connection</th><th>Typical cost</th><th>Trigger question</th></tr><tr><td><b>Hash Map / Set</b></td><td>duplicate • seen before • frequency • complement • fast lookup</td><td>dedupe events, count IDs, map key→state</td><td>O(n) avg</td><td>What must I remember from prior rows/events?</td></tr><tr><td><b>Two Pointers</b></td><td>sorted pair • palindrome • compact in place</td><td>merge sorted extracts, remove duplicates</td><td>O(n)</td><td>Can moving one end safely eliminate options?</td></tr><tr><td><b>Sliding Window</b></td><td>contiguous • latest N • at most K • rolling</td><td>rolling event metrics, session/window logic</td><td>O(n)</td><td>Can I add new + remove old instead of recompute?</td></tr><tr><td><b>Prefix Sum</b></td><td>many range totals</td><td>range metrics, cumulative counts</td><td>O(n) build</td><td>Can cumulative history make each range O(1)?</td></tr><tr><td><b>Sorting / Intervals</b></td><td>overlap • schedules • ranges</td><td>merge validity windows, session ranges</td><td>O(n log n)</td><td>Will sorting make related ranges adjacent?</td></tr><tr><td><b>Stack</b></td><td>matching • nested • next greater</td><td>parsing nested logs/expressions</td><td>Usually O(n)</td><td>Need most recent unresolved item?</td></tr><tr><td><b>Queue / BFS</b></td><td>level order • shortest unweighted path</td><td>dependency traversal, lineage breadth</td><td>O(V+E)</td><td>Need discovery order / shortest hops?</td></tr><tr><td><b>Binary Search</b></td><td>sorted • monotonic answer</td><td>timestamp boundary, capacity search</td><td>O(log n)</td><td>Can I discard half the possibilities?</td></tr><tr><td><b>Heap / Top-K</b></td><td>top K • repeated max/min</td><td>top products/users/events</td><td>O(n log k)</td><td>Do I only need the best K?</td></tr><tr><td><b>BFS / DFS</b></td><td>connectivity • components • dependencies</td><td>lineage, graph dependencies, connected entities</td><td>O(V+E)</td><td>Is this really a graph hidden in the data?</td></tr></table></div>
+<div class="panel"><h2>Priority order</h2><div class="grid3"><div class="card"><b>🔥 MUST</b><p>Hash map/set, arrays/strings, sorting, intervals, sliding window, two pointers, Big-O.</p></div><div class="card"><b>✅ SHOULD</b><p>Binary search, heap/Top-K, stack/queue, BFS/DFS basics.</p></div><div class="card"><b>⚪ LOWER PRIORITY</b><p>Advanced DP, tries, segment trees, specialised graph algorithms unless recruiter guidance says otherwise.</p></div></div></div>
+</section>
+
+<section id="de" class="page">
+<div class="panel"><div class="kicker">DATA ENGINEERING CODING</div><h2>How DSA becomes DE reasoning</h2>
+<table><tr><th>Interview wording</th><th>Core pattern</th><th>Principal follow-up</th></tr>
+<tr><td>Deduplicate millions of records</td><td>Set/hash/window</td><td>state size, exactness, TTL, partitioning, idempotency</td></tr>
+<tr><td>Top K users/products</td><td>Heap / rank</td><td>local+global top-K, shuffle reduction</td></tr>
+<tr><td>Rolling N-minute metrics</td><td>Sliding window</td><td>event time, late data, watermark</td></tr>
+<tr><td>Merge validity ranges</td><td>Sort + intervals</td><td>boundary semantics, SCD/effective dates</td></tr>
+<tr><td>Latest state per key</td><td>Hash state / ROW_NUMBER</td><td>event-time vs ingestion-time ordering</td></tr>
+<tr><td>Dependency lineage traversal</td><td>BFS/DFS</td><td>cycle detection, scale, storage model</td></tr>
+</table></div>
+<div class="panel"><h2>Principal-level DE checklist</h2><div class="checklist">
+<label><input type="checkbox">I clarified record grain and key uniqueness.</label>
+<label><input type="checkbox">I asked about input size / memory limits.</label>
+<label><input type="checkbox">I defined duplicate and tie semantics.</label>
+<label><input type="checkbox">I distinguished event time vs processing/ingestion time.</label>
+<label><input type="checkbox">I considered idempotency / retry.</label>
+<label><input type="checkbox">I stated time and auxiliary space complexity.</label>
+<label><input type="checkbox">I said when Pandas is the wrong tool.</label>
+</div></div>
+</section>
+
+<section id="problems" class="page">
+<div class="panel"><div class="kicker">WORKED PROBLEMS</div><h2>Brute force → optimize → DE trade-off</h2>
+<div class="toolbar"><select id="areaFilter"><option>All</option><option>DSA</option><option>Pandas</option><option>SQL</option></select><input id="problemSearch" placeholder="Search pattern/problem"></div>
+<div id="problemGrid" class="problem-grid">
+    <article class="problem" data-area="DSA" data-pattern="Hash Map / Set">
+      <div class="problem-head"><span class="tag">DSA</span><span class="tag soft">Hash Map / Set</span><span class="qid">D1</span></div>
+      <h3>First duplicate event ID</h3>
+      <p><b>Problem:</b> Given event_ids = [101, 205, 301, 205, 410], return the first ID that appears twice.</p>
+      <details><summary>🐢 Brute force first</summary><p>Compare each event with every later event. O(n²).</p></details>
+      <details><summary>💡 Hint</summary><p>Remember IDs already processed.</p></details>
+      <details><summary>💻 Optimized solution</summary><pre>def first_duplicate(event_ids):
+    seen = set()
+    for event_id in event_ids:
+        if event_id in seen:
+            return event_id
+        seen.add(event_id)
+    return None</pre></details>
+      <div class="mini-grid"><div><b>⏱ Complexity</b><br>O(n) average time, O(n) space.</div><div><b>👑 Principal signal</b><br>At scale, ask whether exact dedupe is required, state retention duration, partitioning key, and whether state can expire.</div></div>
+      <div class="status-row">
+        <button class="status" data-status="solved">✅ Solved</button>
+        <button class="status" data-status="hint">💡 Needed hint</button>
+        <button class="status" data-status="revise">🔁 Revise</button>
+      </div>
+    </article>
+    
+    <article class="problem" data-area="DSA" data-pattern="Hash Map / Set">
+      <div class="problem-head"><span class="tag">DSA</span><span class="tag soft">Hash Map / Set</span><span class="qid">D2</span></div>
+      <h3>Two Sum — complement lookup</h3>
+      <p><b>Problem:</b> nums=[2,7,11,15], target=9. Return the two indices.</p>
+      <details><summary>🐢 Brute force first</summary><p>Check every pair: O(n²).</p></details>
+      <details><summary>💡 Hint</summary><p>For current n, calculate needed = target - n. Store number → index.</p></details>
+      <details><summary>💻 Optimized solution</summary><pre>def two_sum(nums, target):
+    seen = {}
+    for i, n in enumerate(nums):
+        needed = target - n
+        if needed in seen:
+            return [seen[needed], i]
+        seen[n] = i
+    return []</pre></details>
+      <div class="mini-grid"><div><b>⏱ Complexity</b><br>O(n) average time, O(n) space.</div><div><b>👑 Principal signal</b><br>Explain why the dictionary value is the index: the key answers “have I seen this number?” and the value answers “where?”</div></div>
+      <div class="status-row">
+        <button class="status" data-status="solved">✅ Solved</button>
+        <button class="status" data-status="hint">💡 Needed hint</button>
+        <button class="status" data-status="revise">🔁 Revise</button>
+      </div>
+    </article>
+    
+    <article class="problem" data-area="DSA" data-pattern="Sliding Window">
+      <div class="problem-head"><span class="tag">DSA</span><span class="tag soft">Sliding Window</span><span class="qid">D3</span></div>
+      <h3>Maximum events in any K consecutive buckets</h3>
+      <p><b>Problem:</b> counts=[10,12,3,20,15,8], k=3. Return maximum sum across any 3 consecutive buckets.</p>
+      <details><summary>🐢 Brute force first</summary><p>Sum each size-k slice separately: O(nk).</p></details>
+      <details><summary>💡 Hint</summary><p>Reuse previous window: add entering value, subtract leaving value.</p></details>
+      <details><summary>💻 Optimized solution</summary><pre>def max_window(counts, k):
+    if k &gt; len(counts):
+        return None
+    window = sum(counts[:k])
+    best = window
+    for right in range(k, len(counts)):
+        window += counts[right]
+        window -= counts[right-k]
+        best = max(best, window)
+    return best</pre></details>
+      <div class="mini-grid"><div><b>⏱ Complexity</b><br>O(n) time, O(1) extra space.</div><div><b>👑 Principal signal</b><br>Connect this to rolling event metrics; in streaming systems, window state and late events become the architecture discussion.</div></div>
+      <div class="status-row">
+        <button class="status" data-status="solved">✅ Solved</button>
+        <button class="status" data-status="hint">💡 Needed hint</button>
+        <button class="status" data-status="revise">🔁 Revise</button>
+      </div>
+    </article>
+    
+    <article class="problem" data-area="DSA" data-pattern="Sorting / Intervals">
+      <div class="problem-head"><span class="tag">DSA</span><span class="tag soft">Sorting / Intervals</span><span class="qid">D4</span></div>
+      <h3>Merge overlapping validity windows</h3>
+      <p><b>Problem:</b> Merge [(1,3),(2,6),(8,10),(9,12)].</p>
+      <details><summary>🐢 Brute force first</summary><p>Repeatedly compare all interval pairs until no overlap: potentially O(n²).</p></details>
+      <details><summary>💡 Hint</summary><p>Sort by start, then compare only with the last merged interval.</p></details>
+      <details><summary>💻 Optimized solution</summary><pre>def merge_intervals(intervals):
+    intervals.sort(key=lambda x: x[0])
+    merged = []
+    for start, end in intervals:
+        if not merged or start &gt; merged[-1][1]:
+            merged.append([start, end])
+        else:
+            merged[-1][1] = max(merged[-1][1], end)
+    return merged</pre></details>
+      <div class="mini-grid"><div><b>⏱ Complexity</b><br>O(n log n) due to sorting; O(n) output space.</div><div><b>👑 Principal signal</b><br>Very relevant to effective-date ranges, sessionization and slowly changing data windows.</div></div>
+      <div class="status-row">
+        <button class="status" data-status="solved">✅ Solved</button>
+        <button class="status" data-status="hint">💡 Needed hint</button>
+        <button class="status" data-status="revise">🔁 Revise</button>
+      </div>
+    </article>
+    
+    <article class="problem" data-area="DSA" data-pattern="Heap / Top-K">
+      <div class="problem-head"><span class="tag">DSA</span><span class="tag soft">Heap / Top-K</span><span class="qid">D5</span></div>
+      <h3>Top 3 customers by score</h3>
+      <p><b>Problem:</b> Given millions of customer scores, return only the top 3.</p>
+      <details><summary>🐢 Brute force first</summary><p>Sort all n values: O(n log n).</p></details>
+      <details><summary>💡 Hint</summary><p>Maintain a min-heap of size k.</p></details>
+      <details><summary>💻 Optimized solution</summary><pre>import heapq
+
+def top_k(items, k):
+    heap = []
+    for score, customer in items:
+        heapq.heappush(heap, (score, customer))
+        if len(heap) &gt; k:
+            heapq.heappop(heap)
+    return sorted(heap, reverse=True)</pre></details>
+      <div class="mini-grid"><div><b>⏱ Complexity</b><br>O(n log k) time, O(k) heap space.</div><div><b>👑 Principal signal</b><br>For distributed data, discuss local top-K then global top-K to reduce shuffle volume.</div></div>
+      <div class="status-row">
+        <button class="status" data-status="solved">✅ Solved</button>
+        <button class="status" data-status="hint">💡 Needed hint</button>
+        <button class="status" data-status="revise">🔁 Revise</button>
+      </div>
+    </article>
+    
+    <article class="problem" data-area="Pandas" data-pattern="Dedupe">
+      <div class="problem-head"><span class="tag">Pandas</span><span class="tag soft">Dedupe</span><span class="qid">P1</span></div>
+      <h3>Keep latest record per customer</h3>
+      <p><b>Problem:</b> A DataFrame has customer_id, updated_at, status. Keep only the latest row per customer.</p>
+      <details><summary>🐢 Brute force first</summary><p>Loop each customer and manually compare timestamps.</p></details>
+      <details><summary>💡 Hint</summary><p>Sort by timestamp, then drop duplicates keeping last.</p></details>
+      <details><summary>💻 Optimized solution</summary><pre>latest = (
+    df.sort_values(&quot;updated_at&quot;)
+      .drop_duplicates(&quot;customer_id&quot;, keep=&quot;last&quot;)
+)</pre></details>
+      <div class="mini-grid"><div><b>⏱ Complexity</b><br>Dominated by sort: roughly O(n log n).</div><div><b>👑 Principal signal</b><br>If the table is huge, ask whether upstream data is already partitioned/sorted, whether SQL/Spark is more appropriate, and how ties are resolved.</div></div>
+      <div class="status-row">
+        <button class="status" data-status="solved">✅ Solved</button>
+        <button class="status" data-status="hint">💡 Needed hint</button>
+        <button class="status" data-status="revise">🔁 Revise</button>
+      </div>
+    </article>
+    
+    <article class="problem" data-area="Pandas" data-pattern="GroupBy">
+      <div class="problem-head"><span class="tag">Pandas</span><span class="tag soft">GroupBy</span><span class="qid">P2</span></div>
+      <h3>Revenue per customer with order count</h3>
+      <p><b>Problem:</b> Return total revenue and order count for each customer.</p>
+      <details><summary>🐢 Brute force first</summary><p>Loop rows and maintain manual dictionaries.</p></details>
+      <details><summary>💡 Hint</summary><p>groupby + agg.</p></details>
+      <details><summary>💻 Optimized solution</summary><pre>result = (
+    df.groupby(&quot;customer_id&quot;)
+      .agg(
+          total_revenue=(&quot;amount&quot;, &quot;sum&quot;),
+          order_count=(&quot;order_id&quot;, &quot;nunique&quot;)
+      )
+      .reset_index()
+)</pre></details>
+      <div class="mini-grid"><div><b>⏱ Complexity</b><br>Conceptually O(n) aggregation plus grouping overhead.</div><div><b>👑 Principal signal</b><br>Discuss high-cardinality group keys and whether the workload belongs in Pandas or a distributed engine.</div></div>
+      <div class="status-row">
+        <button class="status" data-status="solved">✅ Solved</button>
+        <button class="status" data-status="hint">💡 Needed hint</button>
+        <button class="status" data-status="revise">🔁 Revise</button>
+      </div>
+    </article>
+    
+    <article class="problem" data-area="Pandas" data-pattern="Join">
+      <div class="problem-head"><span class="tag">Pandas</span><span class="tag soft">Join</span><span class="qid">P3</span></div>
+      <h3>Customers with no matching orders</h3>
+      <p><b>Problem:</b> Given customers and orders DataFrames, return customers who have no orders.</p>
+      <details><summary>🐢 Brute force first</summary><p>For every customer, scan all orders.</p></details>
+      <details><summary>💡 Hint</summary><p>Left merge with indicator, filter left_only.</p></details>
+      <details><summary>💻 Optimized solution</summary><pre>x = customers.merge(
+    orders[[&quot;customer_id&quot;]].drop_duplicates(),
+    on=&quot;customer_id&quot;,
+    how=&quot;left&quot;,
+    indicator=True
+)
+
+result = x[x[&quot;_merge&quot;] == &quot;left_only&quot;]</pre></details>
+      <div class="mini-grid"><div><b>⏱ Complexity</b><br>Hash join style behaviour conceptually near O(n+m), implementation-dependent.</div><div><b>👑 Principal signal</b><br>Before joining large frames, project needed columns and reason about one-to-many cardinality to avoid accidental explosion.</div></div>
+      <div class="status-row">
+        <button class="status" data-status="solved">✅ Solved</button>
+        <button class="status" data-status="hint">💡 Needed hint</button>
+        <button class="status" data-status="revise">🔁 Revise</button>
+      </div>
+    </article>
+    
+    <article class="problem" data-area="SQL" data-pattern="Window">
+      <div class="problem-head"><span class="tag">SQL</span><span class="tag soft">Window</span><span class="qid">S1</span></div>
+      <h3>Second-highest salary per department</h3>
+      <p><b>Problem:</b> Return employees with the second-highest distinct salary in each department.</p>
+      <details><summary>🐢 Brute force first</summary><p>Correlated subqueries or repeated scans.</p></details>
+      <details><summary>💡 Hint</summary><p>DENSE_RANK partitioned by department.</p></details>
+      <details><summary>💻 Optimized solution</summary><pre>WITH ranked AS (
+  SELECT
+      employee_id,
+      department_id,
+      salary,
+      DENSE_RANK() OVER (
+          PARTITION BY department_id
+          ORDER BY salary DESC
+      ) AS rnk
+  FROM employees
+)
+SELECT *
+FROM ranked
+WHERE rnk = 2;</pre></details>
+      <div class="mini-grid"><div><b>⏱ Complexity</b><br>Logical cost depends on partitioning/sort; window typically requires ordering within partitions.</div><div><b>👑 Principal signal</b><br>Clarify whether “second highest” means distinct salary; DENSE_RANK vs ROW_NUMBER is the key semantic decision.</div></div>
+      <div class="status-row">
+        <button class="status" data-status="solved">✅ Solved</button>
+        <button class="status" data-status="hint">💡 Needed hint</button>
+        <button class="status" data-status="revise">🔁 Revise</button>
+      </div>
+    </article>
+    
+    <article class="problem" data-area="SQL" data-pattern="Latest row">
+      <div class="problem-head"><span class="tag">SQL</span><span class="tag soft">Latest row</span><span class="qid">S2</span></div>
+      <h3>Latest event per entity</h3>
+      <p><b>Problem:</b> Return the latest event for each entity_id.</p>
+      <details><summary>🐢 Brute force first</summary><p>MAX(timestamp) then join back, which can duplicate on ties.</p></details>
+      <details><summary>💡 Hint</summary><p>ROW_NUMBER over entity ordered by event_time desc plus deterministic tie-breaker.</p></details>
+      <details><summary>💻 Optimized solution</summary><pre>WITH x AS (
+  SELECT
+      e.*,
+      ROW_NUMBER() OVER (
+          PARTITION BY entity_id
+          ORDER BY event_time DESC, event_id DESC
+      ) AS rn
+  FROM events e
+)
+SELECT *
+FROM x
+WHERE rn = 1;</pre></details>
+      <div class="mini-grid"><div><b>⏱ Complexity</b><br>Partition + order cost; physical execution engine-dependent.</div><div><b>👑 Principal signal</b><br>Always define tie-breaking. In CDC pipelines, event time vs ingestion time vs source sequence matters.</div></div>
+      <div class="status-row">
+        <button class="status" data-status="solved">✅ Solved</button>
+        <button class="status" data-status="hint">💡 Needed hint</button>
+        <button class="status" data-status="revise">🔁 Revise</button>
+      </div>
+    </article>
+    
+    <article class="problem" data-area="SQL" data-pattern="Running total">
+      <div class="problem-head"><span class="tag">SQL</span><span class="tag soft">Running total</span><span class="qid">S3</span></div>
+      <h3>Cumulative spend by customer</h3>
+      <p><b>Problem:</b> For each order, calculate customer cumulative spend ordered by order_time.</p>
+      <details><summary>🐢 Brute force first</summary><p>Self-join each row to all previous rows.</p></details>
+      <details><summary>💡 Hint</summary><p>SUM OVER partition and order.</p></details>
+      <details><summary>💻 Optimized solution</summary><pre>SELECT
+    customer_id,
+    order_id,
+    order_time,
+    amount,
+    SUM(amount) OVER (
+        PARTITION BY customer_id
+        ORDER BY order_time, order_id
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS cumulative_spend
+FROM orders;</pre></details>
+      <div class="mini-grid"><div><b>⏱ Complexity</b><br>Requires ordered partitions; avoid self-join quadratic logic.</div><div><b>👑 Principal signal</b><br>Specify ROWS vs RANGE semantics when duplicate timestamps exist.</div></div>
+      <div class="status-row">
+        <button class="status" data-status="solved">✅ Solved</button>
+        <button class="status" data-status="hint">💡 Needed hint</button>
+        <button class="status" data-status="revise">🔁 Revise</button>
+      </div>
+    </article>
+    
+    <article class="problem" data-area="SQL" data-pattern="Anti-join">
+      <div class="problem-head"><span class="tag">SQL</span><span class="tag soft">Anti-join</span><span class="qid">S4</span></div>
+      <h3>Customers who never ordered</h3>
+      <p><b>Problem:</b> Return customers with no orders.</p>
+      <details><summary>🐢 Brute force first</summary><p>Nested NOT IN can be error-prone with NULL semantics.</p></details>
+      <details><summary>💡 Hint</summary><p>NOT EXISTS or LEFT JOIN ... IS NULL.</p></details>
+      <details><summary>💻 Optimized solution</summary><pre>SELECT c.*
+FROM customers c
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM orders o
+    WHERE o.customer_id = c.customer_id
+);</pre></details>
+      <div class="mini-grid"><div><b>⏱ Complexity</b><br>Physical cost depends on indexes/optimizer; conceptually an anti-join.</div><div><b>👑 Principal signal</b><br>Mention NOT IN + NULL pitfalls and inspect join-key quality/cardinality.</div></div>
+      <div class="status-row">
+        <button class="status" data-status="solved">✅ Solved</button>
+        <button class="status" data-status="hint">💡 Needed hint</button>
+        <button class="status" data-status="revise">🔁 Revise</button>
+      </div>
+    </article>
+    
+    <article class="problem" data-area="SQL" data-pattern="LAG">
+      <div class="problem-head"><span class="tag">SQL</span><span class="tag soft">LAG</span><span class="qid">S5</span></div>
+      <h3>Sessionize clickstream with 30-minute gap</h3>
+      <p><b>Problem:</b> Start a new session whenever an event is more than 30 minutes after the previous event for the same user.</p>
+      <details><summary>🐢 Brute force first</summary><p>Self-join every event to search for previous event.</p></details>
+      <details><summary>💡 Hint</summary><p>LAG to calculate previous timestamp, then cumulative SUM of new-session flag.</p></details>
+      <details><summary>💻 Optimized solution</summary><pre>WITH x AS (
+  SELECT
+      e.*,
+      LAG(event_time) OVER (
+          PARTITION BY user_id
+          ORDER BY event_time
+      ) AS prev_time
+  FROM events e
+),
+flags AS (
+  SELECT *,
+      CASE
+        WHEN prev_time IS NULL
+          OR event_time &gt; prev_time + INTERVAL &#x27;30 minutes&#x27;
+        THEN 1 ELSE 0
+      END AS new_session
+  FROM x
+)
+SELECT *,
+    SUM(new_session) OVER (
+        PARTITION BY user_id
+        ORDER BY event_time
+        ROWS UNBOUNDED PRECEDING
+    ) AS session_id
+FROM flags;</pre></details>
+      <div class="mini-grid"><div><b>⏱ Complexity</b><br>Window ordering dominates.</div><div><b>👑 Principal signal</b><br>Discuss late/out-of-order events and whether event-time reprocessing changes historical sessions.</div></div>
+      <div class="status-row">
+        <button class="status" data-status="solved">✅ Solved</button>
+        <button class="status" data-status="hint">💡 Needed hint</button>
+        <button class="status" data-status="revise">🔁 Revise</button>
+      </div>
+    </article>
+    </div></div>
+</section>
+
+<section id="drills" class="page">
+<div class="panel"><div class="kicker">ACTIVE RECALL</div><h2>Interview flash drill</h2>
+<div class="toolbar"><select id="drillArea"><option>All</option><option>DSA</option><option>Pandas</option><option>SQL</option><option>DE Scenario</option></select><button class="btn primary" id="nextDrill">New Question</button></div>
+<div class="drill"><div id="drillMeta" class="muted"></div><div id="drillQ" class="flash"></div><button class="btn" id="showHint">💡 Hint</button> <button class="btn" id="showAns">✅ Answer</button><div id="drillHint" class="callout amber" style="display:none"></div><div id="drillAns" class="callout green" style="display:none"></div><div class="status-row"><button class="status" data-recall="hard">Hard</button><button class="status" data-recall="ok">Okay</button><button class="status" data-recall="easy">Easy</button></div></div>
+</div>
+</section>
+
+<section id="mock" class="page">
+<div class="panel"><div class="kicker">60-MINUTE STYLE PRACTICE</div><h2>Mock interview timer</h2>
+<div class="grid2"><div class="card"><div class="timer" id="timer">60:00</div><button class="btn primary" id="startTimer">Start</button> <button class="btn" id="pauseTimer">Pause</button> <button class="btn" id="resetTimer">Reset</button></div>
+<div class="card"><b>Mock structure</b><ol><li>5 min clarify/examples</li><li>10 min brute force + complexity</li><li>25 min optimized code</li><li>10 min test/edge cases</li><li>10 min principal trade-offs / scale follow-up</li></ol></div></div>
+<h3>Interview delivery script</h3><div class="script">CLARIFY → TINY EXAMPLE → BRUTE FORCE → COST → BOTTLENECK → PATTERN → CODE → TEST → TIME/SPACE → DE SCALE TRADE-OFF</div>
+<h3>Self-score</h3><div class="grid3"><div class="card">Correctness<br><input type="range" min="1" max="5" value="3"></div><div class="card">Communication<br><input type="range" min="1" max="5" value="3"></div><div class="card">Principal trade-offs<br><input type="range" min="1" max="5" value="3"></div></div>
+</div>
+</section>
+
+<section id="revision" class="page">
+<div class="panel"><div class="kicker">MEMORY FIRST</div><h2>20-second recall card</h2><div class="mindmap">LOOKUP / DEDUPE?       → dict / set
+TABULAR TRANSFORM?       → Pandas vectorize
+GROUP / AGG?             → SQL GROUP BY / Pandas groupby
+LATEST / RANK?           → SQL window / Pandas rank
+CONTIGUOUS WINDOW?       → sliding window / rolling
+RANGE SUM?               → prefix sum / cumulative sum
+OVERLAPPING RANGES?      → sort + intervals
+TOP K?                   → heap / rank / nlargest
+SORTED SEARCH?           → binary search
+DEPENDENCY / CONNECTED?  → BFS / DFS
+
+Then:
+CLARIFY → BRUTE FORCE → BOTTLENECK → OPTIMIZE
+→ CODE → TEST → BIG-O → SCALE TRADE-OFF</div></div>
+<div class="panel"><h2>Daily 45–60 minute routine</h2><ol><li><b>10 min:</b> redraw the mindmap from memory.</li><li><b>10 min:</b> Python/Pandas/SQL syntax recall.</li><li><b>25 min:</b> one coding/SQL problem — brute force first.</li><li><b>10 min:</b> explain solution aloud as if screen-sharing.</li><li><b>5 min:</b> write time + space + one data-scale trade-off.</li></ol></div>
+<div class="panel"><h2>What to remember as Principal</h2><div class="callout green">Don't try to impress with the most complex algorithm. Impress with <b>problem framing, correctness, explicit assumptions, clean implementation, scale awareness, data semantics and trade-offs</b>.</div></div>
+</section>
+</main>
+
+<script>
+const drills = [{"id": "Q001", "area": "DSA", "topic": "Hash Map / Set", "q": "Why is `x in set_obj` usually preferred over `x in list_obj` for repeated membership checks?", "hint": "Think complexity.", "ans": "Set membership is average O(1); list membership is O(n)."}, {"id": "Q002", "area": "DSA", "topic": "Hash Map / Set", "q": "What does `seen[num] = i` store in Two Sum?", "hint": "Key and value have different jobs.", "ans": "Key=num for lookup; value=i so you can return the prior index."}, {"id": "Q003", "area": "DSA", "topic": "Queue", "q": "When is deque better than list for a queue?", "hint": "Front removal.", "ans": "deque.popleft() is O(1); list.pop(0) shifts elements and is O(n)."}, {"id": "Q004", "area": "DSA", "topic": "Intervals", "q": "Why can sorting help interval problems?", "hint": "Make related ranges adjacent.", "ans": "After sorting by start, overlap decisions become local to the last merged interval."}, {"id": "Q005", "area": "DSA", "topic": "Heap", "q": "If you need only top 10 out of 100M rows, why not sort all rows?", "hint": "Compare O(n log n) vs O(n log k).", "ans": "Use a heap/top-K strategy to bound memory and work."}, {"id": "Q006", "area": "DSA", "topic": "Big-O", "q": "A nested loop is always O(n\u00b2): true or false?", "hint": "Loop bounds matter.", "ans": "False. Complexity depends on how many total iterations occur; two pointers may have nested-looking control but total O(n)."}, {"id": "Q007", "area": "DSA", "topic": "Big-O", "q": "What is the space complexity of a set storing every unique input item?", "hint": "Set can grow with n.", "ans": "O(n)."}, {"id": "Q008", "area": "DSA", "topic": "Sliding Window", "q": "What clue strongly suggests sliding window?", "hint": "Contiguous range.", "ans": "Longest/shortest/fixed-size contiguous subarray or substring, especially with incremental validity."}, {"id": "Q009", "area": "DSA", "topic": "BFS/DFS", "q": "Shortest path in an unweighted graph: BFS or DFS?", "hint": "Distance layers.", "ans": "BFS."}, {"id": "Q010", "area": "DSA", "topic": "Binary Search", "q": "What is binary search really using?", "hint": "Monotonicity.", "ans": "A sorted/monotonic property that lets you discard half the search space."}, {"id": "Q011", "area": "Pandas", "topic": "Vectorization", "q": "Why prefer vectorized Pandas operations over `df.apply(..., axis=1)` when possible?", "hint": "Think execution overhead.", "ans": "Vectorized operations execute in optimized array-oriented code and usually avoid slow Python row loops."}, {"id": "Q012", "area": "Pandas", "topic": "Dedupe", "q": "How do you keep the latest row per key?", "hint": "Sort then dedupe.", "ans": "sort_values(timestamp) then drop_duplicates(key, keep='last'), with deterministic tie handling."}, {"id": "Q013", "area": "Pandas", "topic": "GroupBy", "q": "How do you calculate multiple aggregates per group?", "hint": "named aggregation.", "ans": "groupby(key).agg(total=('v','sum'), count=('v','size'))."}, {"id": "Q014", "area": "Pandas", "topic": "Merge", "q": "Why can a merge unexpectedly multiply rows?", "hint": "Join cardinality.", "ans": "If both sides contain duplicate join keys, many-to-many matching can explode row count."}, {"id": "Q015", "area": "Pandas", "topic": "Merge", "q": "What should you do before merging two very wide large DataFrames?", "hint": "Reduce data first.", "ans": "Project only needed columns, filter early, understand key cardinality, and consider whether Pandas is appropriate for the volume."}, {"id": "Q016", "area": "Pandas", "topic": "GroupBy", "q": "Difference between transform and agg?", "hint": "Shape.", "ans": "agg reduces groups; transform returns aligned values with the original row shape."}, {"id": "Q017", "area": "Pandas", "topic": "Rank", "q": "How would you get top 3 salaries per department in Pandas?", "hint": "groupby + rank/nlargest.", "ans": "Sort/rank within department then filter rank <=3; or groupby with nlargest depending required output."}, {"id": "Q018", "area": "Pandas", "topic": "GroupBy", "q": "What does `reset_index()` commonly fix after groupby?", "hint": "Index structure.", "ans": "It turns group keys/index levels back into ordinary columns."}, {"id": "Q019", "area": "Pandas", "topic": "Assignment", "q": "Why is chained assignment risky?", "hint": "View/copy ambiguity.", "ans": "It can behave ambiguously; use `.loc[...] = ...` or assignment on a deliberate copy."}, {"id": "Q020", "area": "Pandas", "topic": "Scale", "q": "If a DataFrame no longer fits memory, what is the principal-level response?", "hint": "Tool choice.", "ans": "Do not force Pandas: use chunking/streaming or a distributed engine such as Spark/SQL warehouse depending workload."}, {"id": "Q021", "area": "SQL", "topic": "Window", "q": "ROW_NUMBER vs RANK vs DENSE_RANK?", "hint": "Tie semantics.", "ans": "ROW_NUMBER unique sequence; RANK ties with gaps; DENSE_RANK ties without gaps."}, {"id": "Q022", "area": "SQL", "topic": "Aggregation", "q": "WHERE vs HAVING?", "hint": "Before vs after aggregation.", "ans": "WHERE filters input rows; HAVING filters groups after aggregation."}, {"id": "Q023", "area": "SQL", "topic": "Anti-join", "q": "Why can `NOT IN (subquery)` be dangerous?", "hint": "NULL.", "ans": "NULL in the subquery can produce UNKNOWN semantics; NOT EXISTS is often safer."}, {"id": "Q024", "area": "SQL", "topic": "Latest row", "q": "Latest row per key: which pattern?", "hint": "Window.", "ans": "ROW_NUMBER() OVER(PARTITION BY key ORDER BY timestamp DESC) then rn=1."}, {"id": "Q025", "area": "SQL", "topic": "Top-N", "q": "Top-N per group: which pattern?", "hint": "Window.", "ans": "ROW_NUMBER/RANK/DENSE_RANK partitioned by group then filter."}, {"id": "Q026", "area": "SQL", "topic": "Running total", "q": "Running total?", "hint": "Window aggregate.", "ans": "SUM(value) OVER(PARTITION BY key ORDER BY time ROWS UNBOUNDED PRECEDING)."}, {"id": "Q027", "area": "SQL", "topic": "LAG", "q": "Previous event time?", "hint": "LAG.", "ans": "LAG(event_time) OVER(PARTITION BY user ORDER BY event_time)."}, {"id": "Q028", "area": "SQL", "topic": "Window", "q": "Why specify ROWS vs RANGE in windows?", "hint": "Duplicate ordering values.", "ans": "ROWS is physical rows; RANGE groups peers with equal ORDER BY values in many engines, changing semantics."}, {"id": "Q029", "area": "SQL", "topic": "Joins", "q": "What is join cardinality and why does it matter?", "hint": "1:1,1:M,M:M.", "ans": "It predicts row multiplication, correctness, memory and shuffle cost."}, {"id": "Q030", "area": "SQL", "topic": "Dedupe", "q": "What is a common way to dedupe exact business keys in SQL?", "hint": "Window.", "ans": "ROW_NUMBER over business key ordered by preferred freshness/sequence, keep rn=1."}, {"id": "Q031", "area": "SQL", "topic": "Performance", "q": "What should a principal DE say when asked to optimize a SQL query?", "hint": "Not magic syntax.", "ans": "Inspect scan volume, filters, projection, join order/cardinality, partition pruning, skew, sort/window cost, indexes/clustering depending engine, and execution plan."}, {"id": "Q032", "area": "SQL", "topic": "Performance", "q": "CTE vs subquery: is one automatically faster?", "hint": "Optimizer-dependent.", "ans": "No. Semantics/readability first; materialization/inlining behaviour depends on engine/version."}, {"id": "Q033", "area": "DE Scenario", "topic": "Dedupe at Scale", "q": "How would you dedupe 500M events by event_id?", "hint": "Exact vs approximate, state, partition.", "ans": "Partition/hash by event_id, use distributed distinct/window/stateful dedupe; define retention and exactness; avoid single-node Pandas."}, {"id": "Q034", "area": "DE Scenario", "topic": "Top-K at Scale", "q": "Top 100 products per category from billions of rows?", "hint": "Local + global top-K.", "ans": "Aggregate locally/partition-wise, keep bounded top-K, then merge globally; in SQL use window after pre-aggregation if applicable."}, {"id": "Q035", "area": "DE Scenario", "topic": "Late Data", "q": "Daily pipeline receives late events. What do you clarify?", "hint": "Time semantics.", "ans": "Event time vs processing time, allowed lateness, watermark/backfill policy, idempotency and whether historical outputs must be corrected."}, {"id": "Q036", "area": "DE Scenario", "topic": "Idempotency", "q": "How do you make a retry-safe pipeline?", "hint": "Idempotency.", "ans": "Deterministic keys, transactional/atomic writes where possible, merge/upsert semantics, checkpoints and no duplicate side effects."}, {"id": "Q037", "area": "DE Scenario", "topic": "Tool Choice", "q": "How do you choose Pandas vs Spark?", "hint": "Data size and distribution.", "ans": "Pandas for memory-fit local tabular work; Spark for distributed scale, large shuffles, fault tolerance and cluster execution."}, {"id": "Q038", "area": "DE Scenario", "topic": "Performance", "q": "Why is early aggregation valuable?", "hint": "Reduce shuffle/data volume.", "ans": "It reduces records/bytes before expensive joins or network movement."}, {"id": "Q039", "area": "DE Scenario", "topic": "Skew", "q": "How do you handle severe key skew in a join?", "hint": "Hot keys.", "ans": "Identify skew, broadcast small side when valid, salt hot keys, pre-aggregate, split hot/cold paths or use engine skew optimization."}, {"id": "Q040", "area": "DE Scenario", "topic": "Architecture", "q": "Batch vs streaming for a metric?", "hint": "SLA and event semantics.", "ans": "Choose based on freshness requirement, source characteristics, correctness under late data, cost and operational complexity."}];
+const state = {problemStatus:{}, recall:{}};
+let currentDrill = null;
+let remaining = 3600, timerHandle = null;
+
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('nav button').forEach(btn=>btn.addEventListener('click',()=>showPage(btn.dataset.page,btn)));
+
+document.querySelectorAll('.problem .status').forEach(btn=>btn.addEventListener('click',e=>{
+  const card=e.target.closest('.problem');
+  card.querySelectorAll('.status').forEach(x=>x.classList.remove('selected'));
+  e.target.classList.add('selected');
+}));
+
+function filterProblems() {
+  const area=document.getElementById('areaFilter').value.toLowerCase();
+  const q=document.getElementById('problemSearch').value.toLowerCase();
+  document.querySelectorAll('.problem').forEach(card=>{
+    const okArea=area==='all'||card.dataset.area.toLowerCase()===area;
+    const okQ=!q||card.innerText.toLowerCase().includes(q);
+    card.style.display=okArea&&okQ?'block':'none';
+  });
+}
+document.getElementById('areaFilter').addEventListener('change',filterProblems);
+document.getElementById('problemSearch').addEventListener('input',filterProblems);
+
+function newDrill() {
+  const area=document.getElementById('drillArea').value;
+  const pool=drills.filter(x=>area==='All'||x.area===area);
+  currentDrill=pool[Math.floor(Math.random()*pool.length)];
+  document.getElementById('drillMeta').textContent=currentDrill.area+' • '+currentDrill.topic+' • '+currentDrill.id;
+  document.getElementById('drillQ').textContent=currentDrill.q;
+  document.getElementById('drillHint').textContent=currentDrill.hint;
+  document.getElementById('drillAns').textContent=currentDrill.ans;
+  document.getElementById('drillHint').style.display='none';
+  document.getElementById('drillAns').style.display='none';
+}
+document.getElementById('nextDrill').addEventListener('click',newDrill);
+document.getElementById('showHint').addEventListener('click',()=>document.getElementById('drillHint').style.display='block');
+document.getElementById('showAns').addEventListener('click',()=>document.getElementById('drillAns').style.display='block');
+document.querySelectorAll('[data-recall]').forEach(b=>b.addEventListener('click',()=>{ if(currentDrill) state.recall[currentDrill.id]=b.dataset.recall; newDrill(); }));
+
+function drawTimer() {
+  const m=Math.floor(remaining/60), s=remaining%60;
+  document.getElementById('timer').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+document.getElementById('startTimer').addEventListener('click',()=>{
+  if(timerHandle)return;
+  timerHandle=setInterval(()=>{if(remaining>0){remaining--;drawTimer();}else{clearInterval(timerHandle);timerHandle=null;}},1000);
+});
+document.getElementById('pauseTimer').addEventListener('click',()=>{clearInterval(timerHandle);timerHandle=null;});
+document.getElementById('resetTimer').addEventListener('click',()=>{clearInterval(timerHandle);timerHandle=null;remaining=3600;drawTimer();});
+newDrill(); drawTimer();
+</script>
+</body>
+</html>
