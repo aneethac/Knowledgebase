@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Principal Data Engineering Speaking & Leadership Playbook</title>
+<style>
+:root{
+  --bg:#f6f8fc; --paper:#ffffff; --ink:#172033; --muted:#5f6b85;
+  --nav:#0f1b33; --nav2:#16284c; --accent:#315efb; --green:#0f8b6d;
+  --amber:#b56b00; --line:#dce3ef; --soft:#eef3ff; --soft2:#edf8f4;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.58}
+.layout{display:grid;grid-template-columns:290px 1fr;min-height:100vh}
+aside{background:linear-gradient(180deg,var(--nav),#0b1427);color:#fff;position:sticky;top:0;height:100vh;overflow:auto;padding:22px 16px}
+.brand{font-size:1.1rem;font-weight:800;line-height:1.25;margin-bottom:18px}
+.brand small{display:block;color:#b9c8e8;font-weight:500;margin-top:6px}
+nav a{display:block;color:#d8e3fa;text-decoration:none;padding:9px 10px;border-radius:9px;margin:3px 0;font-size:.93rem}
+nav a:hover{background:var(--nav2)}
+main{max-width:1100px;width:100%;padding:28px 34px 80px}
+.hero,.section{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:26px;margin-bottom:18px;box-shadow:0 3px 14px rgba(25,46,88,.05)}
+.hero h1{font-size:clamp(2rem,4vw,3.8rem);line-height:1.03;margin:.15rem 0 1rem}
+.hero p{font-size:1.08rem;color:var(--muted);max-width:900px}
+.kicker{font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--green)}
+h2{font-size:1.75rem;margin-top:0}
+h3{margin:24px 0 8px}
+h4{margin:18px 0 6px}
+p{margin:.6rem 0 1rem}
+ul{margin-top:.4rem}
+.script{background:var(--soft);border-left:4px solid var(--accent);padding:14px 16px;border-radius:10px;margin:10px 0 16px;font-size:1.02rem}
+.principal{background:var(--soft2);border-left-color:var(--green)}
+.warn{background:#fff7e8;border-left-color:var(--amber)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.card{border:1px solid var(--line);border-radius:14px;padding:16px;background:#fff}
+.card h3{margin-top:0}
+.chip{display:inline-block;padding:5px 8px;background:#edf1f8;border:1px solid var(--line);border-radius:999px;margin:3px;font-size:.85rem}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:.94rem}
+th,td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#f4f7fc;color:#2a3a5c}
+details{border:1px solid var(--line);border-radius:11px;margin:10px 0;background:#fff}
+summary{cursor:pointer;padding:12px 14px;font-weight:750}
+details>div{padding:0 14px 14px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+button{border:0;border-radius:9px;padding:10px 13px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer}
+button.secondary{background:#e8edf8;color:#263858}
+.practice{border:1px dashed #9db0d1;background:#fbfcff;padding:16px;border-radius:12px}
+textarea{width:100%;min-height:120px;padding:12px;border:1px solid #bdc8da;border-radius:10px;font:inherit}
+.timer{font-size:2rem;font-weight:850}
+.check{display:flex;gap:8px;align-items:flex-start;margin:8px 0}
+.check input{margin-top:5px}
+.progress{height:12px;border-radius:999px;background:#e4e9f3;overflow:hidden}
+.progress>div{height:100%;background:var(--green);width:0}
+.term strong{color:#233f91}
+.hide{display:none!important}
+.search{width:100%;padding:11px;border:1px solid #bdc8da;border-radius:10px}
+.quote{font-size:1.05rem;font-style:italic;color:#2d3f64}
+@media(max-width:900px){.layout{display:block}aside{position:relative;height:auto}.grid{grid-template-columns:1fr}main{padding:18px}}
+@media print{
+  aside,.toolbar,.interactive-only{display:none!important}
+  .layout{display:block}main{max-width:none;padding:0}
+  .hero,.section{box-shadow:none;break-inside:avoid}
+  body{background:white}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside>
+  <div class="brand">Principal DE Speaking Playbook
+    <small>Read it. Say it. Repeat it.</small>
+  </div>
+  <nav>
+    <a href="#how">How to use this</a>
+    <a href="#daily">Daily practice routine</a>
+    <a href="#greetings">Greetings & small talk</a>
+    <a href="#meeting-open">Opening meetings</a>
+    <a href="#meeting-control">Running the meeting</a>
+    <a href="#meeting-close">Closing meetings</a>
+    <a href="#objections">Disagreeing & objections</a>
+    <a href="#executive">Executive articulation</a>
+    <a href="#requirements">Requirements workshop</a>
+    <a href="#system">System design pattern</a>
+    <a href="#hldlld">HLD / LLD</a>
+    <a href="#pipelines">ETL / pipeline patterns</a>
+    <a href="#modelling">Data modelling</a>
+    <a href="#governance">Governance & security</a>
+    <a href="#orchestration">Orchestration & reliability</a>
+    <a href="#monitoring">Monitoring & observability</a>
+    <a href="#performance">Performance & cost</a>
+    <a href="#terms">DE vocabulary bank</a>
+    <a href="#feature">Feature Store story</a>
+    <a href="#migration">Migration story</a>
+    <a href="#interview">Interview answer patterns</a>
+    <a href="#drills">Practice drills</a>
+  </nav>
+</aside>
+
+<main>
+<section class="hero">
+  <div class="kicker">Leadership + Data Engineering articulation</div>
+  <h1>Speak Like a Principal Data Engineer</h1>
+  <p>This version is built as a readable handbook first and an interactive practice tool second. You should be able to sit down, read every section like a book, then practise the exact human-sounding language until it becomes muscle memory.</p>
+  <div class="toolbar">
+    <button onclick="window.print()">Print / Save as PDF</button>
+    <button class="secondary" onclick="togglePractice()">Practice mode</button>
+    <button class="secondary" onclick="document.getElementById('daily').scrollIntoView()">Start today’s drill</button>
+  </div>
+</section>
+
+<section id="how" class="section">
+  <div class="kicker">Start here</div>
+  <h2>How to use this playbook</h2>
+  <p>You do not need to memorise whole paragraphs word for word. Memorise the <b>shape of the answer</b>. Your goal is to sound structured, calm and natural even when the exact words change.</p>
+  <div class="script principal"><b>Your universal speaking spine:</b><br>Context → Goal → Constraints → Options → Decision → Trade-off → Risk → Measure → Next step</div>
+  <p>For example, instead of saying “we should use streaming,” say:</p>
+  <div class="script">“The first thing I’d clarify is the freshness requirement. If the business genuinely needs sub-minute latency, streaming may be justified. If 15-minute freshness is acceptable, micro-batch may be simpler and cheaper to operate. I’d make the decision based on latency, recovery, source capability and cost, then validate it with production-like volume.”</div>
+</section>
+
+<section id="daily" class="section">
+  <div class="kicker">Daily muscle memory</div>
+  <h2>Your 25-minute daily articulation routine</h2>
+  <p>Do this every day for 4–6 weeks. Do not wait until interview day.</p>
+  <div class="grid">
+    <div class="card"><h3>Minutes 1–3 — Greeting</h3><p>Pick one professional greeting and say it aloud three times naturally.</p></div>
+    <div class="card"><h3>Minutes 4–7 — Meeting opening</h3><p>Practise one opening: workshop, status, incident or design review.</p></div>
+    <div class="card"><h3>Minutes 8–12 — System design</h3><p>Take one random architecture problem and speak using the universal spine.</p></div>
+    <div class="card"><h3>Minutes 13–17 — DE terminology</h3><p>Explain five terms in plain English: idempotency, watermark, skew, SCD2, lineage, etc.</p></div>
+    <div class="card"><h3>Minutes 18–22 — Project story</h3><p>Alternate between Feature Store and migration. Speak 2 minutes without notes.</p></div>
+    <div class="card"><h3>Minutes 23–25 — Closing</h3><p>Summarise the discussion with decision, risk, owner and next step.</p></div>
+  </div>
+
+  <h3>Daily checklist</h3>
+  <div class="check"><input type="checkbox" class="dailyCheck"><label>I greeted confidently without sounding robotic.</label></div>
+  <div class="check"><input type="checkbox" class="dailyCheck"><label>I opened a meeting with outcome and structure.</label></div>
+  <div class="check"><input type="checkbox" class="dailyCheck"><label>I explained one system design with trade-offs.</label></div>
+  <div class="check"><input type="checkbox" class="dailyCheck"><label>I explained five DE terms in my own words.</label></div>
+  <div class="check"><input type="checkbox" class="dailyCheck"><label>I told one real project story.</label></div>
+  <div class="check"><input type="checkbox" class="dailyCheck"><label>I closed with decision, owner, risk and next step.</label></div>
+  <div class="progress"><div id="dailyBar"></div></div>
+</section>
+
+<section id="greetings" class="section">
+  <div class="kicker">Very important</div>
+  <h2>Greetings, small talk and joining a meeting confidently</h2>
+  <p>You asked specifically for a list of greetings. These should become automatic.</p>
+
+  <h3>Simple professional greetings</h3>
+  <div class="script">“Hi everyone, good morning. Hope you’re all doing well.”</div>
+  <div class="script">“Morning everyone. Good to see you.”</div>
+  <div class="script">“Hi all, thanks for making the time.”</div>
+  <div class="script">“Good afternoon everyone. Thanks for joining.”</div>
+  <div class="script">“Hi everyone. Hope your day’s going well.”</div>
+
+  <h3>When meeting someone new</h3>
+  <div class="script">“Hi, nice to meet you. I’m [Name]. I’m leading the data engineering side of this work.”</div>
+  <div class="script">“Great to meet you. I’ve heard a bit about the work your team is doing, so I’m looking forward to understanding how we can connect the two sides.”</div>
+
+  <h3>When senior leaders are present</h3>
+  <div class="script">“Good morning everyone. Thanks for joining. I’ll keep this focused on the decision we need to make today and the key risks we need to be aware of.”</div>
+
+  <h3>When joining late</h3>
+  <div class="script">“Apologies, I’m joining a couple of minutes late. Thanks for waiting. I’m caught up on the context, so we can continue.”</div>
+
+  <h3>When someone asks, “How are you?”</h3>
+  <div class="script">“I’m good, thank you. Busy week, but all good. How are you?”</div>
+  <div class="script">“Doing well, thanks. Looking forward to getting this design closed out today.”</div>
+
+  <h3>Friendly but still professional small talk</h3>
+  <div class="script">“How has the week been on your side?”</div>
+  <div class="script">“Did you get a chance to look at the design note before today?”</div>
+  <div class="script">“I know everyone’s had a busy week, so I’ll keep us fairly tight on time.”</div>
+
+  <div class="script warn"><b>Avoid:</b> over-apologising, over-explaining, nervous laughter, or immediately jumping into architecture. A confident greeting can be only 10 seconds.</div>
+</section>
+
+<section id="meeting-open" class="section">
+  <div class="kicker">Meeting leadership</div>
+  <h2>Opening meetings</h2>
+  <h3>Design workshop</h3>
+  <div class="script">“Thanks everyone. The outcome I’d like from today is alignment on the requirements and the key design decisions. I’ll first confirm the business outcome and non-functional requirements, then we can compare the options and trade-offs. Before we finish, I want us to leave with clear decisions, open risks and owners.”</div>
+
+  <h3>Status meeting</h3>
+  <div class="script">“I’ll keep this focused on outcome, risk and decisions. I’ll cover what moved since the last update, what is blocked, and anything that needs escalation or a decision today.”</div>
+
+  <h3>Incident meeting</h3>
+  <div class="script">“Let’s separate immediate recovery from root cause. First we’ll stabilise the service and protect data integrity. Then we’ll identify the failure point, blast radius and recovery path. Once service is restored, we’ll capture preventive actions.”</div>
+
+  <h3>Requirements discovery</h3>
+  <div class="script">“Before we talk about technology, I want to understand the business process, consumers, expected freshness and what failure means operationally. That will give us the right constraints before we choose architecture.”</div>
+
+  <h3>Architecture review</h3>
+  <div class="script principal">“I’ll start with the problem and the design constraints, then walk through the recommended architecture, the alternatives we considered and the trade-offs. I’d like to spend most of our time on assumptions and risks rather than simply presenting components.”</div>
+</section>
+
+<section id="meeting-control" class="section">
+  <div class="kicker">Control the room</div>
+  <h2>Useful sentences while running the meeting</h2>
+  <h3>Bring the discussion back</h3>
+  <div class="script">“I think we’re mixing two decisions. Can we close the ingestion decision first, then move to serving?”</div>
+  <div class="script">“That’s useful context. I’m going to park the implementation detail for a moment so we can first agree on the design principle.”</div>
+
+  <h3>Clarify ambiguity</h3>
+  <div class="script">“When we say ‘real time’, what does that mean in measurable terms—seconds, five minutes, or thirty minutes?”</div>
+  <div class="script">“Can we separate the business requirement from the preferred technology?”</div>
+
+  <h3>Ask a senior-level question</h3>
+  <div class="script">“What happens operationally if this pipeline misses its SLA?”</div>
+  <div class="script">“What is the expected recovery path if we need to replay 24 hours of data?”</div>
+  <div class="script">“What assumption here would invalidate this design?”</div>
+
+  <h3>Push to a decision</h3>
+  <div class="script principal">“We have enough information to make a reversible decision. My recommendation is Option B because it meets the SLA with lower operational overhead. Unless there is a new constraint, I suggest we proceed on that basis.”</div>
+</section>
+
+<section id="meeting-close" class="section">
+  <div class="kicker">Finish strongly</div>
+  <h2>Closing meetings</h2>
+  <div class="script">“Let me summarise where we landed. We agreed on X because of Y. The main open risk is Z. A will validate the source behaviour, B will complete the performance test, and I’ll close the design once those are confirmed.”</div>
+  <div class="script">“The decision today is X. The remaining dependency is Y. We have an owner and next step, so I think we can close there.”</div>
+  <div class="script principal">“From an architecture perspective, I’m comfortable with the direction. The only point I’d keep visible is the recovery risk. Once that validation is complete, I’d consider the design ready to move into detailed implementation.”</div>
+</section>
+
+<section id="objections" class="section">
+  <div class="kicker">Influence without sounding defensive</div>
+  <h2>Disagreement, negotiation and objection handling</h2>
+  <p>Use this sequence: <b>Acknowledge → Clarify → Evidence → Alternative → Decision.</b></p>
+
+  <h3>When you disagree</h3>
+  <div class="script">“I can see why that option is attractive. My concern is what happens at scale and during recovery. Can we compare the two approaches against latency, operational complexity, cost and failure recovery before we lock it in?”</div>
+
+  <h3>When someone pushes a preferred tool</h3>
+  <div class="script">“I’m open to that tool. I’d just like us to validate that it solves a requirement rather than introducing a platform dependency we then have to operate.”</div>
+
+  <h3>When challenged</h3>
+  <div class="script">“That’s a fair challenge. My assumption was X. If that assumption changes, I’d change the design rather than defend the original solution.”</div>
+
+  <h3>When you need to say no</h3>
+  <div class="script">“I don’t think I’d recommend that in production because it creates a recovery and support risk. We can still meet the outcome with a simpler alternative.”</div>
+
+  <h3>When you don’t know</h3>
+  <div class="script">“I understand the design direction, but I don’t want to guess on that platform-specific behaviour. I’d validate it before making the decision.”</div>
+
+  <h3>Negotiating scope or timeline</h3>
+  <div class="script">“We can meet the date, but not with all three requirements at the same quality level. I’d suggest we protect the core data contract and reliability first, then phase the lower-priority capability.”</div>
+</section>
+
+<section id="executive" class="section">
+  <div class="kicker">Talk at the right altitude</div>
+  <h2>Executive articulation</h2>
+  <p>Executives usually care about outcome, risk, cost, timing and accountability more than implementation detail.</p>
+  <div class="script principal">“The current platform works, but it has three risks: long recovery time, duplicated engineering effort and rising compute cost. The target design standardises ingestion and validation, reduces operational support, and gives us a clearer path to scale. The migration will be phased so we can measure value before committing the entire estate.”</div>
+
+  <h3>Executive update pattern</h3>
+  <div class="script">“Status is green / amber / red. The key outcome this week was X. The main risk is Y. We need a decision on Z by Friday to protect the timeline.”</div>
+</section>
+
+<section id="requirements" class="section">
+  <div class="kicker">Discovery</div>
+  <h2>Requirements workshop — what to ask and how to say it</h2>
+  <div class="script">“I separate functional and non-functional requirements. Functionally, I want to understand what data comes in, what transformations are required and who consumes it. Non-functionally, I’m looking at volume, latency, availability, security, retention, recovery, compliance and cost.”</div>
+
+  <table>
+    <tr><th>Area</th><th>Questions</th></tr>
+    <tr><td>Business</td><td>What outcome are we enabling? Who consumes it? What decision depends on it?</td></tr>
+    <tr><td>Latency</td><td>What does “real time” actually mean? What is the maximum acceptable delay?</td></tr>
+    <tr><td>Volume</td><td>Daily volume, peak rate, record size, expected growth?</td></tr>
+    <tr><td>Source</td><td>Who owns it? Can it support CDC? API limits? Deletes? Updates? Schema change process?</td></tr>
+    <tr><td>Reliability</td><td>What happens if we miss an hour? Can we replay? What is RPO/RTO?</td></tr>
+    <tr><td>Quality</td><td>What makes the data usable? What reconciliations are mandatory?</td></tr>
+    <tr><td>Security</td><td>PII? residency? encryption? access model? audit requirements?</td></tr>
+    <tr><td>Consumers</td><td>BI, API, ML, files, reverse ETL, downstream platforms?</td></tr>
+    <tr><td>Operations</td><td>Who supports it? On-call? alerting? manual rerun? backfill?</td></tr>
+    <tr><td>Cost</td><td>What is the expected budget envelope? Is latency worth the extra operating cost?</td></tr>
+  </table>
+</section>
+
+<section id="system" class="section">
+  <div class="kicker">Universal system design pattern</div>
+  <h2>How to answer almost any data system design question</h2>
+  <p>Speak in this order:</p>
+  <div class="script principal"><b>Business → Source → Ingestion → Processing → Storage → Model → Serve → Reliability → Governance → Observability → Cost → Trade-off.</b></div>
+  <details open><summary>1. Business</summary><div>Outcome, consumers, criticality, SLA/SLO, compliance.</div></details>
+  <details><summary>2. Source</summary><div>Database/files/API/events, ownership, volume, velocity, schema, update/delete behaviour.</div></details>
+  <details><summary>3. Ingestion</summary><div>Batch, micro-batch, streaming, CDC, event-driven. Choose based on latency and source capability.</div></details>
+  <details><summary>4. Processing</summary><div>Full vs incremental, ETL vs ELT, dedupe, late events, schema handling, replay, backfill.</div></details>
+  <details><summary>5. Storage</summary><div>Warehouse, lake, lakehouse, Delta/Iceberg, partitioning/clustering, retention, compaction.</div></details>
+  <details><summary>6. Model</summary><div>Grain, fact/dimension, SCD, keys, semantic layer, data product contracts.</div></details>
+  <details><summary>7. Serve</summary><div>BI, APIs, ML/feature store, extracts, reverse ETL.</div></details>
+  <details><summary>8. Reliability</summary><div>Idempotency, checkpoints, watermark, retry, DLQ, replay, disaster recovery.</div></details>
+  <details><summary>9. Governance</summary><div>Catalog, lineage, RBAC, PII, audit, ownership, retention.</div></details>
+  <details><summary>10. Observability</summary><div>Freshness, volume, quality, latency, cost, failure alerts, business reconciliation.</div></details>
+  <details><summary>11. Cost</summary><div>Compute model, data movement, storage, concurrency, workload isolation.</div></details>
+  <details><summary>12. Trade-off</summary><div>Explain why the chosen architecture is appropriate and what you deliberately did not optimise for.</div></details>
+</section>
+
+<section id="hldlld" class="section">
+  <div class="kicker">Architecture depth</div>
+  <h2>HLD and LLD</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>HLD</h3>
+      <div class="script">“At HLD level I’m defining system boundaries, major components, data movement, security boundaries, integration points, failure domains and the major technology decisions.”</div>
+      <p>Typical outputs: architecture diagram, major services, data flows, NFRs, security model, integration contracts, major risks.</p>
+    </div>
+    <div class="card">
+      <h3>LLD</h3>
+      <div class="script">“At LLD level I get into schemas, keys, partitioning, transformations, interfaces, orchestration dependencies, retries, configuration, test cases and deployment behaviour.”</div>
+      <p>Typical outputs: table design, mappings, job sequence, config structure, error handling, APIs/events, CI/CD specifics.</p>
+    </div>
+  </div>
+</section>
+
+<section id="pipelines" class="section">
+  <div class="kicker">Pipeline patterns</div>
+  <h2>ETL / ELT patterns and when to use them</h2>
+  <div class="script">“I don’t choose batch or streaming because one is more modern. I choose based on latency, event semantics, source constraints, recovery needs and operating cost.”</div>
+  <table>
+    <tr><th>Pattern</th><th>Use when</th><th>Principal articulation</th></tr>
+    <tr><td>Batch</td><td>Bounded data, scheduled needs</td><td>“If the consumer only needs daily data, batch is often the most reliable and cost-effective design.”</td></tr>
+    <tr><td>Micro-batch</td><td>Minutes-level freshness</td><td>“I use micro-batch when near-real-time is enough and full streaming complexity does not add business value.”</td></tr>
+    <tr><td>Streaming</td><td>Continuous events, low latency</td><td>“Streaming is justified when latency is part of the business requirement, not just a technology preference.”</td></tr>
+    <tr><td>CDC</td><td>Capture inserts/updates/deletes</td><td>“CDC lets us process actual change instead of repeatedly scanning large operational tables.”</td></tr>
+    <tr><td>Event-driven</td><td>Business events trigger actions</td><td>“The event becomes the contract and downstream consumers react independently.”</td></tr>
+    <tr><td>Reverse ETL</td><td>Activate analytical data operationally</td><td>“We’re pushing curated customer or product intelligence back into systems such as CRM.”</td></tr>
+    <tr><td>Full refresh</td><td>Small/simple datasets</td><td>“I prefer the simplicity of full refresh when incremental state adds more risk than value.”</td></tr>
+    <tr><td>Incremental</td><td>Large/changing datasets</td><td>“Incremental loading reduces movement, but it must come with reconciliation and a backfill path.”</td></tr>
+    <tr><td>Snapshot</td><td>Historical state matters</td><td>“Snapshots are useful when the business needs to understand the exact state at a previous point in time.”</td></tr>
+    <tr><td>SCD2</td><td>Historical dimension changes matter</td><td>“SCD2 answers not just what is true now, but what was true when the fact occurred.”</td></tr>
+  </table>
+</section>
+
+<section id="modelling" class="section">
+  <div class="kicker">Data modelling</div>
+  <h2>How to talk about modelling</h2>
+  <div class="script principal">“I start with grain because most modelling problems become easier once we are explicit about what one row represents. Then I define keys, facts, dimensions and history requirements before optimising physical layout.”</div>
+  <h3>Star vs snowflake</h3>
+  <div class="script">“I prefer a star schema for analytical usability and predictable joins. I normalise dimensions further only when the reuse or maintenance benefit is worth the added query complexity.”</div>
+  <h3>SCD1 vs SCD2</h3>
+  <div class="script">“SCD1 is appropriate when only the current truth matters. SCD2 is needed when historical facts must retain the dimension state that was valid at that time.”</div>
+</section>
+
+<section id="governance" class="section">
+  <div class="kicker">Governance</div>
+  <h2>Governance without slowing delivery</h2>
+  <div class="script principal">“Good governance should be embedded into the delivery path. I want ownership, classification, lineage, access policy and data-quality expectations to be largely automated rather than dependent on manual review after the data is already in production.”</div>
+  <p>Core topics: catalog, lineage, data ownership, data contracts, RBAC, least privilege, PII classification, retention, audit, encryption, masking, quality rules, change control.</p>
+</section>
+
+<section id="orchestration" class="section">
+  <div class="kicker">Reliability</div>
+  <h2>Orchestration, recovery and reliability</h2>
+  <div class="script">“I assume failures and retries will happen. So I design the pipeline to be idempotent, checkpoint progress, isolate bad records, support replay and expose enough observability to recover without manually guessing what processed.”</div>
+  <p>Think through: scheduling, dependencies, parameters, retries, exponential backoff, timeout, idempotency, checkpoint, watermark, DLQ, replay, backfill, catch-up, partial failure, exactly-once effect, late-arriving data.</p>
+</section>
+
+<section id="monitoring" class="section">
+  <div class="kicker">Operate it</div>
+  <h2>Monitoring and observability</h2>
+  <div class="script principal">“I monitor more than job success. A green job can still publish bad or stale data. I want technical and business observability: freshness, row counts, quality, schema drift, throughput, latency, failure rate, cost and reconciliation.”</div>
+  <table>
+    <tr><th>Signal</th><th>Example</th></tr>
+    <tr><td>Freshness</td><td>Latest source timestamp vs published timestamp</td></tr>
+    <tr><td>Completeness</td><td>Expected partitions / files / records arrived</td></tr>
+    <tr><td>Quality</td><td>Nulls, duplicates, referential checks, business rules</td></tr>
+    <tr><td>Performance</td><td>Runtime, p95 latency, throughput, queue lag</td></tr>
+    <tr><td>Cost</td><td>Cost per run, per TB, per consumer workload</td></tr>
+    <tr><td>Business</td><td>Sales totals, reconciliation, critical KPI variance</td></tr>
+  </table>
+</section>
+
+<section id="performance" class="section">
+  <div class="kicker">Principal performance language</div>
+  <h2>Performance and cost optimisation</h2>
+  <div class="script principal">“I establish a baseline before tuning. I first identify whether the dominant bottleneck is I/O, shuffle, skew, compute, joins, file layout or an architectural issue. Then I change one meaningful constraint and measure again. I look at runtime and cost together because faster is not automatically better if it doubles infrastructure spend.”</div>
+  <p>Common levers: predicate pushdown, partition pruning, clustering, compaction, broadcast joins, shuffle reduction, skew handling, caching, Photon/vectorised execution, concurrency, workload isolation, serverless vs provisioned compute, incremental processing.</p>
+</section>
+
+<section id="terms" class="section">
+  <div class="kicker">Vocabulary bank</div>
+  <h2>Modern Data Engineering terms — speakable definitions</h2>
+  <input id="termSearch" class="search interactive-only" placeholder="Search a term..." oninput="filterTerms()"/>
+  <div id="termBank"></div>
+</section>
+
+<section id="feature" class="section">
+  <div class="kicker">Your real project</div>
+  <h2>Feature Store story — natural Principal articulation</h2>
+  <h3>30-second version</h3>
+  <div class="script">“I led data engineering for a product feature-store platform supporting advanced analytics and ML use cases. We standardised reusable historical and future features on Azure Databricks and Delta Lake. My role covered architecture, delivery, reliability and performance—not just building pipelines. A big part of the work was making feature generation repeatable, recoverable and scalable for several downstream ML products.”</div>
+
+  <h3>2-minute version</h3>
+  <div class="script principal">“The problem was that multiple ML use cases needed reusable product features, and without a common platform the feature logic and operating model would become fragmented. We built a central feature-store capability using Azure Databricks and Delta Lake, with configuration-driven processing and clear serving contracts. I was responsible for the engineering architecture and operational design. We separated reusable intermediate grains, generated roughly hundreds of features, and designed catch-up and retry behaviour so missed runs could recover safely. Temporal correctness was especially important because the models consumed both historical and future features, so timezone handling and publish semantics had to be explicit. As the platform matured, I also focused on performance and cost, including moving suitable workloads toward SQL/serverless execution and improving query/data-layout efficiency. The result was a reusable engineering pattern supporting several feature stores and multiple analytics products consistently.”</div>
+
+  <h3>Deep-dive branches to practise</h3>
+  <p>
+    <span class="chip">Why a feature store?</span><span class="chip">Architecture</span><span class="chip">Data grain</span>
+    <span class="chip">Historical vs future</span><span class="chip">Temporal correctness</span><span class="chip">Orchestration</span>
+    <span class="chip">Idempotency</span><span class="chip">Catch-up</span><span class="chip">Data quality</span>
+    <span class="chip">Publishing</span><span class="chip">Cost</span><span class="chip">Performance</span><span class="chip">Governance</span><span class="chip">Leadership</span>
+  </p>
+  <div class="script">For each branch: <b>problem → decision → trade-off → implementation → outcome → learning.</b></div>
+</section>
+
+<section id="migration" class="section">
+  <div class="kicker">Migration story</div>
+  <h2>How to tell a migration story at Principal level</h2>
+  <div class="script principal">“I treat migration as a product and risk-management exercise, not a code-conversion exercise. I start with discovery: workload inventory, dependencies, scheduling, transformations, SLAs, data volumes and operational pain points. From there I classify repeatable patterns rather than migrate package by package. I define the target HLD, establish standard ingestion, transformation, validation and deployment approaches, then migrate in waves. Each wave has reconciliation, rollback and operational-readiness criteria. The success measure is not simply that workloads moved to cloud; it is whether the new platform is more supportable, observable, scalable and cost-effective than what it replaced.”</div>
+
+  <h3>Migration flow</h3>
+  <div class="script">Inventory → classify → dependency map → NFRs → HLD → common framework → migration waves → reconciliation → performance validation → cutover → rollback → hypercare → decommission.</div>
+</section>
+
+<section id="interview" class="section">
+  <div class="kicker">Interview mastery</div>
+  <h2>Generic answer patterns</h2>
+
+  <h3>Architecture answer</h3>
+  <div class="script">“I’d start by clarifying the business outcome, freshness, scale and failure tolerance. Then I’d compare ingestion options, define the processing and storage pattern, and design serving around the consumer. Before calling the design complete, I’d cover idempotency, replay, security, data quality, observability and cost. Finally, I’d call out the main trade-off and how I’d validate it.”</div>
+
+  <h3>Leadership answer</h3>
+  <div class="script">“At Principal level I see my role as reducing ambiguity for the team. I turn unclear requirements into explicit decisions, make trade-offs visible, define engineering guardrails and help teams make consistent decisions without needing me in every implementation detail.”</div>
+
+  <h3>Performance answer</h3>
+  <div class="script">“I start with evidence: profile the workload, identify the bottleneck, establish a baseline, change the dominant constraint, and measure again. I always look at cost and reliability alongside speed.”</div>
+
+  <h3>Behavioural answer structure</h3>
+  <div class="script"><b>Situation → Why it mattered → My decision → How I influenced → Trade-off → Outcome → What I’d do differently.</b></div>
+</section>
+
+<section id="drills" class="section">
+  <div class="kicker">Interactive practice</div>
+  <h2>Random speaking drills</h2>
+  <div class="practice">
+    <div id="prompt">Press “New prompt”.</div>
+    <div class="toolbar">
+      <button onclick="newPrompt()">New prompt</button>
+      <button class="secondary" onclick="startTimer(90)">90 seconds</button>
+      <span id="timer" class="timer">01:30</span>
+    </div>
+  </div>
+
+  <h3>Self-score after speaking</h3>
+  <div class="check"><input type="checkbox" class="scoreCheck"><label>I started with context instead of naming a tool.</label></div>
+  <div class="check"><input type="checkbox" class="scoreCheck"><label>I explained why.</label></div>
+  <div class="check"><input type="checkbox" class="scoreCheck"><label>I mentioned a trade-off.</label></div>
+  <div class="check"><input type="checkbox" class="scoreCheck"><label>I covered reliability / recovery.</label></div>
+  <div class="check"><input type="checkbox" class="scoreCheck"><label>I closed with outcome or measurement.</label></div>
+  <p><b>Score: <span id="score">0</span>/5</b></p>
+
+  <h3>Scratchpad</h3>
+  <textarea id="scratch" placeholder="Context...
+Goal...
+Constraints...
+Options...
+Decision...
+Trade-off...
+Risk...
+Measure...
+Next step..."></textarea>
+  <div class="toolbar">
+    <button onclick="saveScratch()">Save</button>
+    <button class="secondary" onclick="document.getElementById('scratch').value=''">Clear</button>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+const terms = [
+["Idempotency","I can safely rerun the same workload without creating duplicate or inconsistent results. This is essential because retries are normal in production."],
+["Watermark","A progress marker showing how far an incremental pipeline has processed, often based on event time, update timestamp or sequence number."],
+["Checkpoint","Persisted execution state that lets processing resume safely after failure."],
+["Replay","Reprocessing previously received data or events after failure, logic correction or downstream recovery."],
+["Backfill","Processing historical data that was missed or needs regeneration."],
+["Catch-up","Running missed increments in sequence until the pipeline reaches current time again."],
+["Deduplication","Ensuring repeated deliveries do not create repeated logical records."],
+["At-least-once","A delivery model where an event may arrive more than once, so consumers must tolerate duplicates."],
+["Exactly-once effect","Designing the final observable outcome so it is applied once despite retries, usually using transactions, checkpoints and idempotent writes."],
+["Late-arriving data","Data that arrives after its expected event-time window and needs a policy for correction or reprocessing."],
+["Schema drift","An unexpected change in source structure that may break downstream assumptions."],
+["Schema evolution","A controlled way to accept compatible schema changes over time."],
+["Data contract","An explicit agreement covering schema, semantics, quality, ownership and change expectations between producer and consumer."],
+["Lineage","The ability to trace where data came from, what transformed it and where it is consumed."],
+["Data product","A discoverable, owned and reliable dataset or interface with defined consumers and service expectations."],
+["Freshness","How recent the available data is compared with the source or business event."],
+["Completeness","Whether all expected records, files, partitions or entities arrived."],
+["Reconciliation","Comparing source and target counts, keys or measures to prove processing correctness."],
+["Partition pruning","Reading only relevant partitions rather than scanning an entire dataset."],
+["Predicate pushdown","Applying filters as close to the data scan as possible so less data is read."],
+["Data skipping","Using statistics or metadata to avoid reading blocks that cannot match a query."],
+["Clustering","Organising data physically so common filters can skip more data."],
+["Compaction","Combining small files into larger files to reduce metadata and scan overhead."],
+["Shuffle","Redistributing data across workers, commonly caused by joins, aggregations and repartitioning."],
+["Skew","Uneven data distribution where a few partitions become much larger than others."],
+["Spill","When execution cannot keep intermediate data in memory and uses disk, often slowing performance."],
+["Broadcast join","Sending a small table to all workers so a large shuffle can be avoided."],
+["Grain","The exact business meaning of one row in a table."],
+["Business key","A real-world domain identifier such as customer number or product code."],
+["Surrogate key","A generated analytical identifier, often used to manage historical dimension versions."],
+["SCD Type 1","Overwrite old values when history is not needed."],
+["SCD Type 2","Create a new version of a dimension row so history is preserved."],
+["Upsert","Insert new rows and update matching rows, often through MERGE."],
+["Append-only","New records are added without updating previous records; common in event and audit datasets."],
+["CDC","Capturing inserts, updates and deletes from operational systems so downstream processing handles change rather than full scans."],
+["Micro-batch","Processing small bounded groups of new data frequently."],
+["Event-driven","Processing or action initiated by a business or system event."],
+["Reverse ETL","Moving curated analytical data back into operational applications."],
+["Backpressure","When downstream processing cannot keep up with incoming event rate and lag builds."],
+["Eventual consistency","A distributed system may temporarily show different states but converges later."],
+["Orchestration","Coordinating schedules, dependencies, parameters, retries and workflow state."],
+["Observability","Metrics, logs, traces and data signals that make system state and failures diagnosable."],
+["SLA","A committed service expectation, often around availability or delivery time."],
+["SLO","A measurable operating target used to achieve the desired level of reliability."],
+["RPO","The maximum acceptable amount of data loss measured in time."],
+["RTO","The maximum acceptable time to restore service after disruption."],
+["RBAC","Access management based on roles."],
+["Least privilege","Giving users and services only the permissions they actually need."],
+["Data masking","Hiding or transforming sensitive values while preserving controlled usability."],
+["Retention","How long data must be kept before archival or deletion."],
+["Medallion architecture","A layered lakehouse pattern separating raw, refined and consumption-ready data."],
+["Lakehouse","An architecture combining lake-scale storage with warehouse-like management, transactions and analytics."],
+["Delta Lake / Iceberg","Open table formats that add transactional and metadata capabilities on top of object storage."],
+["Semantic layer","A governed layer that standardises business measures, dimensions and analytical definitions."],
+["Data mesh","An operating model where domains own data products under federated governance."],
+["Data fabric","A broader architecture/metadata approach aimed at connecting data across heterogeneous platforms using automation and governance."],
+["Change Data Feed","A table-level feed exposing row changes so downstream processes can consume increments."],
+["DLQ","Dead-letter queue: a place to isolate records or messages that could not be processed safely."],
+["Exponential backoff","Increasing the delay between retries to avoid repeatedly hammering a failing dependency."],
+["Circuit breaker","Temporarily stopping calls to an unhealthy dependency to prevent cascading failure."],
+["Fan-out","One event or dataset being distributed to multiple independent consumers."],
+["Fan-in","Combining multiple upstream flows into a single downstream stage."],
+["Schema registry","A managed store for event or message schemas and compatibility rules."],
+["Data quality dimensions","Common dimensions include completeness, accuracy, validity, consistency, uniqueness and timeliness."],
+["SLI","A measured indicator used to evaluate a service objective, such as freshness or successful-run percentage."],
+["Data lineage impact analysis","Using lineage to identify which downstream assets may be affected by a source or schema change."],
+["Blue-green deployment","Running old and new versions side by side and switching traffic or workload when the new version is validated."],
+["Canary release","Rolling a change to a small portion of workload first to validate behaviour before broad rollout."],
+["Feature store","A managed capability for creating, serving and reusing machine-learning features consistently across training and inference."]
+];
+
+const prompts=[
+"Open a design workshop for a customer-360 pipeline.",
+"A stakeholder says: 'We need real time.' Clarify the requirement and respond.",
+"Design ingestion for a 4-billion-row operational table currently scanned every hour.",
+"Explain idempotency to a senior engineer in 30 seconds.",
+"Explain watermark vs checkpoint.",
+"Choose between full refresh and CDC for a large source system.",
+"How would you design a pipeline that can replay 24 hours safely?",
+"How would you manage late-arriving events?",
+"Explain SCD1 vs SCD2 in natural interview language.",
+"How do you decide between batch, micro-batch and streaming?",
+"How do you design governance without slowing engineering delivery?",
+"How do you monitor whether a data pipeline is actually healthy?",
+"Your Spark job runtime doubled. Walk through your investigation.",
+"How would you migrate 200 legacy ETL packages to a lakehouse?",
+"Tell the 2-minute Feature Store story.",
+"Explain your role at Principal level instead of describing only implementation.",
+"Disagree with someone who insists on Kafka for a 30-minute dashboard SLA.",
+"Close a meeting where one risk is still open.",
+"Give an executive update on a delayed data platform programme.",
+"Explain how you would define HLD and LLD for a migration."
+];
+
+let timerInt=null,timeLeft=90;
+function newPrompt(){document.getElementById('prompt').textContent=prompts[Math.floor(Math.random()*prompts.length)]}
+function startTimer(s){clearInterval(timerInt);timeLeft=s;draw();timerInt=setInterval(()=>{timeLeft--;draw();if(timeLeft<=0)clearInterval(timerInt)},1000)}
+function draw(){document.getElementById('timer').textContent=String(Math.floor(timeLeft/60)).padStart(2,'0')+":"+String(timeLeft%60).padStart(2,'0')}
+function saveScratch(){localStorage.setItem('principalDEScratch',document.getElementById('scratch').value)}
+function updateDaily(){
+ const all=[...document.querySelectorAll('.dailyCheck')],done=all.filter(x=>x.checked).length;
+ document.getElementById('dailyBar').style.width=(done/all.length*100)+"%";
+ all.forEach((x,i)=>localStorage.setItem('daily'+i,x.checked?'1':'0'));
+}
+function updateScore(){document.getElementById('score').textContent=[...document.querySelectorAll('.scoreCheck')].filter(x=>x.checked).length}
+function renderTerms(){
+ document.getElementById('termBank').innerHTML=terms.map(t=>`<details class="term" data-search="${(t[0]+' '+t[1]).toLowerCase()}"><summary>${t[0]}</summary><div>${t[1]}</div></details>`).join('');
+}
+function filterTerms(){let q=document.getElementById('termSearch').value.toLowerCase();document.querySelectorAll('.term').forEach(x=>x.classList.toggle('hide',!x.dataset.search.includes(q)))}
+function togglePractice(){document.body.classList.toggle('practiceMode');document.querySelectorAll('details').forEach(d=>d.open=!d.open)}
+document.addEventListener('DOMContentLoaded',()=>{
+ renderTerms();newPrompt();
+ document.getElementById('scratch').value=localStorage.getItem('principalDEScratch')||'';
+ document.querySelectorAll('.dailyCheck').forEach((x,i)=>{x.checked=localStorage.getItem('daily'+i)==='1';x.addEventListener('change',updateDaily)});
+ document.querySelectorAll('.scoreCheck').forEach(x=>x.addEventListener('change',updateScore));
+ updateDaily(); updateScore();
+});
+</script>
+</body>
+</html>
