@@ -4,7 +4,191 @@ Title:
 "Snowflake Principal Data Engineer Playbook"
 Subtitle:
 "Enterprise Retail Architecture | Azure | Snowflake | AI | Coles-Scale Data Platform"
-
+Home
+│
+├── 01. Snowflake Fundamentals
+│   ├── Architecture
+│   ├── Storage
+│   ├── Warehouses
+│   ├── Security Model
+│   └── Compute Strategy
+│
+├── 02. Databricks → Snowflake Mapping
+│
+├── 03. Ingestion
+│   ├── Batch
+│   ├── CDC
+│   ├── Streaming
+│   ├── Snowpipe
+│   └── Snowpipe Streaming
+│
+├── 04. Data Engineering
+│   ├── Streams
+│   ├── Tasks
+│   ├── Dynamic Tables
+│   ├── Event Tables
+│   └── Search Optimization
+│
+├── 05. Data Modelling
+│   ├── Kimball
+│   ├── Data Vault
+│   ├── Medallion
+│   └── Semantic Layer
+│
+├── 06. SCD Handbook
+│   ├── Type 0
+│   ├── Type 1
+│   ├── Type 2
+│   ├── Type 3
+│   ├── Type 4
+│   └── Type 6
+│
+├── 07. Enterprise Metadata Framework
+│
+├── 08. Retail Reference Architecture
+│   ├── Oracle
+│   ├── SAP
+│   ├── POS
+│   ├── Loyalty
+│   ├── Inventory
+│   ├── Supply Chain
+│   └── APIs
+│
+├── 09. CDC Playbook
+│
+├── 10. Performance Handbook
+│
+├── 11. Cost Optimization Handbook
+│
+├── 12. Governance Handbook
+│
+├── 13. dbt
+│
+├── 14. Airflow
+│
+├── 15. Azure Data Factory
+│
+├── 16. Terraform
+│
+├── 17. Azure DevOps
+│
+├── 18. Cortex AI
+│
+├── 19. RAG Architecture
+│
+├── 20. Agent Architecture
+│
+├── 21. Retail AI Use Cases
+│
+├── 22. Customer 360
+│
+├── 23. Inventory Optimization
+│
+├── 24. Demand Forecasting
+│
+├── 25. Promotion Analytics
+│
+├── 26. Design Review Scenarios
+│
+├── 27. Principal Interview Guide
+│
+├── 28. Cheat Sheets
+│
+├── 29. Decision Trees
+│
+└── 30. Readiness ChecklistHome
+│
+├── 01. Snowflake Fundamentals
+│   ├── Architecture
+│   ├── Storage
+│   ├── Warehouses
+│   ├── Security Model
+│   └── Compute Strategy
+│
+├── 02. Databricks → Snowflake Mapping
+│
+├── 03. Ingestion
+│   ├── Batch
+│   ├── CDC
+│   ├── Streaming
+│   ├── Snowpipe
+│   └── Snowpipe Streaming
+│
+├── 04. Data Engineering
+│   ├── Streams
+│   ├── Tasks
+│   ├── Dynamic Tables
+│   ├── Event Tables
+│   └── Search Optimization
+│
+├── 05. Data Modelling
+│   ├── Kimball
+│   ├── Data Vault
+│   ├── Medallion
+│   └── Semantic Layer
+│
+├── 06. SCD Handbook
+│   ├── Type 0
+│   ├── Type 1
+│   ├── Type 2
+│   ├── Type 3
+│   ├── Type 4
+│   └── Type 6
+│
+├── 07. Enterprise Metadata Framework
+│
+├── 08. Retail Reference Architecture
+│   ├── Oracle
+│   ├── SAP
+│   ├── POS
+│   ├── Loyalty
+│   ├── Inventory
+│   ├── Supply Chain
+│   └── APIs
+│
+├── 09. CDC Playbook
+│
+├── 10. Performance Handbook
+│
+├── 11. Cost Optimization Handbook
+│
+├── 12. Governance Handbook
+│
+├── 13. dbt
+│
+├── 14. Airflow
+│
+├── 15. Azure Data Factory
+│
+├── 16. Terraform
+│
+├── 17. Azure DevOps
+│
+├── 18. Cortex AI
+│
+├── 19. RAG Architecture
+│
+├── 20. Agent Architecture
+│
+├── 21. Retail AI Use Cases
+│
+├── 22. Customer 360
+│
+├── 23. Inventory Optimization
+│
+├── 24. Demand Forecasting
+│
+├── 25. Promotion Analytics
+│
+├── 26. Design Review Scenarios
+│
+├── 27. Principal Interview Guide
+│
+├── 28. Cheat Sheets
+│
+├── 29. Decision Trees
+│
+└── 30. Readiness Checklist
 ========================================================
 OBJECTIVE
 ========================================================
