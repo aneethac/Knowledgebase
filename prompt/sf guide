@@ -189,6 +189,255 @@ Home
 ├── 29. Decision Trees
 │
 └── 30. Readiness Checklist
+
+Snowflake Principal Data Engineer Handbook
+
+Volume 1 - Snowflake Architecture Master Guide
+Volume 2 - Ingestion, CDC & Streaming Master Guide
+Volume 3 - Dynamic Tables, Streams & Tasks
+Volume 4 - Data Modeling (Kimball, Data Vault, Medallion)
+Volume 5 - SCD Master Guide
+Volume 6 - Retail Enterprise Architecture (Coles Scale)
+Volume 7 - Cortex AI, RAG & Agent Engineering
+Volume 8 - Performance Engineering & FinOps
+Volume 9 - Security, Governance & Data Management
+Volume 10 - DevOps & Platform Engineering
+Volume 11 - Principal Engineer Interview Playbook
+Volume 12 - Snowflake vs Databricks Decision Framework
+Volume 13 - Retail Data Products & Domain Architecture
+Volume 14 - Enterprise Architecture Review Scenarios
+Volume 15 - Cheat Sheets, Mind Maps & Readiness Checklists
+Volume 1: Snowflake Architecture Master Guide
+Mental Models
+Databricks vs Snowflake
+Organizations
+Accounts
+Databases
+Schemas
+Storage Layer
+Compute Layer
+Cloud Services Layer
+Query Lifecycle
+Micro Partitions
+Clustering
+Search Optimization
+Caching
+Materialized Views
+Warehouse Design
+Warehouse Sizing
+Multi-Cluster Warehouses
+Resource Monitors
+Cost Governance
+Replication
+Failover Groups
+Disaster Recovery
+Multi-Region Design
+Enterprise Account Strategy
+Retail Reference Architecture
+Data Product Architecture
+Architecture Anti-Patterns
+Performance Anti-Patterns
+Principal Design Reviews
+Interview Questions
+Cheat Sheets
+Mind Maps
+Volume 2: Ingestion, CDC & Streaming
+Ingestion Strategy
+Batch Architecture
+CDC Architecture
+Streaming Architecture
+ADF Patterns
+Kafka Patterns
+Event Hub Patterns
+Oracle CDC
+GoldenGate
+Debezium
+SAP Extraction
+Snowpipe
+Snowpipe Streaming
+COPY INTO
+File Formats
+Stages
+Schema Evolution
+Replay & Recovery
+Monitoring
+Retail Examples
+Volume 3: Dynamic Tables, Streams & Tasks
+Streams Internals
+Tasks Internals
+Dynamic Tables Deep Dive
+Freshness Design
+DT vs dbt
+DT vs Tasks
+Orchestration Patterns
+Monitoring
+Cost Management
+Enterprise Standards
+Volume 4: Data Modeling
+Kimball Fundamentals
+Fact Tables
+Dimensions
+Conformed Dimensions
+Bus Matrix
+Star Schema
+Snowflake Schema
+Data Vault 2.0
+Hubs
+Links
+Satellites
+PIT Tables
+Bridge Tables
+Business Vault
+Medallion Architecture
+Semantic Layer
+Volume 5: SCD Master Guide
+Type 0
+Type 1
+Type 2
+Type 3
+Type 4
+Type 6
+Effective Dating
+MERGE Patterns
+Record Hashing
+Retail Use Cases
+Volume 6: Retail Enterprise Architecture
+POS
+Loyalty
+Inventory
+Supply Chain
+Pricing
+Promotions
+eCommerce
+Customer 360
+Inventory Optimization
+Demand Forecasting
+Data Products
+Data Mesh
+Volume 7: Cortex AI & Agents
+Cortex Complete
+Cortex Search
+Cortex Analyst
+Vector Search
+RAG
+Agentic AI
+Supply Chain Agent
+Store Operations Agent
+Finance Agent
+Customer Agent
+Volume 8: Performance & FinOps
+Query Profiles
+Pruning
+Clustering
+Materialized Views
+Search Optimization
+Warehouse Optimization
+Cost Attribution
+Chargeback
+Showback
+FinOps KPIs
+Volume 9: Security & Governance
+RBAC
+ABAC
+DAC
+Masking
+Row Access Policies
+Tags
+Classification
+Data Contracts
+Lineage
+Data Sharing
+Volume 10: DevOps & Platform Engineering
+dbt
+Airflow
+ADF
+Terraform
+Azure DevOps
+Git Strategies
+CI/CD
+Environment Promotion
+Observability
+SRE
+Volume 11: Principal Interview Playbook
+Architecture Reviews
+Migration Strategies
+DR Design
+Cost Optimization
+Governance
+AI Architecture
+Leadership Questions
+Whiteboard Scenarios
+========================================================
+Create a Snowflake Principal Data Engineer Handbook.
+
+Audience:
+Senior Databricks Engineer transitioning to Snowflake Principal Engineer at a large retail enterprise (Coles scale).
+
+Generate Volume 1 only.
+
+Requirements:
+- Minimum 100 pages equivalent
+- HTML output
+- Searchable navigation
+- Expand/collapse sections
+- Architecture diagrams
+- Snowflake vs Databricks comparisons
+- Principal Engineer perspective
+- Retail examples
+- Anti-patterns
+- Decision matrices
+- Interview questions with answers
+- Cheat sheets
+- Mind maps
+
+Volume 1 Chapters:
+
+1. Snowflake Mental Models
+2. Organizations and Accounts
+3. Databases and Schemas
+4. Storage Layer
+5. Compute Layer
+6. Cloud Services Layer
+7. Virtual Warehouses
+8. Warehouse Sizing
+9. Multi-Cluster Warehouses
+10. Micro Partitions
+11. Query Lifecycle
+12. Caching
+13. Clustering
+14. Search Optimization
+15. Materialized Views
+16. Resource Monitors
+17. Replication
+18. Failover Groups
+19. Disaster Recovery
+20. Multi-Region Design
+21. Security Architecture
+22. Governance Architecture
+23. FinOps
+24. Retail Reference Architecture
+25. Data Product Architecture
+26. Architecture Anti-Patterns
+27. Performance Anti-Patterns
+28. Cost Anti-Patterns
+29. Principal Design Reviews
+30. Interview Playbook
+31. Cheat Sheets
+32. Mind Maps
+
+For every chapter include:
+
+- Concept
+- Why it exists
+- Architecture diagrams
+- Retail examples
+- Coles-scale considerations
+- Databricks comparison
+- Trade-offs
+- Cost impacts
+- Interview questions
+- Recommended practices
+- Anti-patterns
 ========================================================
 OBJECTIVE
 ========================================================
