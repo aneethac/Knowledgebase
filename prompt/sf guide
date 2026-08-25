@@ -1,0 +1,783 @@
+Create a modern, professional, single-page interactive HTML application.
+
+Title:
+"Snowflake Principal Data Engineer Playbook"
+Subtitle:
+"Enterprise Retail Architecture | Azure | Snowflake | AI | Coles-Scale Data Platform"
+
+========================================================
+OBJECTIVE
+========================================================
+
+Build a complete interactive learning, architecture, reference, and interview portal for an experienced Databricks Engineer transitioning into a Snowflake Principal Data Engineer.
+
+This is NOT a beginner portal.
+
+The portal must be designed for:
+
+- Enterprise architecture reviews
+- Principal Engineer decision making
+- Snowflake platform design
+- Data Engineering leadership
+- AI-enabled data platform architecture
+- Enterprise governance
+- Cost optimization
+- Performance tuning
+
+The portal should feel like a combination of:
+
+- Architecture Handbook
+- Engineering Wiki
+- Interactive Mind Map
+- Enterprise Cheat Sheet
+- Interview Playbook
+- Reference Architecture Portal
+
+========================================================
+TARGET ENVIRONMENT
+========================================================
+
+Company Type:
+Large Enterprise Retail
+
+Scale:
+
+10 TB to 30 TB data per day
+
+Billions of records
+
+Thousands of tables
+
+Global operations
+
+Near real-time analytics
+
+AI-powered reporting
+
+Business domains:
+
+- Customer
+- Loyalty
+- Orders
+- Inventory
+- Supply Chain
+- Marketing
+- Finance
+- Merchandising
+- Store Operations
+
+========================================================
+USER BACKGROUND
+========================================================
+
+Strong In:
+
+- Databricks
+- Spark
+- Delta Lake
+- Unity Catalog
+- Medallion Architecture
+
+Weak In:
+
+- Snowflake Production Experience
+
+Goal:
+
+Become Snowflake Principal Data Engineer
+
+========================================================
+UI REQUIREMENTS
+========================================================
+
+Create a modern enterprise UI.
+
+Use:
+
+- Dark/Light Mode Toggle
+- Search Bar
+- Expand / Collapse Sections
+- Interactive Cards
+- Progress Tracker
+- Sticky Navigation
+- Collapsible Side Menu
+- Interactive Mind Map
+- SVG Architecture Diagrams
+- Filters
+- Cheat-Sheet Mode
+- Deep-Dive Mode
+
+Responsive Design.
+
+No external dependencies except CDN libraries.
+
+Use:
+
+- HTML
+- CSS
+- Vanilla JavaScript
+
+or
+
+- HTML
+- Tailwind
+- JavaScript
+
+Single self-contained file preferred.
+
+========================================================
+LANDING PAGE
+========================================================
+
+Create a visual interactive Principal Engineer Mind Map.
+
+Main nodes:
+
+1. Snowflake Architecture
+2. Data Engineering
+3. Ingestion
+4. CDC
+5. Data Modelling
+6. SCD Patterns
+7. Governance
+8. Performance
+9. Cost Optimization
+10. AI & Cortex
+11. Enterprise Project
+12. Interview Playbook
+
+Expandable nodes.
+
+========================================================
+SECTION 1
+SNOWFLAKE ARCHITECTURE
+========================================================
+
+Cover:
+
+- Organizations
+- Accounts
+- Databases
+- Schemas
+- Roles
+- Warehouses
+- Virtual Warehouses
+- Multi-Cluster Warehouses
+- Storage Layer
+- Compute Layer
+- Cloud Services Layer
+- Metadata Services
+- Micro Partitions
+- Clustering
+- Replication
+- Failover
+
+For each topic provide:
+
+What
+Why
+When to Use
+When Not to Use
+Cost Impact
+Principal Engineer View
+Common Mistakes
+
+========================================================
+SECTION 2
+DATABRICKS → SNOWFLAKE MAPPING
+========================================================
+
+Interactive comparison.
+
+Examples:
+
+Delta Lake → Snowflake Tables
+
+Unity Catalog → Horizon Governance
+
+DLT → Dynamic Tables
+
+Auto Loader → Snowpipe
+
+Streaming → Snowpipe Streaming
+
+Workflows → Tasks
+
+Photon → Snowflake Query Engine
+
+For each provide:
+
+Similarity
+
+Differences
+
+Advantages
+
+Disadvantages
+
+Migration Risks
+
+Principal Architect Decision
+
+========================================================
+SECTION 3
+INGESTION FRAMEWORK
+========================================================
+
+Cover:
+
+Batch
+
+- ADF
+- Files
+- COPY INTO
+
+CDC
+
+- Oracle CDC
+- SAP CDC
+- Debezium
+- GoldenGate
+
+Streaming
+
+- Kafka
+- Event Hub
+- Snowpipe Streaming
+
+Architecture Diagrams.
+
+Decision Tree:
+
+When to choose:
+
+Batch
+
+CDC
+
+Streaming
+
+========================================================
+SECTION 4
+DATA ENGINEERING
+========================================================
+
+Cover:
+
+- Stages
+- File Formats
+- COPY INTO
+- Streams
+- Tasks
+- Snowpipe
+- Snowpipe Streaming
+- Dynamic Tables
+- Event Tables
+- Search Optimization
+- Query Acceleration
+- Materialized Views
+
+Each topic must contain:
+
+What
+
+Architecture
+
+Benefits
+
+Limitations
+
+Cost Considerations
+
+Alternative Approaches
+
+Interview Questions
+
+========================================================
+SECTION 5
+MODERN SNOWFLAKE
+========================================================
+
+Cover:
+
+- Iceberg Tables
+- Polaris
+- Open Catalog
+- Native Apps
+- Container Services
+- Snowpark
+- Marketplace
+- Data Sharing
+- Clean Rooms
+
+Principal Engineer Analysis Required.
+
+========================================================
+SECTION 6
+DATA MODELLING
+========================================================
+
+Cover:
+
+Kimball
+
+- Facts
+- Dimensions
+- Conformed Dimensions
+- Bus Matrix
+- Star Schema
+- Snowflake Schema
+
+Data Vault
+
+- Hubs
+- Links
+- Satellites
+- PIT
+- Business Vault
+
+Medallion
+
+- Bronze
+- Silver
+- Gold
+
+Semantic Layer
+
+- Metrics
+- Reusable Dimensions
+- Business Definitions
+
+Architecture Diagrams Required.
+
+========================================================
+SECTION 7
+SCD DEEP DIVE
+========================================================
+
+Cover:
+
+Type 0
+
+Type 1
+
+Type 2
+
+Type 3
+
+Type 4
+
+Type 6
+
+For every type include:
+
+Visual Diagram
+
+Example
+
+SQL Strategy
+
+Snowflake Implementation
+
+Pros
+
+Cons
+
+Retail Use Cases
+
+Interview Questions
+
+========================================================
+SECTION 8
+ENTERPRISE AUDIT FRAMEWORK
+========================================================
+
+Standard Metadata Columns:
+
+record_source
+
+source_system
+
+load_ts
+
+created_ts
+
+updated_ts
+
+pipeline_run_id
+
+batch_id
+
+record_hash
+
+file_name
+
+effective_start_dt
+
+effective_end_dt
+
+is_current
+
+is_deleted
+
+created_by
+
+modified_by
+
+For each explain:
+
+Purpose
+
+Bronze
+
+Silver
+
+Gold
+
+SCD
+
+Data Vault
+
+========================================================
+SECTION 9
+ENTERPRISE RETAIL PROJECT
+========================================================
+
+Build a complete end-to-end project.
+
+Name:
+
+Global Retail Data Platform
+
+Sources:
+
+Oracle ERP
+
+SAP
+
+Salesforce
+
+Kafka
+
+POS
+
+Inventory
+
+Supply Chain
+
+REST APIs
+
+Loyalty
+
+Architecture:
+
+Source
+
+→ Ingestion
+
+→ Landing
+
+→ Bronze
+
+→ Silver
+
+→ Gold
+
+→ Power BI
+
+→ AI Layer
+
+Explain every layer.
+
+Include:
+
+Batch
+
+CDC
+
+Streaming
+
+Data Quality
+
+Metadata
+
+Monitoring
+
+Governance
+
+Security
+
+Cost Control
+
+Disaster Recovery
+
+Observability
+
+========================================================
+SECTION 10
+AI & SNOWFLAKE CORTEX
+========================================================
+
+Cover:
+
+Cortex Complete
+
+Cortex Search
+
+Cortex Analyst
+
+Cortex Agents
+
+Vector Search
+
+RAG
+
+Semantic Models
+
+Prompt Engineering
+
+Enterprise AI Architecture
+
+========================================================
+SECTION 11
+RETAIL AI USE CASES
+========================================================
+
+Create detailed use cases:
+
+Customer 360
+
+Inventory Optimization
+
+Product Recommendation
+
+Demand Forecasting
+
+Pricing Optimization
+
+Promotion Analysis
+
+Supply Chain Optimization
+
+Store Operations Assistant
+
+Customer Service Copilot
+
+For each include:
+
+Business Problem
+
+Architecture
+
+Data Sources
+
+Snowflake Components
+
+AI Components
+
+Expected Outcome
+
+========================================================
+SECTION 12
+PERFORMANCE OPTIMIZATION
+========================================================
+
+Cover:
+
+Query Profile
+
+Micro-Partition Pruning
+
+Caching
+
+Materialized Views
+
+Clustering
+
+Search Optimization
+
+Warehouse Tuning
+
+Dynamic Table Optimization
+
+Provide:
+
+Problem
+
+Diagnosis
+
+Solution
+
+Interview Perspective
+
+========================================================
+SECTION 13
+COST OPTIMIZATION
+========================================================
+
+Cover:
+
+Warehouse Sizing
+
+Auto Suspend
+
+Auto Resume
+
+Storage Strategy
+
+Query Optimization
+
+Search Optimization Usage
+
+Multi Cluster Strategy
+
+FinOps Best Practices
+
+Provide examples and decision matrix.
+
+========================================================
+SECTION 14
+SECURITY & GOVERNANCE
+========================================================
+
+Cover:
+
+RBAC
+
+DAC
+
+ABAC
+
+Tagging
+
+Classification
+
+Dynamic Masking
+
+Row Level Security
+
+Column Level Security
+
+Data Sharing
+
+PII Protection
+
+Compliance
+
+========================================================
+SECTION 15
+DEVOPS
+========================================================
+
+Cover:
+
+DBT
+
+- snapshots
+- tests
+- CI/CD
+
+Airflow
+
+ADF
+
+Terraform
+
+Azure DevOps
+
+Git Strategy
+
+Environment Promotion
+
+========================================================
+SECTION 16
+ARCHITECTURE REVIEW SCENARIOS
+========================================================
+
+Provide interactive scenario cards.
+
+Scenario Example:
+
+15 TB/day
+
+Oracle source
+
+2 minute latency
+
+Global analytics
+
+Ask user:
+
+Design ingestion
+
+Design CDC
+
+Design modelling
+
+Design governance
+
+Design DR
+
+Show expert answer.
+
+At least 20 scenarios.
+
+========================================================
+SECTION 17
+PRINCIPAL INTERVIEW PLAYBOOK
+========================================================
+
+Technical Questions
+
+Architecture Questions
+
+Streaming Questions
+
+CDC Questions
+
+Cost Questions
+
+Governance Questions
+
+AI Questions
+
+Leadership Questions
+
+Include sample answers.
+
+========================================================
+SECTION 18
+ENTERPRISE CHEAT SHEETS
+========================================================
+
+Create one-page reference sheets for:
+
+Architecture
+
+Dynamic Tables
+
+Streams
+
+Tasks
+
+Snowpipe
+
+Snowpipe Streaming
+
+CDC
+
+Kimball
+
+Data Vault
+
+SCD
+
+Cortex
+
+Governance
+
+Performance
+
+Cost Optimization
+
+=
