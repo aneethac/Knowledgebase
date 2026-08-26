@@ -1,0 +1,650 @@
+# Atlantis Feature Store — Data Engineering Interview Guide
+### Project: Smkt Product Feature Store (PFS / PFUS) & Forecasting Engine
+**Target Role:** Principal Data Engineer | Lead Data & Solution Architect
+**Domain:** Retail Supply Chain Analytics · AI/ML Feature Stores · Cloud Data Warehousing
+**Interview Model:** STAR (Situation · Task · Action · Result)
+
+---
+
+## Table of Contents
+
+1. [90-Second Opening Elevator Pitch](#1-90-second-opening-elevator-pitch)
+2. [Stage 1 — Requirement Gathering & Stakeholder Discovery](#2-stage-1--requirement-gathering--stakeholder-discovery)
+3. [Stage 2 — System Architecture & Layering](#3-stage-2--system-architecture--layering)
+4. [Stage 3 — Data Modeling & Feature Store Design](#4-stage-3--data-modeling--feature-store-design)
+5. [Stage 4 — Ingestion, ELT & DAG Orchestration](#5-stage-4--ingestion-elt--dag-orchestration)
+6. [Stage 5 — Security, Governance & Data Quality](#6-stage-5--security-governance--data-quality)
+7. [Stage 6 — Deployment, Cutover & Hypercare](#7-stage-6--deployment-cutover--hypercare)
+8. [Databricks Feature Store & Delta Lake Deep Dive](#8-databricks-feature-store--delta-lake-deep-dive)
+9. [Lakehouse vs Data Warehouse — When Interviewers Ask](#9-lakehouse-vs-data-warehouse--when-interviewers-ask)
+10. [Deep-Dive Technical Q&A](#10-deep-dive-technical-qa)
+11. [Self-Introduction Scripts](#11-self-introduction-scripts)
+12. [Key Phrases & Power Terms Cheat Sheet](#12-key-phrases--power-terms-cheat-sheet)
+
+---
+
+## 1. 90-Second Opening Elevator Pitch
+
+> **Interviewer Question:**
+> *"Tell me about a complex end-to-end data engineering project you designed and delivered from requirements through to production."*
+
+### 🗣️ Spoken Voice Track
+
+> *"I'd love to walk you through **Project Atlantis**, which is the **Smkt Product Feature Store (PFS / PFUS) & Forecasting Data Engine** I recently delivered.*
+>
+> *The core problem was that our downstream machine learning forecasting models for Fresh Produce and supermarket retail suffered from data latency, point-in-time leakage, and inconsistent product range and price data between legacy BIW systems and our downstream forecast engines — Advanced Analytics and Relex.*
+>
+> *I led the data engineering lifecycle from business requirement discovery down to production deployment on Snowflake and Databricks. I architected a 6-tier data warehouse topology that ingested high-volume source data from RMS, MRL, and CML, transformed raw change streams into persistent staging, built conformed Kimball dimensional models, and curated a Point-in-Time feature store with automated quality validation.*
+>
+> *As a result, we reduced pipeline data latency from daily batch to near-real-time CDC ingestion, eliminated feature leakage for model training, achieved 100% data reconciliation between upstream source platforms and downstream engines, and deployed production runbooks that reduced operational incidents by over 40%."*
+
+---
+
+## 2. Stage 1 — Requirement Gathering & Stakeholder Discovery
+
+> **Interviewer Question:**
+> *"How do you approach requirement gathering for an enterprise data engineering project?"*
+
+### STAR Framework
+
+| Component | Detail |
+|:---|:---|
+| **Situation** | Forecasting teams, supply chain planners, and category managers had conflicting definitions of active product ranges, pending ranges, and promotional pricing logic across legacy Oracle BIW and downstream engines |
+| **Task** | Translate ambiguous business requirements into formal technical specifications, data grain definitions, freshness SLAs (6:00 AM daily readiness), and target schema definitions |
+| **Action** | Organized structured cross-functional workshops with Business Analysts, Data Scientists, and Operations leads. Defined explicit acceptance criteria, mapped data lineage from source systems (MRL/RMS), and specified TO-BE range logic for pending vs approved ranges |
+| **Result** | Secured formal sign-off on the Functional & Technical High-Level Design (HLD), eliminating mid-development scope creep |
+
+### 🗣️ Spoken Voice Track
+
+> *"When I approach requirement gathering for an enterprise data engineering project, I bridge the gap between business outcomes and technical contracts.*
+>
+> *For Project Atlantis, I led structured workshops with category managers, data scientists, and supply chain leads. I anchored our discovery around four core pillars:*
+>
+> **1. Data Grain & Velocity:**
+> We agreed on an atomic grain at the `Product-Item-Location-Day` level, with a strict SLA requiring data readiness by 6:00 AM daily.
+>
+> **2. Business Logic Discrepancies:**
+> I discovered 'Active Range' was interpreted differently by supply chain (shipment-eligible) versus merchandising (listed in store). I normalized these into explicit boolean flags — `IS_MERCH_RANGED_FLG` and `IS_SUPPLY_ACTIVE_FLG`.
+>
+> **3. Point-in-Time History Needs:**
+> Data Science required historical state tracking for promotions and price changes without data leakage, which drove our Kimball SCD Type 2 requirement.
+>
+> **4. Data Quality Contracts:**
+> We established threshold tolerances for range reconciliation between RMS and MRL source systems before publishing to feature tables."*
+
+---
+
+## 3. Stage 2 — System Architecture & Layering
+
+> **Interviewer Question:**
+> *"Walk me through the end-to-end architecture and layering of your data warehouse platform."*
+
+### STAR Framework
+
+| Component | Detail |
+|:---|:---|
+| **Situation** | Tightly coupled legacy scripts caused pipeline fragility — any raw source schema change broke downstream BI dashboards and ML feature stores |
+| **Task** | Architect a decoupled, scalable, multi-layered cloud data platform on Snowflake using modern ELT design patterns |
+| **Action** | Designed a 6-tier schema topology: `EDL` → `STG` → `PSG` → `WRK/CR` → `BIW_DWH/DM` → `OUT/Views` |
+| **Result** | Isolated consumer views from backend pipeline changes, enabling zero-downtime schema evolution with zero impact on downstream forecasting models |
+
+### Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    SOURCE SYSTEMS                                    │
+│   Oracle RMS  │  MRL (Range)  │  CML (Promo)  │  Azure Blob/ADLS   │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │  COPY INTO / ADF / CDC
+                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  LAYER 1 — EDL (External Data Landing)                              │
+│  Encrypted Parquet / CSV · Azure Blob Storage · Schema-on-read      │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  LAYER 2 — STG (Transient Staging)                                  │
+│  COPY INTO · Matches source structure · Truncated after each cycle  │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  LAYER 3 — PSG (Persisted Staging / Raw CDC History)                │
+│  Full CDC history · Audit columns · CDW_RECD_LOAD_DT, PROCESS_KEY  │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  LAYER 4 — WRK / CR (Work & Common Repository)                      │
+│  dbt Transient Scratchpad · Deduplication · Surrogate Key Gen       │
+│  Window Functions · QUALIFY ROW_NUMBER() · Reject Tables (*_REJ)   │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  LAYER 5 — BIW_DWH / DM (Kimball Core Warehouse)                   │
+│  dim_org_loc · dim_cml_prod · fct_sales_transaction_plu_atm        │
+│  SCD Type 2 · Surrogate Keys · Conformed Dimensions                │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  LAYER 6 — OUT / Consumer Views                                     │
+│  Zero-copy Snowflake Views · PowerBI · Tableau · Feature Ingestors │
+│  ML Feature Store (Databricks Delta Lake)                           │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 🗣️ Spoken Voice Track
+
+> *"I designed the architecture around a decoupled 6-tier lakehouse and data warehouse pattern in Snowflake:*
+>
+> **1. Landing Layer (`EDL Storage`):** Encrypted Parquet and CSV files land from source systems via Azure Blob Storage.
+>
+> **2. Staging Layer (`STG`):** Transient tables loaded via high-performance Snowflake `COPY INTO` commands. Data matches source structures and is truncated after execution cycles.
+>
+> **3. Persisted Staging (`PSG`):** Retains raw Change Data Capture (CDC) history with audit columns — `CDW_RECD_LOAD_DT` and `CDW_PROCESS_KEY`.
+>
+> **4. Work & Common Repository Layer (`WRK` / `CR`):** Intermediate transient scratchpads used by dbt to execute windowing, deduplication, surrogate key generation, and error-reject handling.
+>
+> **5. Core DWH Layer (`BIW_DWH` / `DM`):** The Kimball Star Schema containing conformed dimensions and atomic or aggregated facts.
+>
+> **6. Consumer View Layer (`OUT`):** Zero-copy logical Snowflake views exposed to PowerBI, Tableau, and feature store ingestors."*
+
+---
+
+## 4. Stage 3 — Data Modeling & Feature Store Design
+
+> **Interviewer Question:**
+> *"Explain your data modeling approach and how you implemented history tracking and feature store delivery."*
+
+### STAR Framework
+
+| Component | Detail |
+|:---|:---|
+| **Situation** | ML forecasting engines required point-in-time historical feature snapshots without data leakage, while BI reporting needed fast aggregation across retail store hierarchies |
+| **Task** | Design a hybrid data modeling architecture — Kimball Dimensional modeling for BI/analytics combined with Point-in-Time Feature Store snapshots for ML |
+| **Action** | Implemented Kimball star schemas in `BIW_DWH` using surrogate keys, standardized Class Words, and SCD Type 2 history tracking. For ML, engineered a Point-in-Time snapshot model `f_pfs_event_long_snapshot` |
+| **Result** | Zero data leakage during ML model backtesting; 100% data model conformance across both operational reporting and predictive analytics |
+
+### SCD Type 2 — Core SQL Pattern
+
+```sql
+-- Expire existing active row
+MERGE INTO BIW_DWH.DIM_PRODUCT tgt
+USING WRK.DIM_PRODUCT_INCOMING src
+ON tgt.PRODUCT_KEY = src.PRODUCT_KEY
+   AND tgt.CDW_RECD_CURR_FLG = 'Y'
+WHEN MATCHED AND (
+    tgt.PRODUCT_CATEGORY_DESC != src.PRODUCT_CATEGORY_DESC
+    OR tgt.BRAND_DESC != src.BRAND_DESC
+) THEN UPDATE SET
+    tgt.CDW_RECD_CURR_FLG   = 'N',
+    tgt.CDW_RECD_CLOSE_DT   = CURRENT_TIMESTAMP()
+WHEN NOT MATCHED THEN INSERT (
+    PRODUCT_KEY,
+    PRODUCT_IDNT,
+    PRODUCT_CATEGORY_DESC,
+    BRAND_DESC,
+    CDW_RECD_LOAD_DT,
+    CDW_RECD_CLOSE_DT,
+    CDW_RECD_CURR_FLG
+) VALUES (
+    src.PRODUCT_KEY,
+    src.PRODUCT_IDNT,
+    src.PRODUCT_CATEGORY_DESC,
+    src.BRAND_DESC,
+    CURRENT_TIMESTAMP(),
+    '9999-12-31',
+    'Y'
+);
+```
+
+### Point-in-Time Feature Join Pattern
+
+```sql
+-- Point-in-Time feature lookup — eliminates data leakage for ML training
+SELECT
+    e.ITEM_KEY,
+    e.LOC_KEY,
+    e.EVENT_DATE,
+    p.PRODUCT_CATEGORY_DESC,
+    p.IS_MERCH_RANGED_FLG,
+    pr.PROMO_DISCOUNT_PCT,
+    pr.PROMO_TYPE_CDE
+FROM ML_TRAINING.EVENT_SPINE       e
+LEFT JOIN BIW_DWH.DIM_PRODUCT      p
+    ON  e.ITEM_KEY = p.PRODUCT_KEY
+    AND e.EVENT_DATE BETWEEN p.CDW_RECD_LOAD_DT AND p.CDW_RECD_CLOSE_DT
+    AND p.CDW_RECD_CURR_FLG = 'Y'
+LEFT JOIN BIW_DWH.DIM_PROMOTION    pr
+    ON  e.ITEM_KEY = pr.ITEM_KEY
+    AND e.EVENT_DATE BETWEEN pr.PROMO_START_DT AND pr.PROMO_END_DT;
+```
+
+### 🗣️ Spoken Voice Track
+
+> *"For data modeling, I apply strict Kimball Dimensional Standards for our analytical core, paired with specialized Point-in-Time models for feature store delivery.*
+>
+> *In our core warehouse, fact tables represent atomic transaction events surrounded by conformed dimensions like Product and Location. All surrogate keys are deterministic hashes generated via `dbt_utils.generate_surrogate_key` based on natural business IDs.*
+>
+> *To track historical attribute changes, we implement SCD Type 2 logic. Every dimension includes standard audit flags. When an attribute changes, we expire the active row by setting `CDW_RECD_CURR_FLG = 'N'` and closing the timestamp, then insert a new row marked as current.*
+>
+> *For our downstream Product Feature Store, ML models require training datasets as of a specific date in history. To prevent data leakage — where future information accidentally corrupts historical feature values — I built Point-in-Time feature event tables using timestamp range joins against our SCD Type 2 dimension states."*
+
+---
+
+## 5. Stage 4 — Ingestion, ELT & DAG Orchestration
+
+> **Interviewer Question:**
+> *"How do you handle ingestion, dbt transformations, and pipeline orchestration?"*
+
+### DAG Dependency Chain
+
+```
+Stage Land
+    │
+    ▼
+Raw CDC Merge (PSG)
+    │
+    ▼
+Conformed DWH Incremental (BIW_DWH)
+    │
+    ▼
+Feature Snapshot Generation (PFS / PFUS)
+    │
+    ▼
+Data Quality Assertions (dbt tests)
+    │
+    ▼
+Outbound View Refresh (OUT layer)
+    │
+    ▼
+SLA Sensor Alert (if > 4:30 AM threshold)
+```
+
+### dbt Incremental Model Pattern
+
+```sql
+-- models/mart/fct_sales_transaction_plu_atm.sql
+{{
+  config(
+    materialized  = 'incremental',
+    unique_key    = 'SALES_TXN_KEY',
+    incremental_strategy = 'merge',
+    on_schema_change = 'append_new_columns'
+  )
+}}
+
+SELECT
+    {{ dbt_utils.generate_surrogate_key(['STORE_KEY','PLU_KEY','TXN_DATE','TXN_TIME']) }}
+        AS SALES_TXN_KEY,
+    STORE_KEY,
+    PLU_KEY,
+    TXN_DATE,
+    SALES_QTY_AMT,
+    SALES_RETAIL_AMT,
+    CURRENT_TIMESTAMP()  AS CDW_RECD_LOAD_DT,
+    {{ var('CDW_PROCESS_KEY') }} AS CDW_PROCESS_KEY
+FROM {{ ref('wrk_sales_transaction_dedup') }}
+
+{% if is_incremental() %}
+WHERE CDW_PROCESS_KEY > (
+    SELECT MAX(CDW_PROCESS_KEY)
+    FROM {{ this }}
+)
+{% endif %}
+```
+
+### 🗣️ Spoken Voice Track
+
+> *"Our ingestion and processing pipeline leverages a dbt-on-Snowflake architecture orchestrated by Airflow and Control-M:*
+>
+> **1. Incremental Loading & Merge Strategy:** For high-volume transaction facts, we use dbt's incremental materialization with a merge strategy. We filter incoming records using an operational watermark on `CDW_PROCESS_KEY`, ensuring we only process modified or newly landed records.
+>
+> **2. Handling Out-of-Order CDC:** In the intermediate WRK layer, we apply Snowflake's `QUALIFY ROW_NUMBER() OVER (PARTITION BY NATURAL_KEY ORDER BY SOURCE_TIMESTAMP DESC) = 1` to guarantee that out-of-order change events are deduplicated before updating target tables.
+>
+> **3. DAG Orchestration & SLA Sensors:** Our orchestration DAG enforces strict task dependency chains from Stage Land through to Outbound View Refresh. We embed SLA sensors that alert on-call engineering teams if upstream stages delay beyond 4:30 AM."*
+
+---
+
+## 6. Stage 5 — Security, Governance & Data Quality
+
+> **Interviewer Question:**
+> *"How do you handle RBAC security, data masking, and testing?"*
+
+### Snowflake RBAC Role Matrix
+
+| Role | Schema Access | Permissions |
+|:---|:---|:---|
+| `BIW_TRANSFORMER_ROLE` | `STG`, `PSG`, `WRK`, `BIW_DWH` | Write (INSERT, MERGE, DELETE) |
+| `BIW_ANALYST_ROLE` | `OUT` views only | Read-only SELECT |
+| `BIW_ADMIN_ROLE` | All schemas | Full DDL + DML |
+| `ML_FEATURE_ROLE` | `OUT`, `BIW_DWH` | Read-only SELECT on feature tables |
+
+### dbt Data Quality Test Tiers
+
+```yaml
+# models/mart/schema.yml
+models:
+  - name: fct_sales_transaction_plu_atm
+    description: "Atomic PLU-level sales transaction fact table"
+    columns:
+      - name: SALES_TXN_KEY
+        tests:
+          - unique
+          - not_null
+      - name: STORE_KEY
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_org_loc')
+              field: LOC_KEY
+      - name: SALES_QTY_AMT
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: SALES_RETAIL_AMT
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+```
+
+### 🗣️ Spoken Voice Track
+
+> *"Security, governance, and data quality were built into the pipeline design from day one:*
+>
+> **1. Snowflake RBAC & Security:** We implemented functional role separation. Pipeline execution runs under `BIW_TRANSFORMER_ROLE` with write access restricted strictly to staging and warehouse schemas. Business analysts query via `BIW_ANALYST_ROLE` with read-only access limited to the consumer views layer. Dynamic Data Masking policies mask sensitive supplier cost attributes for unauthorized roles.*
+>
+> **2. Data Quality & Parity Testing:** We built automated dbt data tests across three tiers:*
+> - **Structural Integrity:** Primary key uniqueness, non-null checks, and foreign key referential integrity against conformed dimensions.
+> - **Business Rule Validations:** Custom SQL assertions ensuring sales quantities and retail prices are non-negative.
+> - **Migration Data Parity:** Automated reconciliation scripts comparing row counts, checksum hashes, and sum totals between legacy Oracle BIW tables and Snowflake native models prior to sign-off."*
+
+---
+
+## 7. Stage 6 — Deployment, Cutover & Hypercare
+
+> **Interviewer Question:**
+> *"Walk me through your production cutover and hypercare strategy."*
+
+### Cutover Timeline
+
+```
+Week 1–2:  Parallel Execution (Legacy BIW + Snowflake running simultaneously)
+           Daily reconciliation — row counts, checksum hashes, sum aggregates
+
+Week 3:    Go / No-Go sign-off (June 30, 2026)
+           Stakeholder approval from Data Science, BI, and Supply Chain leads
+
+Week 4:    Blue-Green View Repointing
+           CREATE OR REPLACE VIEW OUT.PSG_PROD_ITEM
+           AS SELECT * FROM BIW_DWH.DIM_PROD_ITEM;
+           Zero downtime — no consumer endpoints broken
+
+Week 5+:   Hypercare
+           On-call runbook activated · SLA sensor monitoring · BAU handover
+```
+
+### 🗣️ Spoken Voice Track
+
+> *"For production cutover, I engineered a low-risk, zero-downtime deployment strategy centered around Blue-Green View Repointing and comprehensive Hypercare:*
+>
+> **1. Parallel Execution & Parity Window:** Before decommission, we ran our native Snowflake pipelines in parallel with the legacy system for two full weeks. Daily reconciliation scripts verified that downstream forecasting inputs matched within 0.00% variance.*
+>
+> **2. Zero-Downtime View Repointing:** Because downstream applications connected exclusively via our logical OUT view layer, we executed a single DDL statement that seamlessly switched the underlying physical data source from legacy tables to our Snowflake warehouse without breaking a single consumer endpoint.*
+>
+> **3. Hypercare & Operational Runbooks:** I authored complete operational runbooks covering SLA failure protocols, DAG restart procedures, and emergency backfill steps. We conducted knowledge transfer sessions with the BAU support team, maintaining 99.98% pipeline uptime throughout hypercare."*
+
+---
+
+## 8. Databricks Feature Store & Delta Lake Deep Dive
+
+> **Interviewer Question:**
+> *"Walk me through how you built the Databricks Feature Store for demand forecasting."*
+
+### Databricks Feature Store Architecture
+
+```
+Azure ADLS (Raw Delta Bronze Layer)
+        │
+        ▼
+Databricks Bronze → Silver Pipeline (PySpark CDC Merge)
+        │
+        ▼
+Silver Delta Tables (Cleansed, Conformed)
+        │
+        ▼
+Gold Feature Engineering Jobs (PySpark)
+  ├── Rolling 4-week sales aggregations
+  ├── Price elasticity window features
+  ├── Promotional indicator flags
+  └── Range status point-in-time features
+        │
+        ▼
+Databricks Feature Store (Unity Catalog)
+  ├── fs.create_table("pfs.item_loc_features")
+  ├── Offline Store → ML Training (time-travel PIT lookup)
+  └── Online Store → Real-time model inference
+        │
+        ▼
+MLflow Model Registry → Relex / Advanced Analytics Forecast Engines
+```
+
+### PySpark Point-in-Time Feature Job
+
+```python
+from databricks.feature_store import FeatureStoreClient
+from pyspark.sql import functions as F
+from pyspark.sql.window import Window
+
+fs = FeatureStoreClient()
+
+# Step 1: Load Silver Delta table with time travel for PIT integrity
+silver_df = spark.read.format("delta") \
+    .option("timestampAsOf", training_cutoff_date) \
+    .load("/mnt/silver/product_range")
+
+# Step 2: Compute rolling features
+window_4wk = Window.partitionBy("ITEM_KEY", "LOC_KEY") \
+    .orderBy("EVENT_DATE") \
+    .rowsBetween(-28, -1)
+
+features_df = silver_df \
+    .withColumn("SALES_ROLL_4WK_AVG",
+        F.avg("SALES_QTY_AMT").over(window_4wk)) \
+    .withColumn("PROMO_WEEKS_ROLL_4WK",
+        F.sum("IS_ON_PROMO_FLG").over(window_4wk)) \
+    .withColumn("PRICE_CHANGE_FLG",
+        F.when(F.col("CURR_PRICE_AMT") != F.lag("CURR_PRICE_AMT", 1)
+        .over(Window.partitionBy("ITEM_KEY","LOC_KEY")
+        .orderBy("EVENT_DATE")), 1).otherwise(0))
+
+# Step 3: Write to Databricks Feature Store
+fs.write_table(
+    name       = "pfs.item_loc_daily_features",
+    df         = features_df,
+    mode       = "merge"
+)
+```
+
+### Delta Lake Time Travel for PIT Lookups
+
+```python
+# Query feature state as of specific training date — prevents data leakage
+historical_features = spark.read.format("delta") \
+    .option("timestampAsOf", "2025-06-01T00:00:00") \
+    .table("pfs.item_loc_daily_features")
+
+# Or by version number
+historical_features = spark.read.format("delta") \
+    .option("versionAsOf", 42) \
+    .table("pfs.item_loc_daily_features")
+```
+
+### 🗣️ Spoken Voice Track
+
+> *"Our Databricks Feature Store follows a Medallion Architecture pattern — Bronze, Silver, Gold — built on Delta Lake with Unity Catalog governance:*
+>
+> *Bronze tables receive raw CDC events from Azure ADLS. Silver tables apply cleansing, deduplication, and schema enforcement. Gold feature jobs run complex PySpark transformations — rolling sales aggregations, promotional indicator windows, and price elasticity calculations.*
+>
+> *The key engineering challenge was Point-in-Time correctness. For ML model training, we must guarantee that features used to train on a historical date reflect only information that was available on that date — no future data can leak in. Delta Lake's time-travel capability — using `timestampAsOf` or `versionAsOf` — gives us this guarantee natively. We simply read the feature table at the training cutoff timestamp and join it against our event spine.*
+>
+> *Features are registered in the Databricks Feature Store under Unity Catalog, which gives us a single governance layer for ACLs, data lineage, and audit logs across all feature tables."*
+
+---
+
+## 9. Lakehouse vs Data Warehouse — When Interviewers Ask
+
+> **Interviewer Question:**
+> *"Everyone is talking about Lakehouse — what is it and how does it compare to a Data Warehouse?"*
+
+### Comparison Table
+
+| Dimension | Data Warehouse (Snowflake) | Data Lakehouse (Databricks + Delta Lake) |
+|:---|:---|:---|
+| **Primary Workload** | BI, Reporting, SQL Analytics | ML Feature Engineering, Model Training |
+| **Data Format** | Structured tables, Parquet-backed | Delta Lake (Parquet + Transaction Log) |
+| **Schema Approach** | Schema-on-Write (strict) | Schema-on-Read + Schema Enforcement |
+| **ACID Transactions** | Native | Delta Lake provides ACID on object storage |
+| **History / Time-Travel** | Snowflake Time Travel (90 days) | Delta Time Travel (version or timestamp) |
+| **Compute Model** | Snowflake Virtual Warehouses | Databricks Spark Clusters / Serverless SQL |
+| **Best For** | Governed BI dashboards, conformed dims | Distributed ML feature pipelines, streaming |
+| **Our Usage** | BIW_DWH Kimball Star Schemas, OUT views | PFS/PFUS Feature Store, PIT Feature Joins |
+
+### Medallion Architecture Mapping to Our Schema
+
+```
+Bronze  =  EDL + STG  (raw landing, schema-on-read)
+Silver  =  PSG + WRK  (cleansed CDC, deduplicated)
+Gold    =  BIW_DWH + OUT  (conformed Kimball + consumer views)
+```
+
+### 🗣️ Spoken Voice Track
+
+> *"A Lakehouse combines the cost efficiency and flexibility of a Data Lake with the reliability, ACID semantics, and query performance traditionally associated with a Data Warehouse.*
+>
+> *In practice, I've worked with this pattern directly. Our Databricks platform uses Delta Lake as the storage format — giving us versioned, ACID-compliant tables on top of Azure Blob Storage. This means we get time-travel queries, schema enforcement and evolution, and unified batch and streaming on the same Delta table.*
+>
+> *In our architecture, we deliberately use both platforms for their strengths. Databricks Lakehouse handles heavy feature engineering, ML training pipelines, and raw data persistence. Snowflake Data Warehouse handles conformed Kimball models, BI consumption, and governed enterprise reporting.*
+>
+> *The key engineering challenge I solved was building the synchronization and consistency layer between them so both platforms share the same source of truth."*
+
+---
+
+## 10. Deep-Dive Technical Q&A
+
+### Q1: How do you handle late-arriving dimension records?
+
+> *"When a sales transaction arrives before its corresponding Product master record has landed in our dimension table, a standard inner join would drop the revenue record, and a left join leaves a NULL foreign key breaking drill-down reporting.*
+>
+> *I implement the Inferred Dimension Member Pattern. When the fact model encounters an unknown `NATURAL_KEY`, it dynamically inserts a placeholder row into the dimension table with a generated surrogate key, sets descriptive attributes to `Inferred / Unmapped`, and flags `IS_INFERRED_FLG = 'Y'`.*
+>
+> *When the actual dimension record eventually arrives in a later batch, our dbt SCD Type 1 update logic overwrites the inferred placeholder attributes with true master data while preserving the original surrogate key connection."*
+
+### Q2: Why Kimball Dimensional Modeling over Data Vault 2.0?
+
+> *"We evaluated both methodologies during our high-level architecture phase. Data Vault 2.0 offers superior agility for multi-source integration with frequent schema changes, but it introduces significant join complexity — Hubs, Links, Satellites — that slows down ad-hoc SQL querying and BI tools.*
+>
+> *Because our primary operational consumers were PowerBI dashboards, business analysts, and downstream feature extractors requiring fast aggregated queries, Kimball Dimensional Modeling was the optimal choice. It provided conformed, business-intuitive Star Schemas that delivered superior query performance on Snowflake while making it seamless for business teams to self-serve."*
+
+### Q3: How do you prevent data pipeline failures from impacting downstream ML models?
+
+> *"We implement three protection layers:*
+>
+> **1. Idempotent Pipeline Design:** Every dbt incremental model uses `unique_key` with merge strategy — re-running the same pipeline twice produces identical results with no duplicate records.*
+>
+> **2. Data Quality Gates:** dbt test assertions run as blocking gates between pipeline stages. If row counts drop by more than 5% compared to the previous run, or if referential integrity checks fail, the downstream stages are blocked and on-call engineers are alerted.*
+>
+> **3. Feature Store Versioning:** In Databricks, we never overwrite feature tables in place. We write to a new Delta version and only promote to the `CURRENT` feature version pointer after automated validation passes. ML models continue reading the previous validated version until promotion succeeds."*
+
+### Q4: How do you manage schema evolution without breaking consumers?
+
+> *"Schema evolution is one of the trickiest operational challenges in data engineering. Our strategy has three components:*
+>
+> **1. Consumer View Abstraction:** All downstream consumers connect via logical Snowflake views in the OUT layer — never directly to physical tables. When a source adds a column or renames a field, we update only the physical model and adjust the view projection without touching consumer queries.*
+>
+> **2. dbt `on_schema_change = append_new_columns`:** For incremental models, we configure dbt to automatically append new columns from source without failing the pipeline.*
+>
+> **3. Delta Lake Schema Evolution:** In Databricks, Delta Lake's `mergeSchema = true` option allows new source columns to be safely added to existing Delta tables during merge operations, without requiring table recreation."*
+
+---
+
+## 11. Self-Introduction Scripts
+
+### 30-Second Elevator Pitch (Recruiter / Phone Screen)
+
+> *"I'm a Principal Data Engineer specialising in cloud data platforms — balancing enterprise data warehousing on Snowflake with ML feature store engineering on Databricks. I build scalable, Kimball-modeled dimensional warehouses using dbt and Snowflake, alongside PySpark and Delta Lake feature pipelines that feed Point-in-Time training and inference datasets into machine learning forecasting engines."*
+
+### 60-Second Opening (General Interviews)
+
+> *"I'm a Principal Data Engineer with deep expertise across both enterprise cloud data warehousing and Databricks-based feature store engineering.*
+>
+> *On the data warehouse side, I architect and build Kimball-modeled data platforms on Snowflake — leading BIW cloud migrations, designing 6-tier schema topologies, and building incremental ELT pipelines with dbt.*
+>
+> *On the AI/ML data engineering side, I design and operationalise Databricks Feature Stores — using PySpark and Delta Lake to engineer Point-in-Time feature tables for retail demand forecasting, range planning, and promotional analytics.*
+>
+> *What sets my work apart is bridging these two worlds: ensuring clean, conformed master data flows seamlessly from our Snowflake DWH into Databricks Delta Lake, serving both executive BI dashboards and downstream predictive ML models with 100% data consistency."*
+
+### 90-Second Panel Interview Introduction
+
+> *"I'm a Principal Data Engineer with extensive experience designing and scaling end-to-end data architectures — balancing Snowflake for enterprise data warehousing and Databricks for AI/ML feature store platforms.*
+>
+> *In my recent work with supermarket retail analytics, I led two major parallel initiatives:*
+>
+> *First, Enterprise Data Warehouse Architecture: I led the design and migration of our core BIW data warehouse onto Snowflake using Kimball Dimensional Modeling. I established a decoupled multi-tier schema topology, implemented dbt-driven incremental CDC merge models, and engineered SCD Type 2 history tracking for core dimensions like Store and Product hierarchies.*
+>
+> *Second, Databricks Product Feature Store: To power machine learning demand forecasting models for Fresh Produce and retail categories, I engineered a high-throughput Feature Store on Databricks using Delta Lake and PySpark. I built automated feature pipelines that transform complex supply chain, range, price, and promotional data into Point-in-Time historical feature tables — completely eliminating data leakage during ML model backtesting.*
+>
+> *I also architected the interoperability layer between Snowflake and Databricks — using Delta Sharing and Snowflake connectors to maintain a single source of truth across both analytical BI and predictive ML workloads.*
+>
+> *My approach combines technical rigor in data engineering with strong cross-functional leadership — from hosting business workshops to authoring production runbooks and driving zero-downtime cutover strategies."*
+
+---
+
+## 12. Key Phrases & Power Terms Cheat Sheet
+
+| Term | One-Line Definition | Your Connection |
+|:---|:---|:---|
+| **Lakehouse** | Data Lake + Warehouse ACID semantics | Databricks + Delta Lake |
+| **Medallion Architecture** | Bronze / Silver / Gold data quality layers | `STG` → `PSG` → `BIW_DWH` |
+| **Delta Lake** | Open-source ACID storage layer on object storage | Databricks Feature Store |
+| **Time Travel** | Query historical data state by version or timestamp | Point-in-Time feature generation |
+| **Unity Catalog** | Unified Databricks governance & lineage layer | Feature Store ACL management |
+| **Delta Sharing** | Open protocol for cross-platform data sharing | Snowflake ↔ Databricks bridge |
+| **Point-in-Time Join** | Feature lookup at historical timestamp — no leakage | PFS/PFUS ML training datasets |
+| **Kimball Star Schema** | Fact + conformed dimension BI modeling standard | BIW_DWH core warehouse |
+| **SCD Type 2** | History tracking via row versioning with close dates | `CDW_RECD_CURR_FLG` pattern |
+| **Blue-Green Cutover** | Zero-downtime switch via view repointing | Oracle BIW → Snowflake migration |
+| **Lambda Architecture** | Separate batch + speed layers (now avoided) | Replaced by unified Delta pipelines |
+| **Kappa Architecture** | Single streaming pipeline for all data | What Delta Lake enables |
+| **dbt Incremental** | Process only new/changed records via watermark | `CDW_PROCESS_KEY` merge pattern |
+| **CDC (Change Data Capture)** | Track row-level changes from source systems | PSG layer ingestion strategy |
+
+---
+
+## How to Use This Guide
+
+```
+Before the interview:
+1. Read your 90-second intro out loud 3 times
+2. Pick 2 projects and practice the STAR components without notes
+3. Have the Key Phrases table open for last-minute revision
+
+During the interview:
+1. Always open with the 90-second elevator pitch when asked "tell me about yourself"
+2. Structure every project answer: Situation → Task → Action → Result
+3. Drop power terms naturally — Medallion Architecture, Point-in-Time, Blue-Green Cutover
+
+For technical deep-dives:
+1. Draw the 6-tier architecture diagram on a whiteboard
+2. Walk through the DAG dependency chain step by step
+3. Reference real metrics: 500M+ daily records, 65% query speedup, 14% forecast accuracy
+```
+
+---
+
+*Aneetha Chandhirasekar — Principal Data Engineer | Lead Data & Solution Architect*
+*Databricks Certified Data Engineer Associate | Melbourne, VIC, Australia*
+*aneetha.chandru108@gmail.com | linkedin.com/in/aneethachandhirasekar/*
