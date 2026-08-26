@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Agentic AI for Data Engineering — Principal Engineer Learning Lab</title>
+<style>
+:root{
+  --bg:#07111f; --panel:#0d1b2a; --panel2:#12263a; --text:#eaf2ff; --muted:#9fb3c8;
+  --accent:#4cc9f0; --accent2:#80ffdb; --warn:#ffd166; --danger:#ff6b6b; --ok:#7ee787;
+  --border:#24425e; --code:#06101a;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#06101c,#091827 45%,#07111f);color:var(--text);line-height:1.55}
+a{color:var(--accent)}
+button,input{font:inherit}
+.header{position:sticky;top:0;z-index:10;background:rgba(7,17,31,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.header-inner{max-width:1500px;margin:auto;padding:14px 20px;display:flex;gap:16px;align-items:center;justify-content:space-between}
+.brand{font-weight:800;letter-spacing:.2px}.brand span{color:var(--accent)}
+.progress-wrap{width:min(380px,40vw)} .progress-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px}
+.progress{height:8px;border-radius:10px;background:#102337;overflow:hidden}.progress>div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:.25s}
+.layout{max-width:1500px;margin:auto;display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 66px)}
+.sidebar{border-right:1px solid var(--border);padding:18px;position:sticky;top:66px;height:calc(100vh - 66px);overflow:auto}
+.search{width:100%;padding:10px 12px;border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:10px;margin-bottom:12px}
+.nav button{width:100%;text-align:left;border:0;border-radius:9px;background:transparent;color:var(--muted);padding:10px 11px;margin:2px 0;cursor:pointer}
+.nav button:hover,.nav button.active{background:var(--panel2);color:var(--text)}
+.main{padding:30px;min-width:0}
+.section{display:none;animation:fade .2s ease}.section.active{display:block}@keyframes fade{from{opacity:.2;transform:translateY(4px)}to{opacity:1}}
+.hero{padding:28px;border:1px solid var(--border);border-radius:20px;background:radial-gradient(circle at 85% 15%,rgba(76,201,240,.16),transparent 28%),linear-gradient(135deg,#0d1b2a,#0c2031)}
+h1{font-size:clamp(32px,5vw,58px);line-height:1.05;margin:0 0 12px}h2{font-size:30px;margin:0 0 14px}h3{margin:22px 0 8px}h4{margin:14px 0 6px}
+.kicker{color:var(--accent2);font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:1.8px}
+.lead{font-size:18px;color:#cfe0f2;max-width:1000px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;margin:18px 0}
+.card{grid-column:span 4;background:var(--panel);border:1px solid var(--border);border-radius:15px;padding:17px}
+.card.wide{grid-column:span 6}.card.full{grid-column:1/-1}.card h3{margin-top:0}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#15344a;color:var(--accent2);font-size:12px;font-weight:700;margin-right:5px}
+.note{padding:14px 16px;border-left:4px solid var(--accent);background:#0b2232;border-radius:8px;margin:14px 0}
+.warning{border-left-color:var(--warn);background:#2b2411}.danger{border-left-color:var(--danger);background:#2c171b}
+pre{background:var(--code);border:1px solid var(--border);padding:15px;border-radius:12px;overflow:auto;color:#d8f6ff}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+table{width:100%;border-collapse:collapse;margin:14px 0;background:var(--panel);border-radius:12px;overflow:hidden}
+th,td{padding:11px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}th{background:#10283a;color:#dff7ff}
+.check{display:flex;gap:10px;align-items:flex-start;margin:7px 0}.check input{margin-top:5px}
+.pillbar{display:flex;flex-wrap:wrap;gap:8px}.pill{border:1px solid var(--border);background:var(--panel2);border-radius:999px;padding:7px 10px;font-size:13px}
+.btn{border:1px solid var(--border);background:#12314a;color:var(--text);border-radius:9px;padding:8px 12px;cursor:pointer}.btn:hover{border-color:var(--accent)}
+.quiz-q{margin:16px 0;padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--panel)}
+.quiz-q label{display:block;margin:7px 0;cursor:pointer}.quiz-result{font-weight:800;margin-top:12px}
+.flash{min-height:180px;padding:25px;border:1px solid var(--border);border-radius:16px;background:linear-gradient(135deg,#0d1b2a,#11283a);display:flex;align-items:center;justify-content:center;text-align:center;font-size:21px;cursor:pointer}
+.small{font-size:13px;color:var(--muted)}.muted{color:var(--muted)}
+.arch{font-family:ui-monospace,monospace;font-size:14px;white-space:pre;overflow:auto;background:#07121d;border:1px solid var(--border);border-radius:14px;padding:16px}
+.mental{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;align-items:stretch}
+.node{border:1px solid var(--border);background:var(--panel);border-radius:14px;padding:14px;cursor:pointer}
+.node:hover{border-color:var(--accent)}.node.center{background:#103049;border-color:#2a6b8d}
+.roadmap-step{display:grid;grid-template-columns:90px 1fr;gap:14px;margin:12px 0}.lvl{font-weight:800;color:var(--accent2)}
+.footer{margin-top:38px;padding-top:18px;border-top:1px solid var(--border);color:var(--muted);font-size:13px}
+.hidden-search{display:none!important}
+@media(max-width:1050px){.layout{grid-template-columns:1fr}.sidebar{position:static;height:auto;border-right:0;border-bottom:1px solid var(--border)}.nav{display:flex;overflow:auto;gap:6px}.nav button{min-width:max-content}.card,.card.wide{grid-column:1/-1}.main{padding:20px}.mental{grid-template-columns:1fr}.progress-wrap{display:none}}
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="header-inner">
+    <div class="brand">Agentic AI <span>× Data Engineering</span></div>
+    <div class="progress-wrap">
+      <div class="progress-label"><span>Learning progress</span><span id="pct">0%</span></div>
+      <div class="progress"><div id="progressBar"></div></div>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<aside class="sidebar">
+  <input class="search" id="searchBox" placeholder="Search this handbook…" />
+  <div class="nav" id="nav">
+    <button class="active" data-target="home">Start here</button>
+    <button data-target="mental">Mental map</button>
+    <button data-target="fundamentals">1. Fundamentals</button>
+    <button data-target="anatomy">2. Anatomy of an agent</button>
+    <button data-target="patterns">3. Reasoning & workflows</button>
+    <button data-target="tools">4. Tools, function calling & MCP</button>
+    <button data-target="memory">5. Memory, context & RAG</button>
+    <button data-target="multi">6. Multi-agent systems</button>
+    <button data-target="de">7. Agentic AI for Data Engineering</button>
+    <button data-target="principal">8. Principal Engineer solutioning</button>
+    <button data-target="production">9. Production, safety & observability</button>
+    <button data-target="projects">10. Enterprise projects</button>
+    <button data-target="cheat">Cheat sheet</button>
+    <button data-target="interview">Principal interview talk track</button>
+    <button data-target="quiz">Quiz me</button>
+    <button data-target="flash">Flashcards</button>
+    <button data-target="roadmap">90-day mastery roadmap</button>
+  </div>
+</aside>
+
+<main class="main" id="content">
+
+<section id="home" class="section active">
+  <div class="hero">
+    <div class="kicker">From zero → enterprise architect</div>
+    <h1>Agentic AI for Data Engineering</h1>
+    <p class="lead">A fundamentals-first, production-oriented learning lab for becoming comfortable enough to design, challenge, and explain agentic systems at Principal Engineer level.</p>
+    <div class="pillbar">
+      <span class="pill">Fundamentals</span><span class="pill">Mental models</span><span class="pill">DE use cases</span>
+      <span class="pill">Architecture</span><span class="pill">MCP</span><span class="pill">RAG</span><span class="pill">Evaluation</span>
+      <span class="pill">Security</span><span class="pill">Human-in-the-loop</span><span class="pill">Principal trade-offs</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card wide">
+      <h3>The one sentence to remember</h3>
+      <p><strong>An agent is an LLM placed inside a bounded decision loop, with a goal, context, tools, memory/state, observations, and stopping rules.</strong></p>
+      <p class="muted">A chatbot mainly answers. A workflow follows predetermined steps. An agent can choose what to do next at runtime.</p>
+    </div>
+    <div class="card wide">
+      <h3>Principal-level rule</h3>
+      <p><strong>Start deterministic. Add agency only to the uncertain decision points.</strong></p>
+      <p>Use normal orchestration for known ETL behavior; use an agent for diagnosis, exploration, planning, triage, or adaptive routing where rules become brittle.</p>
+    </div>
+    <div class="card">
+      <h3>Learn</h3><p>Agent loops, planning, tools, memory, context, RAG, multi-agent design.</p>
+    </div>
+    <div class="card">
+      <h3>Apply</h3><p>Pipeline operations, DQ investigation, lineage, migrations, discovery, cost optimization.</p>
+    </div>
+    <div class="card">
+      <h3>Lead</h3><p>Decide where not to use agents, define blast radius, approval boundaries, SLIs/SLOs, evaluation and rollout.</p>
+    </div>
+  </div>
+
+  <div class="note"><strong>How to use this:</strong> read Mental Map → Fundamentals → DE → Principal → Production. Then complete Projects + Quiz. Check boxes as you master concepts; progress is saved locally in your browser.</div>
+</section>
+
+<section id="mental" class="section">
+  <div class="kicker">Mental model</div><h2>The entire subject on one screen</h2>
+  <div class="mental">
+    <div class="node" onclick="alert('GOAL: The outcome. It must be bounded and testable. Example: Diagnose yesterday\\'s failed sales pipeline and propose the safest recovery.')"><strong>1. Goal</strong><br><span class="small">What outcome are we trying to achieve?</span></div>
+    <div class="node center" onclick="alert('MODEL/PLANNER: decides next action using the current context. It is not the system of record and should not own irreversible business logic.')"><strong>2. Model / Planner</strong><br><span class="small">What should I do next?</span></div>
+    <div class="node" onclick="alert('CONTEXT: the minimum useful information the model sees now: user request, policy, tool schemas, retrieved facts, prior observations.')"><strong>3. Context</strong><br><span class="small">What can I see right now?</span></div>
+    <div class="node" onclick="alert('TOOLS: controlled capabilities: SQL, metadata, APIs, jobs, tickets, search. Tools turn reasoning into action.')"><strong>4. Tools</strong><br><span class="small">What can I read or change?</span></div>
+    <div class="node center" onclick="alert('LOOP: Plan → Act → Observe → Re-plan. Every loop needs hard limits: max steps, time, token/cost budget, repeated-action detection, confidence threshold.')"><strong>5. Agent Loop</strong><br><span class="small">Plan → Act → Observe → repeat</span></div>
+    <div class="node" onclick="alert('MEMORY/STATE: persistent or session information. Keep verified reusable facts and outcomes; avoid storing guesses, sensitive data, or stale facts without expiry.')"><strong>6. Memory / State</strong><br><span class="small">What should persist?</span></div>
+    <div class="node" onclick="alert('GUARDRAILS: policies, schemas, least privilege, approvals, allowlists, spend/step caps, sandboxes, output checks.')"><strong>7. Guardrails</strong><br><span class="small">What must never happen?</span></div>
+    <div class="node center" onclick="alert('EVALUATION: measure outcomes and trajectories. Did it solve the task? Use the right tools? Stay within cost and latency? Escalate correctly?')"><strong>8. Evaluation</strong><br><span class="small">How do we prove it works?</span></div>
+    <div class="node" onclick="alert('HUMAN-IN-THE-LOOP: approval for irreversible writes, review at low confidence, edit plans, or escalation when policy says autonomy should stop.')"><strong>9. Human</strong><br><span class="small">Where does autonomy end?</span></div>
+  </div>
+  <h3>DE mental translation</h3>
+  <pre><code>Goal      → "Find why forecast feature refresh failed"
+Context   → job run + error + lineage + SLA + recent deploy
+Tools     → Databricks Jobs API, SQL, Unity Catalog, monitoring, ticketing
+Memory    → prior incidents, validated runbooks, known ownership
+Loop      → inspect → hypothesize → query → verify → recommend
+Guardrail → read-only by default; approval before rerun/backfill/write
+Evaluate  → root-cause accuracy, MTTR reduction, false actions, cost
+Human     → approves recovery when blast radius is non-trivial</code></pre>
+</section>
+
+<section id="fundamentals" class="section">
+  <div class="kicker">Level 1</div><h2>Fundamentals</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>LLM</h3><p>Generates the next best textual/token-level continuation from context. It does not inherently know live state, execute actions, or guarantee truth.</p>
+    </div>
+    <div class="card">
+      <h3>Workflow</h3><p>Developer-defined control flow. Predictable, testable, cheaper. Best for known repeatable processes.</p>
+    </div>
+    <div class="card">
+      <h3>Agent</h3><p>Model-selected control flow at runtime. More adaptive but less predictable, costlier, and harder to debug.</p>
+    </div>
+  </div>
+
+  <h3>The canonical agent loop</h3>
+  <pre><code>GOAL
+ ↓
+PERCEIVE  — obtain request + environment observations
+ ↓
+THINK/PLAN — choose next action
+ ↓
+ACT       — invoke a tool
+ ↓
+OBSERVE   — inspect tool result/error
+ ↓
+REFLECT/REPLAN
+ ↺
+STOP when goal met / max steps / budget / low confidence / human handoff</code></pre>
+
+  <h3>Levels of autonomy</h3>
+  <table>
+    <tr><th>Level</th><th>Meaning</th><th>DE example</th></tr>
+    <tr><td>L0</td><td>Prompt → response, no tools</td><td>Explain an error message pasted by an engineer</td></tr>
+    <tr><td>L1</td><td>Single tool/RAG call</td><td>Search data platform runbook</td></tr>
+    <tr><td>L2</td><td>Fixed tool chain</td><td>Fetch run → get logs → summarize</td></tr>
+    <tr><td>L3</td><td>Router / model chooses branch</td><td>Schema issue vs freshness issue vs compute issue</td></tr>
+    <tr><td>L4</td><td>Autonomous bounded loop</td><td>Investigate until confidence threshold or step limit</td></tr>
+    <tr><td>L5</td><td>Multi-agent / agents manage agents</td><td>Supervisor coordinates diagnosis, lineage and remediation agents</td></tr>
+  </table>
+
+  <div class="warning note"><strong>Do not equate sophistication with maturity.</strong> L4/L5 may be less appropriate than L2/L3 for production DE because deterministic, auditable behavior is often more valuable.</div>
+
+  <h3>When not to build an agent</h3>
+  <div class="check"><input type="checkbox" class="learn"><span>Deterministic rules already solve the problem reliably.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>Sub-100ms latency is mandatory.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>Zero-error tolerance with no review is required.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>High-volume simple processing would make model cost unjustifiable.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>A standard scheduler, SQL job, validation framework or rule engine is enough.</span></div>
+</section>
+
+<section id="anatomy" class="section">
+  <div class="kicker">Level 2</div><h2>Anatomy of an enterprise agent</h2>
+  <table>
+    <tr><th>Component</th><th>Responsibility</th><th>Principal question</th></tr>
+    <tr><td>Goal / task spec</td><td>Defines “done”</td><td>Can success be objectively evaluated?</td></tr>
+    <tr><td>Profile / system policy</td><td>Role, rules, tone, permissions</td><td>Which policy belongs here vs code?</td></tr>
+    <tr><td>Planner / reasoner</td><td>Chooses or decomposes actions</td><td>Does the task need dynamic planning?</td></tr>
+    <tr><td>Tool layer</td><td>APIs, SQL, metadata, actions</td><td>What is the blast radius of each tool?</td></tr>
+    <tr><td>Memory / state</td><td>Continuity across steps/sessions</td><td>What can become stale or sensitive?</td></tr>
+    <tr><td>Orchestrator</td><td>Loop, retries, branching, limits</td><td>Who enforces stopping conditions?</td></tr>
+    <tr><td>Environment</td><td>Users, systems, data</td><td>What is trusted vs untrusted input?</td></tr>
+  </table>
+
+  <h3>State types</h3>
+  <div class="grid">
+    <div class="card"><h3>Ephemeral</h3><p>Current scratch state. Lost after the run.</p></div>
+    <div class="card"><h3>Session</h3><p>Conversation/session preferences and recent state.</p></div>
+    <div class="card"><h3>Persistent</h3><p>Databases/files/vector stores. Must have ownership, retention and validation.</p></div>
+  </div>
+  <div class="note"><strong>Principal pattern:</strong> checkpoint after important steps so long-running agents can resume, replay, audit and recover without repeating side effects.</div>
+</section>
+
+<section id="patterns" class="section">
+  <div class="kicker">Level 3</div><h2>Reasoning & workflow patterns</h2>
+  <table>
+    <tr><th>Pattern</th><th>Use it for</th><th>Avoid / risk</th><th>DE example</th></tr>
+    <tr><td>Single-shot</td><td>Simple bounded answer</td><td>No recovery</td><td>Explain Spark error</td></tr>
+    <tr><td>ReAct</td><td>Reason → tool → observation loops</td><td>Tool spam / looping</td><td>Incident diagnosis</td></tr>
+    <tr><td>Plan-and-execute</td><td>Long multi-step tasks</td><td>Plan becomes stale</td><td>Migration assessment</td></tr>
+    <tr><td>Reflection</td><td>Quality improvement after attempt</td><td>Extra cost/latency</td><td>Review generated SQL or RCA</td></tr>
+    <tr><td>Router</td><td>Select specialized deterministic path</td><td>Misclassification</td><td>Route freshness/schema/compute incident</td></tr>
+    <tr><td>Parallel fan-out</td><td>Independent reads</td><td>Merge complexity</td><td>Check lineage + logs + freshness simultaneously</td></tr>
+  </table>
+  <div class="warning note"><strong>Important:</strong> you do not need or want visible private chain-of-thought. Production systems should rely on structured plans, tool traces, observations, decisions and outcomes that can be audited.</div>
+</section>
+
+<section id="tools" class="section">
+  <div class="kicker">Hands of the agent</div><h2>Tools, function calling & MCP</h2>
+  <h3>Tool-call mental model</h3>
+  <pre><code>User request
+   ↓
+LLM selects tool + structured arguments
+   ↓
+Schema validation
+   ↓
+Authorization / policy
+   ↓
+Execute tool
+   ↓
+Return structured observation
+   ↓
+LLM decides next step or final answer</code></pre>
+
+  <h3>Design a good tool</h3>
+  <table>
+    <tr><th>Property</th><th>Bad</th><th>Good</th></tr>
+    <tr><td>Name</td><td>run()</td><td>get_databricks_job_run()</td></tr>
+    <tr><td>Description</td><td>Gets stuff</td><td>Fetches one Databricks job run including status, timing and failure metadata. Read-only.</td></tr>
+    <tr><td>Arguments</td><td>Free text</td><td>Typed schema with required IDs and bounded enums</td></tr>
+    <tr><td>Return</td><td>Unstructured prose</td><td>Stable JSON contract</td></tr>
+    <tr><td>Errors</td><td>Generic "failed"</td><td>Typed failure: auth, timeout, missing resource, transient service</td></tr>
+  </table>
+
+  <h3>Read vs write tools</h3>
+  <div class="grid">
+    <div class="card wide"><h3>READ</h3><p>Usually idempotent and safer to parallelize. Examples: metadata, logs, table history, job status, lineage, metrics.</p></div>
+    <div class="card wide"><h3>WRITE</h3><p>Creates side effects. Examples: rerun job, alter table, publish data, open ticket, change config. Serialize, authorize, require approval when impact is non-trivial.</p></div>
+  </div>
+
+  <h3>MCP in one sentence</h3>
+  <p><strong>Model Context Protocol (MCP) standardizes how agent hosts connect to tools and data sources.</strong> It is a connectivity/interface standard, not your enterprise authorization model and not a substitute for tool-level governance.</p>
+  <div class="note"><strong>Principal question:</strong> “Does MCP reduce bespoke integrations here, and where do authentication, authorization, tenancy, audit and data classification still live?”</div>
+</section>
+
+<section id="memory" class="section">
+  <div class="kicker">Context engineering</div><h2>Memory, context & Agentic RAG</h2>
+  <table>
+    <tr><th>Memory type</th><th>Meaning</th><th>DE example</th></tr>
+    <tr><td>Working</td><td>Current context window</td><td>Current incident observations</td></tr>
+    <tr><td>Semantic</td><td>Verified reusable facts/preferences</td><td>Dataset owners, validated architecture decisions</td></tr>
+    <tr><td>Episodic</td><td>Past runs/trajectories</td><td>“This failure signature previously came from expired secret”</td></tr>
+    <tr><td>Procedural</td><td>Runbooks, prompts, plans</td><td>Approved recovery procedure</td></tr>
+  </table>
+
+  <h3>Context engineering > prompt cleverness</h3>
+  <p>The best agent is often the one that sees the <em>right evidence</em>, not the most elaborate prompt. Control context using retrieval, summarization, isolation, metadata filters, reranking and provenance.</p>
+
+  <h3>Agentic RAG</h3>
+  <pre><code>Question
+ ↓
+Reformulate if needed
+ ↓
+Hybrid retrieval (keyword + vector / graph / SQL)
+ ↓
+Metadata filter
+ ↓
+Rerank
+ ↓
+Grade relevance
+ ├─ insufficient → retrieve again / ask user
+ └─ sufficient   → synthesize + cite evidence</code></pre>
+
+  <div class="warning note"><strong>Never store everything.</strong> Keep stable preferences, verified facts with provenance, decisions and reusable outcomes. Expire stale facts. Do not turn model guesses into durable enterprise memory.</div>
+</section>
+
+<section id="multi" class="section">
+  <div class="kicker">Advanced</div><h2>Multi-agent systems</h2>
+  <p>A multi-agent system makes sense when specialization, permission separation, independent context, parallelism, or clear organizational ownership genuinely require separate agents.</p>
+
+  <table>
+    <tr><th>Topology</th><th>When useful</th><th>DE example</th></tr>
+    <tr><td>Supervisor</td><td>Central routing + merge</td><td>Incident supervisor delegates logs, lineage and DQ investigation</td></tr>
+    <tr><td>Pipeline</td><td>Assembly-line handoff</td><td>Requirements → design → review</td></tr>
+    <tr><td>Hierarchical</td><td>Large domains / organizational delegation</td><td>Platform → domain → product agents</td></tr>
+    <tr><td>Blackboard</td><td>Shared common state</td><td>Multiple specialists update one incident state</td></tr>
+    <tr><td>Debate/ensemble</td><td>Independent critique</td><td>Validate architecture or generated SQL</td></tr>
+  </table>
+  <div class="danger note"><strong>Failure modes:</strong> infinite ping-pong, context loss, duplicate work, diffused ownership, compounding errors. Default to one strong agent plus good tools until proven otherwise.</div>
+</section>
+
+<section id="de" class="section">
+  <div class="kicker">Your domain</div><h2>Agentic AI for Data Engineering</h2>
+
+  <h3>The DE control plane idea</h3>
+  <div class="arch">Engineer / Alert / Ticket
+        │
+        ▼
+┌───────────────────────────────┐
+│ Agent Gateway                │
+│ Identity • Policy • Tenant   │
+└──────────────┬────────────────┘
+               ▼
+┌───────────────────────────────┐
+│ Planner / Router             │
+│ Goal • State • Stop rules    │
+└─────┬────────┬────────┬───────┘
+      │        │        │
+      ▼        ▼        ▼
+ Metadata    Data      Ops
+ /Lineage    Query     APIs
+ UC/DBT      SQL       Jobs/ADF
+      │        │        │
+      └────────┼────────┘
+               ▼
+          Observations
+               │
+               ▼
+        Diagnose / Recommend
+               │
+        ┌──────┴──────┐
+        ▼             ▼
+   Read-only       Write action
+   continue        approval gate
+                       │
+                       ▼
+                  Execute safely
+                       │
+                       ▼
+               Trace • Eval • Audit</div>
+
+  <h3>High-value DE use cases</h3>
+  <table>
+    <tr><th>Use case</th><th>Agent adds value because…</th><th>Keep deterministic…</th></tr>
+    <tr><td>Pipeline incident triage</td><td>Evidence path varies by failure</td><td>Retry limits, permissions, actual scheduler behavior</td></tr>
+    <tr><td>DQ investigation</td><td>Root cause needs cross-system reasoning</td><td>DQ rules, thresholds, reconciliation</td></tr>
+    <tr><td>Lineage impact analysis</td><td>Needs exploration + synthesis</td><td>Lineage extraction and access controls</td></tr>
+    <tr><td>Migration assessment</td><td>Packages vary; agent can classify and propose</td><td>Validation criteria and deployment</td></tr>
+    <tr><td>Data discovery</td><td>User intent is fuzzy</td><td>Authoritative metadata and policy</td></tr>
+    <tr><td>Cost optimization</td><td>Needs evidence across jobs, clusters, query history</td><td>Budget limits and auto-remediation thresholds</td></tr>
+    <tr><td>Backfill planning</td><td>Blast radius and dependency reasoning vary</td><td>Idempotency, partition boundaries, execution engine</td></tr>
+  </table>
+
+  <h3>Example: Pipeline Operations Agent</h3>
+  <pre><code>Event: nightly sales_feature job FAILED
+
+Agent:
+1. get_job_run(run_id)
+2. classify failure signature
+3. get_recent_deployments(job)
+4. get_upstream_freshness(inputs)
+5. get_table_history(affected_tables)
+6. query_dq_metrics(partitions)
+7. retrieve_runbook(error_class)
+8. formulate root-cause hypothesis
+9. verify with one or more targeted reads
+10. recommend action
+
+IF proposed action = "rerun affected partition":
+   calculate blast radius
+   verify idempotency
+   require approval when policy says so
+   execute bounded rerun
+   observe result
+   log RCA + evidence + outcome</code></pre>
+</section>
+
+<section id="principal" class="section">
+  <div class="kicker">Architecture leadership</div><h2>How a Principal Engineer should solution agents</h2>
+
+  <h3>Use this decision sequence</h3>
+  <div class="roadmap-step"><div class="lvl">01 WHY</div><div><strong>Define the business problem.</strong> “Reduce incident MTTR” is better than “we need an agent.” Establish baseline metrics first.</div></div>
+  <div class="roadmap-step"><div class="lvl">02 NEED</div><div><strong>Prove agency is required.</strong> Separate deterministic steps from judgment-heavy steps. Prefer workflow + agentic decision points.</div></div>
+  <div class="roadmap-step"><div class="lvl">03 BOUND</div><div><strong>Define autonomy boundary.</strong> Read-only? Can it write? Which writes are reversible? Where is human approval mandatory?</div></div>
+  <div class="roadmap-step"><div class="lvl">04 EVIDENCE</div><div><strong>Define context sources.</strong> Authoritative metadata, logs, runbooks, lineage, metrics, schemas, deployment history. Add provenance and freshness.</div></div>
+  <div class="roadmap-step"><div class="lvl">05 TOOLS</div><div><strong>Design narrow tools.</strong> Stable contracts, typed args, least privilege, idempotency keys, timeouts, retries, audit.</div></div>
+  <div class="roadmap-step"><div class="lvl">06 LOOP</div><div><strong>Bound execution.</strong> Max iterations, repeated-action detection, token/cost/time budgets, confidence threshold, safe fallback.</div></div>
+  <div class="roadmap-step"><div class="lvl">07 EVAL</div><div><strong>Define success before build.</strong> Golden incidents, expected diagnosis, required evidence, acceptable tool trajectory, latency/cost budget.</div></div>
+  <div class="roadmap-step"><div class="lvl">08 RISK</div><div><strong>Threat-model the system.</strong> Prompt injection, exfiltration, tool poisoning, excessive agency, privilege confusion, sensitive memory.</div></div>
+  <div class="roadmap-step"><div class="lvl">09 RUN</div><div><strong>Operationalize.</strong> Tracing, scorecards, rollback, kill switch, model/prompt/tool versioning, incident ownership and SLOs.</div></div>
+  <div class="roadmap-step"><div class="lvl">10 SCALE</div><div><strong>Only then expand autonomy.</strong> Shadow → recommend → approval → bounded auto-remediation.</div></div>
+
+  <h3>Principal trade-off matrix</h3>
+  <table>
+    <tr><th>Decision</th><th>Choose A when…</th><th>Choose B when…</th></tr>
+    <tr><td>Workflow vs Agent</td><td>A=rules stable, explainability critical</td><td>B=path depends on observations</td></tr>
+    <tr><td>Single vs Multi-agent</td><td>A=shared context, simpler debugging</td><td>B=clear specialist boundaries/permissions</td></tr>
+    <tr><td>RAG vs Memory</td><td>RAG=authoritative external facts</td><td>Memory=session/past outcomes/personalized state</td></tr>
+    <tr><td>Tool vs Prompt</td><td>Tool=truth/action must be deterministic</td><td>Prompt=judgment, synthesis, explanation</td></tr>
+    <tr><td>Auto vs HITL</td><td>Auto=low blast radius + reversible + high confidence</td><td>HITL=irreversible/regulated/expensive/ambiguous</td></tr>
+    <tr><td>Small vs Large model</td><td>Small=classification/routing/simple extraction</td><td>Large=hard reasoning/synthesis</td></tr>
+  </table>
+
+  <div class="note"><strong>Principal sentence:</strong> “I treat the model as a probabilistic decision component inside a deterministic control plane—not as the control plane itself.”</div>
+</section>
+
+<section id="production" class="section">
+  <div class="kicker">Make it real</div><h2>Production, safety, evaluation & observability</h2>
+  <h3>Threat model</h3>
+  <div class="pillbar">
+    <span class="pill">Prompt injection</span><span class="pill">Data exfiltration</span><span class="pill">Tool poisoning</span>
+    <span class="pill">Excessive agency</span><span class="pill">Privilege confusion</span><span class="pill">Sensitive memory</span>
+  </div>
+
+  <h3>Defense in depth</h3>
+  <pre><code>Input guardrail
+ → identity + authorization
+ → scoped context
+ → least-privilege tool access
+ → schema validation
+ → sandbox / timeouts / rate limits
+ → approval gate for sensitive writes
+ → output policy / citation / PII controls
+ → immutable audit trace
+ → evaluation + regression gate
+ → rollback / kill switch</code></pre>
+
+  <h3>What to measure</h3>
+  <table>
+    <tr><th>Layer</th><th>Metrics</th></tr>
+    <tr><td>Outcome</td><td>Task success, goal completion, human acceptance, MTTR reduction</td></tr>
+    <tr><td>Trajectory</td><td>Correct tool, valid args, step count, loop/retry rate, escalation rate</td></tr>
+    <tr><td>Component</td><td>Retrieval precision, plan validity, tool error rate, policy blocks</td></tr>
+    <tr><td>System</td><td>p50/p95 latency, tokens, cost/task, availability, model/tool version</td></tr>
+    <tr><td>Safety</td><td>Unauthorized action attempts, injection detection, sensitive-data exposure</td></tr>
+  </table>
+
+  <h3>Rollout pattern</h3>
+  <pre><code>OFFLINE EVAL
+   ↓
+SHADOW MODE
+   ↓
+READ-ONLY ASSISTANT
+   ↓
+RECOMMENDATIONS
+   ↓
+HUMAN-APPROVED ACTIONS
+   ↓
+BOUNDED AUTO-REMEDIATION
+   ↓
+CONTINUOUS EVAL + REGRESSION</code></pre>
+</section>
+
+<section id="projects" class="section">
+  <div class="kicker">Build to learn</div><h2>Enterprise projects</h2>
+
+  <div class="card full">
+    <h3>Project 1 — Data Platform Incident Copilot</h3>
+    <p><span class="badge">Beginner → Intermediate</span> Best first project.</p>
+    <p><strong>Goal:</strong> given a failed job, gather logs + freshness + recent deploy + table history, then produce evidence-backed diagnosis and recovery recommendation.</p>
+    <p><strong>Architecture:</strong> one agent, read-only tools, RAG over runbooks, structured RCA output, evaluation set of known incidents.</p>
+    <p><strong>Principal extension:</strong> add approval-gated rerun with idempotency and blast-radius checks.</p>
+  </div>
+
+  <div class="card full">
+    <h3>Project 2 — Data Quality Root-Cause Agent</h3>
+    <p><span class="badge">Intermediate</span></p>
+    <p>Start from DQ variance. Agent finds affected slices, compares source/Bronze/Silver/Gold, checks freshness/deployments/schema changes, then ranks hypotheses with evidence.</p>
+    <p><strong>Principal extension:</strong> route high-confidence low-risk issues to bounded remediation; escalate uncertain cases.</p>
+  </div>
+
+  <div class="card full">
+    <h3>Project 3 — Enterprise Migration Assessment Agent</h3>
+    <p><span class="badge">Advanced</span></p>
+    <p>Ingest package metadata or specifications; classify source, transformation complexity, dependencies, SCD behavior, code constructs and target Databricks/Snowflake patterns; generate migration + validation plan.</p>
+    <p><strong>Principal extension:</strong> portfolio scorecard: complexity, risk, wave planning, automation suitability, review gates.</p>
+  </div>
+
+  <div class="card full">
+    <h3>Project 4 — Data Product Discovery Agent</h3>
+    <p><span class="badge">Advanced</span></p>
+    <p>Natural-language intent → catalog/lineage/RAG search → relevant datasets/features → ownership/freshness/quality → sample SQL → citations.</p>
+    <p><strong>Principal extension:</strong> access-aware retrieval, tenant isolation, policy filters, provenance and freshness scoring.</p>
+  </div>
+</section>
+
+<section id="cheat" class="section">
+  <div class="kicker">Cheat sheet</div><h2>Agentic AI in 5 minutes</h2>
+  <table>
+    <tr><th>Term</th><th>Remember this</th></tr>
+    <tr><td>Agent</td><td>Goal + model + tools + state + bounded loop</td></tr>
+    <tr><td>Workflow</td><td>Developer decides path</td></tr>
+    <tr><td>Agentic workflow</td><td>Mostly workflow, model decides selected steps/branches</td></tr>
+    <tr><td>Tool / function call</td><td>Structured capability exposed to the model</td></tr>
+    <tr><td>MCP</td><td>Standard connector/interface between agent host and tools/data</td></tr>
+    <tr><td>RAG</td><td>Retrieve external evidence into context</td></tr>
+    <tr><td>Agentic RAG</td><td>Agent can reformulate, retrieve again, rerank, grade evidence</td></tr>
+    <tr><td>Memory</td><td>Persisted state beyond current context; must be curated</td></tr>
+    <tr><td>Context engineering</td><td>Control what the model sees and when</td></tr>
+    <tr><td>ReAct</td><td>Reason/decide → act → observe → repeat</td></tr>
+    <tr><td>Router</td><td>Model chooses among defined branches/tools</td></tr>
+    <tr><td>HITL</td><td>Human approval/review/escalation boundary</td></tr>
+    <tr><td>Guardrail</td><td>Constraint enforced around input, context, tool, action or output</td></tr>
+    <tr><td>Eval</td><td>Repeatable test of outcomes + trajectories</td></tr>
+    <tr><td>Trace</td><td>Step-by-step operational record: model/tool/args/result/latency/cost/error</td></tr>
+    <tr><td>Idempotency</td><td>Repeating action does not duplicate harmful effects</td></tr>
+    <tr><td>Blast radius</td><td>Maximum impact if the action is wrong</td></tr>
+  </table>
+
+  <h3>Principal checklist before saying “agent”</h3>
+  <div class="check"><input type="checkbox" class="learn"><span>Business outcome and baseline metric are defined.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>We proved deterministic automation alone is insufficient.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>Agency boundary and write permissions are explicit.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>Authoritative context sources and freshness rules are defined.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>Tools have typed contracts, least privilege and audit.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>Stop conditions, budgets and retries are bounded.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>Golden evaluation dataset exists before production.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>HITL, rollback and kill-switch strategy exist.</span></div>
+</section>
+
+<section id="interview" class="section">
+  <div class="kicker">Muscle memory</div><h2>Principal Engineer talk track</h2>
+  <h3>60-second answer: “How would you design an agentic DE solution?”</h3>
+  <div class="note">
+    “I would start with the business outcome and establish whether we really need an agent. I separate deterministic data-processing steps from decision points that genuinely benefit from model reasoning. I keep the LLM inside a bounded control plane: narrow tools, authoritative context, least-privilege access, step/time/cost limits, and explicit stopping conditions. Reads can usually be more autonomous; writes are classified by blast radius and may require approval. I define evaluation before rollout using known incidents or golden tasks, measuring not only the final answer but tool choice, arguments, latency, cost and escalation behavior. I would then roll out progressively from shadow mode to recommendations, approval-gated actions, and only finally bounded auto-remediation.”
+  </div>
+
+  <h3>Architecture review questions you should ask</h3>
+  <pre><code>1. What is the business outcome?
+2. Why is this not a deterministic workflow?
+3. Where exactly is the uncertain decision?
+4. What is the source of truth for each fact?
+5. Which tools are read vs write?
+6. What is the blast radius of each write?
+7. How do we handle stale or poisoned context?
+8. What are our stop conditions?
+9. What happens on model/tool failure?
+10. How do we evaluate the trajectory, not just the answer?
+11. What does human approval look like?
+12. How do we observe, audit, version, rollback and kill the agent?</code></pre>
+</section>
+
+<section id="quiz" class="section">
+  <div class="kicker">Test yourself</div><h2>Quiz</h2>
+  <div id="quizContainer"></div>
+  <button class="btn" onclick="gradeQuiz()">Grade quiz</button>
+  <div id="quizResult" class="quiz-result"></div>
+</section>
+
+<section id="flash" class="section">
+  <div class="kicker">Recall practice</div><h2>Flashcards</h2>
+  <div class="flash" id="flashcard" onclick="flipCard()"></div>
+  <div style="margin-top:12px;display:flex;gap:8px">
+    <button class="btn" onclick="prevCard()">← Previous</button>
+    <button class="btn" onclick="flipCard()">Flip</button>
+    <button class="btn" onclick="nextCard()">Next →</button>
+  </div>
+</section>
+
+<section id="roadmap" class="section">
+  <div class="kicker">Mastery plan</div><h2>90-day roadmap</h2>
+  <div class="roadmap-step"><div class="lvl">Weeks 1–2</div><div><strong>Fundamentals.</strong> Agent vs workflow, loop, tool calling, state, memory, RAG. Build one CLI agent with 2–3 read-only tools.</div></div>
+  <div class="roadmap-step"><div class="lvl">Weeks 3–4</div><div><strong>DE Agent v1.</strong> Build Incident Copilot against mocked or dev data. Produce structured RCA with citations/evidence.</div></div>
+  <div class="roadmap-step"><div class="lvl">Weeks 5–6</div><div><strong>Context + RAG.</strong> Add runbooks, metadata, lineage, reranking, provenance and stale-data handling.</div></div>
+  <div class="roadmap-step"><div class="lvl">Weeks 7–8</div><div><strong>Production engineering.</strong> Eval suite, traces, prompt/tool/model versions, timeouts, retries, cost/latency metrics, safety tests.</div></div>
+  <div class="roadmap-step"><div class="lvl">Weeks 9–10</div><div><strong>Approval-gated actions.</strong> Add one safe write action with idempotency, explicit blast-radius calculation and HITL.</div></div>
+  <div class="roadmap-step"><div class="lvl">Weeks 11–12</div><div><strong>Principal design.</strong> Produce HLD, threat model, decision log, SLOs, rollout stages, operating model, cost model and build-vs-buy/framework trade-off.</div></div>
+
+  <h3>You are “Principal-ready” when you can explain</h3>
+  <div class="check"><input type="checkbox" class="learn"><span>Why an agent is justified instead of a workflow.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>How context, tools, memory and loop limits interact.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>How to design for idempotency, blast radius and human approval.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>How to evaluate both final outcome and tool trajectory.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>How to roll out from shadow mode to bounded autonomy.</span></div>
+  <div class="check"><input type="checkbox" class="learn"><span>When multi-agent is unnecessary complexity.</span></div>
+</section>
+
+<div class="footer">
+  <strong>Basis:</strong> The core foundations mirror the supplied 10-page “Agentic AI” reference: agent foundations, anatomy, reasoning/planning, tools/function calling, memory/context, multi-agent systems, frameworks/protocols, evaluation/observability/cost, safety/guardrails and production. The Data Engineering applications, Principal Engineer solutioning, enterprise projects, interview talk track and roadmap are expanded specifically for this handbook.
+</div>
+</main>
+</div>
+
+<script>
+const sections=[...document.querySelectorAll('.section')];
+const buttons=[...document.querySelectorAll('.nav button')];
+buttons.forEach(b=>b.addEventListener('click',()=>{
+  buttons.forEach(x=>x.classList.remove('active')); b.classList.add('active');
+  sections.forEach(s=>s.classList.toggle('active',s.id===b.dataset.target));
+  window.scrollTo({top:0,behavior:'smooth'});
+}));
+document.getElementById('searchBox').addEventListener('input',e=>{
+  const q=e.target.value.trim().toLowerCase();
+  if(!q)return;
+  let found=sections.find(s=>s.innerText.toLowerCase().includes(q));
+  if(found){
+    buttons.forEach(x=>x.classList.toggle('active',x.dataset.target===found.id));
+    sections.forEach(s=>s.classList.toggle('active',s===found));
+  }
+});
+
+const checks=[...document.querySelectorAll('.learn')];
+function loadProgress(){
+  const saved=JSON.parse(localStorage.getItem('agenticProgress')||'{}');
+  checks.forEach((c,i)=>c.checked=!!saved[i]);
+  updateProgress();
+}
+function updateProgress(){
+  const saved={}; checks.forEach((c,i)=>saved[i]=c.checked);
+  localStorage.setItem('agenticProgress',JSON.stringify(saved));
+  const done=checks.filter(c=>c.checked).length, total=checks.length;
+  const pct=total?Math.round(done*100/total):0;
+  document.getElementById('pct').textContent=pct+'%';
+  document.getElementById('progressBar').style.width=pct+'%';
+}
+checks.forEach(c=>c.addEventListener('change',updateProgress)); loadProgress();
+
+const quiz=[
+ {q:"What is the best default for a known, repeatable ETL process?", a:["Autonomous multi-agent system","Deterministic workflow","Long-term memory agent"], c:1},
+ {q:"What most clearly distinguishes an agent from a fixed workflow?", a:["It uses Python","It can choose the next action at runtime","It uses a vector database"], c:1},
+ {q:"For enterprise DE, which action usually deserves stricter controls?", a:["Reading lineage","Reading job status","Rerunning or mutating production data"], c:2},
+ {q:"What should be defined before production rollout?", a:["Only the prompt","An evaluation set and success criteria","A multi-agent hierarchy"], c:1},
+ {q:"What is MCP primarily?", a:["A data warehouse","A standard interface for connecting agents to tools/data","A replacement for IAM"], c:1},
+ {q:"Which is a Principal-level design principle?", a:["Put all business rules in the LLM","Use the model as a probabilistic decision component inside deterministic controls","Maximize autonomy from day one"], c:1},
+ {q:"When should multi-agent architecture be introduced?", a:["Always","Only when specialization/context/permissions/parallelism justify coordination overhead","Whenever the model is large"], c:1},
+ {q:"What should persistent memory avoid?", a:["Verified facts with provenance","Reusable outcomes","Unverified guesses and stale facts"], c:2}
+];
+const qc=document.getElementById('quizContainer');
+quiz.forEach((x,i)=>{
+ const d=document.createElement('div'); d.className='quiz-q';
+ d.innerHTML=`<strong>${i+1}. ${x.q}</strong>`+x.a.map((a,j)=>`<label><input type="radio" name="q${i}" value="${j}"> ${a}</label>`).join('');
+ qc.appendChild(d);
+});
+function gradeQuiz(){
+ let score=0; quiz.forEach((x,i)=>{const r=document.querySelector(`input[name=q${i}]:checked`); if(r&&+r.value===x.c)score++;});
+ const p=Math.round(score*100/quiz.length);
+ document.getElementById('quizResult').textContent=`${score}/${quiz.length} (${p}%). `+(p>=88?'Excellent — move to design drills.':p>=65?'Good foundation — review missed concepts.':'Review Fundamentals, DE and Principal sections.');
+}
+
+const cards=[
+ ["Agent","An LLM inside a bounded decision loop with goal, context, tools, state/memory, observations and stopping rules."],
+ ["Workflow vs Agent","Workflow path is developer-defined. Agent path can be model-selected at runtime."],
+ ["ReAct","Decide/reason → Act with a tool → Observe → repeat."],
+ ["MCP","Standard interface for connecting an agent host to tools/data; not a replacement for IAM or governance."],
+ ["Agentic RAG","The agent can reformulate, retrieve, rerank, grade evidence and retrieve again before answering."],
+ ["HITL","Human-in-the-loop: approval, edit, review or escalation where autonomy should stop."],
+ ["Principal rule","Keep the probabilistic model inside a deterministic control plane."],
+ ["Blast radius","The maximum impact if an action is wrong."],
+ ["Idempotency","Safe repeated execution without duplicate harmful side effects."],
+ ["Evaluation","Measure outcome + trajectory + cost + latency + safety, not just whether the final prose sounds good."]
+];
+let ci=0, flipped=false;
+function renderCard(){document.getElementById('flashcard').innerHTML=flipped?`<div><strong>${cards[ci][0]}</strong><br><br>${cards[ci][1]}</div>`:`<div>${cards[ci][0]}<br><span class="small">Tap to reveal</span></div>`}
+function flipCard(){flipped=!flipped;renderCard()}
+function nextCard(){ci=(ci+1)%cards.length;flipped=false;renderCard()}
+function prevCard(){ci=(ci-1+cards.length)%cards.length;flipped=false;renderCard()}
+renderCard();
+</script>
+</body>
+</html>
