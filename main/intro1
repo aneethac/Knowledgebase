@@ -1,0 +1,52 @@
+Here is your updated, balanced self-introduction as a Principal Data Engineer, highlighting expertise across Cloud Data Warehousing (BIW / Snowflake / Kimball / SQL ELT) AND Databricks Lakehouse & Feature Store (Databricks / Delta Lake / PySpark / Point-in-Time ML Feature Engineering).
+🎙️ 1. Crisp 60-Second Opening (Balanced Profile)
+"I’m a Principal Data Engineer with deep expertise across both enterprise cloud data warehousing and Databricks-based feature store engineering.
+On the data warehouse side, I architect and build Kimball-modeled data platforms on Snowflake — leading BIW cloud migrations, designing 6-tier schema topologies, and building incremental ELT pipelines with dbt.
+On the AI/ML data engineering side, I design and operationalise Databricks Feature Stores — using PySpark and Delta Lake to engineer Point-in-Time feature tables for retail demand forecasting, range planning, and promotional analytics. This includes curating offline training features with time-travel lookup to prevent data leakage and serving online features to machine learning models like Relex and Advanced Analytics.
+What sets my work apart is bridging these two worlds: ensuring clean, conformed master data flows seamlessly from our Snowflake DWH into Databricks Delta Lake, and serving both executive BI dashboards and downstream predictive ML models with 100% data consistency."
+🎙️ 2. 90-Second Deep Architecture Intro (Balanced Profile for Senior/Panel Interviews)
+"I’m a Principal Data Engineer with extensive experience designing and scaling end-to-end data architectures — balancing Snowflake for enterprise data warehousing and Databricks for AI/ML feature store platforms.
+In my recent work with supermarket retail analytics, I’ve led two major parallel initiatives:
+First, Enterprise Data Warehouse Architecture: I led the design and migration of our core BIW data warehouse onto Snowflake using Kimball Dimensional Modeling. I established a decoupled multi-tier schema topology (STG, PSG, WRK, BIW_DWH), implemented dbt-driven incremental CDC merge models, and engineered SCD Type 2 history tracking for core dimensions like Store and Product hierarchies.
+Second, Databricks Product Feature Store (PFS/PFUS): To power machine learning demand forecasting models for Fresh Produce and retail categories, I engineered a high-throughput Feature Store on Databricks using Delta Lake and PySpark. I built automated feature pipelines that transform complex supply chain, range, price, and promotional data into Point-in-Time (PIT) historical feature tables. By leveraging Delta Lake’s time-travel capabilities and Databricks Feature Store mechanisms, we completely eliminated data leakage during ML model backtesting and reduced feature serving latency.
+I also architected the interoperability layer between Snowflake and Databricks — using Databricks Delta Sharing and Snowflake connectors to maintain a single source of truth across both analytical BI and predictive ML workloads.
+My approach combines technical rigor in data engineering with strong cross-functional leadership — from hosting business workshops to authoring production runbooks and driving zero-downtime cutover strategies."
+🎙️ 3. 30-Second Elevator Pitch (Recruiter / Phone Screen)
+"I’m a Principal Data Engineer specializing in cloud data platforms — balancing enterprise data warehousing on Snowflake with ML feature store engineering on Databricks. I build scalable, Kimball-modeled dimensional warehouses using dbt and Snowflake, alongside PySpark and Delta Lake feature pipelines that feed Point-in-Time training and inference datasets into machine learning forecasting engines."
+🏛️ How to Explain the Dual-Platform Architecture (Snowflake + Databricks)
+When asked: "Why did you use both Snowflake and Databricks, and how do they fit together?"
+🗣️ Spoken Voice Track:
+"We chose a purpose-built dual platform architecture based on workload strengths:
+Snowflake (Enterprise BIW Data Warehouse):
+Role: Central source of truth for business intelligence, financial reporting, and executive analytics.
+Strengths: Exceptional SQL performance for structured Kimball Star Schemas, zero-management compute scaling, strict RBAC governance, and seamless view presentation for BI tools like PowerBI.
+
+Databricks (Product Feature Store & ML Platform):
+Role: Distributed feature computation engine and feature repository for machine learning models.
+Strengths: Distributed PySpark processing for complex feature transformations, native integration with MLflow / Unity Catalog Feature Store, and Delta Lake time-travel capabilities essential for Point-in-Time feature joins.
+
+The Bridge (Bi-directional Sync & Shared Delta Lake):
+Upstream source systems (RMS, MRL) land in raw Delta storage in Azure.
+Databricks runs heavy feature engineering pipelines (window functions, rolling aggregations, lagging price elasticities) and registers them in the Databricks Feature Store.
+Curated feature aggregates and conformed dimension outputs are synchronized into Snowflake BIW_DWH via Snowflake Spark Connectors / Delta Sharing, allowing BI analysts to query feature metrics directly alongside financial reports."*
+
+
+📊 Summary Mapping Table (Snowflake vs Databricks Roles)
+Capability
+Snowflake (BIW Data Warehouse)
+Databricks (Feature Store / Lakehouse)
+Primary Workload
+BI, Operational Reporting, Kimball Star Schemas
+ML Feature Engineering, Model Training & Inference
+Core Technology
+Snowflake SQL, dbt, Virtual Warehouses
+PySpark, Delta Lake, Databricks Feature Store / Unity Catalog
+Data Structure
+Star Schemas (dim_*, fct_*), Native Views
+Delta Tables, Feature Tables, Parquet File Streams
+History Tracking
+SCD Type 2 (CDW_RECD_CURR_FLG, LOAD_DT, CLOSE_DT)
+Delta Lake Time-Travel (VERSION AS OF / TIMESTAMP AS OF)
+Key Output
+Conformed BI Marts (OUT Consumer Layer)
+Point-in-Time Feature Matrices (f_pfs_event_long_snapshot)
