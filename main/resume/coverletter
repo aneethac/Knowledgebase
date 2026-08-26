@@ -1,0 +1,34 @@
+💡 Note: Replace [Target Company Name], [Hiring Manager Name / Talent Acquisition Team], and [Role Title] with the specific details of the position you are applying for.
+ANEETHA CHANDHIRASEKAR Databricks Certified
+Principal Data Engineer | Lead Data & Solution Architect
+📍 Melbourne, VIC, Australia 📱 0415581622 ✉️ aneetha.chandru108@gmail.com 🔗 linkedin.com/in/aneethachandhirasekar
+Date: 26 August 2026
+
+To: [Hiring Manager Name / Talent Acquisition Team]
+Company: [Target Company Name]
+Location: Australia
+RE: Application for Principal Data Engineer / Lead Data Architect Position
+Dear [Hiring Manager Name / Hiring Team],
+
+I am writing to express my strong interest in the Principal Data Engineer / Lead Data Architect position at [Target Company Name]. With over 19 years of end-to-end data engineering, cloud data warehouse architecture, and AI/ML feature store implementation experience across major enterprise analytics environments, I bring a proven track record of bridging executive business strategy with resilient, high-performance data systems.
+
+Throughout my career—most recently as Lead Data Engineer at Infocentric consulting for Coles—I have architected and scaled production-grade data platforms handling over 500 million daily transaction events. My core expertise sits at the intersection of modern Databricks Lakehouse architecture (Delta Lake, PySpark, Unity Catalog, Feature Store) and Snowflake Cloud Data Warehousing (dbt, Kimball Star Schema modeling, multi-tier schema topology). I specialize in leading complex initiatives from initial business discovery and High-Level Design (HLD) down to production deployment and operational hardening.
+
+Key highlights of the technical and strategic value I bring to [Target Company Name] include:
+
+AI/ML Feature Store Architecture: Architected the Supermarket Product Feature Store (PFS/PFUS) on Databricks using PySpark and Delta Lake. Implemented Point-in-Time (PIT) feature calculations that eliminated historical data leakage for machine learning demand forecasting engines (Relex & Advanced Analytics), driving a 14% improvement in forecast accuracy.
+Legacy-to-Cloud Warehouse Migrations: Led the migration of legacy Oracle BIW platforms to Snowflake using a 6-tier schema topology (`STG` → `PSG` → `WRK` → `BIW_DWH` → `OUT`). Executed a zero-downtime Blue-Green view repointing cutover while achieving a 65% reduction in query latency and 40% compute cost savings ($300K+ annually).
+Cross-Functional Leadership & Governance: Managed medium-sized engineering teams (4–8 consultants), overseeing PI planning, technical roadmaps, and dbt quality contracts. Authored comprehensive operational runbooks and SLA sensors, reducing production incidents by 45%.
+Complex Supply Chain Data Pipelines: Designed automated data reconciliation pipelines between master systems (MRL, RMS, CML), streamlining range, price, and promotional timeline data streams across 800+ supermarkets and Coles Express nodes.
+What sets my approach apart is a commitment to architectural rigor, data quality governance, and collaborative leadership. Whether running discovery workshops with category managers and data scientists, establishing dbt data quality contracts, or mentoring engineering teams on Delta Lake best practices, I ensure data platforms are not only technically elegant but operationally sustainable and tightly aligned with measurable business outcomes.
+
+I would welcome the opportunity to discuss how my technical architecture experience, AI feature store engineering background, and leadership capabilities can drive the data and analytics vision at [Target Company Name].
+
+Thank you for your time and consideration.
+
+Warm regards,
+
+Aneetha Chandhirasekar
+Principal Data Engineer | Lead Data & Solution Architect
+Databricks Certified Data Engineer Associate
+Australian Citizen
