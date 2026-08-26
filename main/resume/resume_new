@@ -1,0 +1,94 @@
+ANEETHA CHANDHIRASEKAR
+Principal Data Engineer  |  Lead Data & Solution Architect  |  AI Feature Store & Cloud Data Warehouse Specialist
+📍 Melbourne, VIC — Australian Citizen 📧 aneetha.chandru108@gmail.com 📱 0415 581 622 🔗 linkedin.com/in/aneethachandhirasekar
+🎓 Databricks Certified Data Engineer Associate 19+ Years Enterprise Data Engineering Target: Senior / Staff / Lead / Principal Data Engineer + Architect
+Executive Summary
+Accomplished Principal Data Engineer and Lead Data Architect with 19+ years of experience designing, building, and operationalising enterprise-scale data platforms. Deep specialisation across two high-demand disciplines: AI/ML Feature Stores (Databricks, Delta Lake, PySpark) and Cloud Data Warehousing (Snowflake, dbt, Kimball Modeling, Oracle BIW Migration). Proven track record leading end-to-end architectural solutions — from executive stakeholder discovery and High-Level Design (HLD) authoring through to production deployment and hypercare. Delivered measurable business impact: 40% infrastructure cost reduction ($300K annual savings), 30% faster pipeline processing, and 14% improvement in ML demand forecast accuracy across 800+ supermarkets and 40,000+ SKUs. Hands-on architect, cross-functional collaborator, and engineering lead.
+Core Competencies & Architectural Scope
+AI/ML Feature Store Engineering (Databricks, Delta Lake)
+Cloud Data Warehouse Architecture (Snowflake, BIW)
+Kimball Dimensional Modeling (Star Schema, SCD1/SCD2)
+Medallion Architecture (Bronze / Silver / Gold Lakehouse)
+Point-in-Time (PIT) Feature Engineering & ML Pipeline Design
+Oracle BIW to Snowflake Cloud Migration & Cutover
+dbt (Core & Cloud) — Incremental CDC ELT Pipelines
+PySpark, Python, SQL, PL/SQL, Jinja Macros
+Pipeline Orchestration — Airflow, Control-M, ADF
+Azure DevOps CI/CD — Automated Testing & Deployment
+Unity Catalog, RBAC, Data Governance & Lineage
+Retail Supply Chain Analytics — Range, Price, Promotions
+Business Requirements Gathering & HLD/LLD Authoring
+Production Runbooks, SLA Monitoring & Hypercare
+Cross-functional Team Leadership (4–8 Engineers)
+Power BI, Tableau, OBIEE — Observability Dashboards
+Professional Experience
+Lead Data Engineer
+Infocentric  ·  Client: Coles Group  ·  Melbourne, VIC
+09/2018 – Present  (~7 years)
+Led a cross-functional data engineering team of 4–8 engineers, owning quarterly roadmap, PI & sprint planning, estimation, and engineering standards across AI feature store and data warehouse workstreams.
+Architected and delivered 5 production Feature Store pipelines on Databricks Delta Lake (Smkt PFS/PFUS, FSI, Promo Timeline, Coles Express FS, Customer FS), processing 500M+ daily records across 800+ stores and 40,000+ SKUs.
+Engineered Point-in-Time (PIT) feature calculation pipelines using PySpark and Delta Lake time-travel, eliminating historical feature leakage and improving ML demand forecast accuracy by 14% for Fresh Produce categories.
+Led enterprise Oracle BIW to Snowflake cloud migration — designed 6-tier Kimball star schema topology, executed Blue-Green zero-downtime view repointing cutover, and validated 50M+ historical rows at 100% data parity.
+Designed and built metadata-driven frameworks including feature table creation & validation frameworks, Delta Lakehouse architectures, and intra-feed / batch pipelines for ML & forecasting.
+Achieved 40% infrastructure cost reduction ($300K annual savings) and 30% faster pipeline processing through dbt incremental CDC merges, Snowflake liquid clustering, and Databricks serverless warehouse migrations.
+Reduced BAU production incidents by 45%, maintaining 99.98% pipeline uptime through automated SLA sensors, comprehensive operational runbooks, and Airflow/Control-M monitoring.
+Facilitated business requirement workshops with data scientists, data architects, and supply chain stakeholders; authored HLDs, acceptance criteria, and TO-BE logic for range, price, and promotional data flows.
+Partnered with platform engineering, ML Ops, and Microsoft teams to establish scalable platform strategies and robust data architecture standards.
+Developed Power BI dashboards for pipeline observability, SLA monitoring, and cost optimization.
+Managed DevOps practices including Azure DevOps pipelines, ensuring automated, reliable, and scalable deployment processes.
+Contributed to Infocentric RFP submissions and technical solutioning for cloud migration projects.
+Managed a team of 4 consultants, driving career development, performance management, and delivery excellence.
+▸ Key Delivered Projects:
+Atlantis: Supermarket Product Feature Store (PFS / PFUS)
+Architected end-to-end feature store serving 800+ stores, 40,000+ SKUs across a 54-week forecast horizon (16-week approved + 38-week planned promo windows).
+Reduced pipeline data latency from 24 hours to <15 minutes via CDC incremental architecture; curated 3 feature granularities (Item-Zone-Day, Item-Loc-Day, Item-Channel-Day).
+Completed 9 SIT validation flows with 100% parity across Non-Prod vs Prod environments and 6:00 AM daily SLA enforcement.
+Databricks · Delta Lake · PySpark · Snowflake · dbt · MLflow · PIT Joins · Control-M
+Oracle BIW → Snowflake Cloud Data Warehouse Migration
+Designed 6-tier decoupled schema topology (STG → PSG → WRK → BIW_DWH → OUT); validated 50M+ rows at 100% statistical parity over a 3-week parallel regression window.
+Zero-downtime Blue-Green view repointing cutover — switched 5+ downstream feature pipelines simultaneously with zero consumer disruption.
+Achieved 65% query performance improvement and 40% compute cost reduction post-migration.
+Oracle BIW · Snowflake · Kimball Star Schema · SCD Type 1 & 2 · dbt · Azure DevOps
+FPQT: Fresh Produce Quality Transformation & FSI Feature Store
+Designed multi-source range reconciliation pipelines between MRL vs RMS/CML_FEO_ITEM_LOC systems, creating a unified source of truth for 5,000+ Fresh Produce lines.
+Reduced new produce line onboarding from 5 days to under 24 hours through automated pending-range handling pipelines.
+Databricks · Delta Lake · MRL/RMS Range Reconciliation · PySpark · Snowflake
+Promotion Timeline & Pricing Feature Data Engine
+Engineered automated delta ingestion pipelines handling 10,000+ weekly promotional campaign changes across 6+ promo tactics (Catalogue, Down Down, On-End, Multi-Buy, EDA, New Line Indicator).
+Implemented SCD Type 2 history tracking enabling point-in-time price elasticity analysis; drove 11% forecast accuracy uplift for promotional periods.
+Planned vs Approved Promo Pipelines · SCD Type 2 · CDC Ingestion · Snowflake · dbt
+Coles Express Feature Store & Production Pipeline Hardening
+Extended feature store capabilities to 700+ Coles Express convenience nodes, supporting high-cardinality location-item metrics.
+Reduced BAU incidents by 45% through automated SLA sensors, CI/CD testing frameworks, and comprehensive operational runbooks.
+Coles Express · Airflow · Control-M · SLA Sensors · Azure DevOps CI/CD · Runbooks
+Data Warehouse / BI Developer
+Icon Clinical Research  ·  Chennai, India
+10/2013 – 06/2018  (~5 years)
+Led development of enterprise data warehouses, data marts, and operational reporting systems for global clinical research operations.
+Designed and implemented ETL frameworks using ODI, PL/SQL, and Tableau/OBIEE for end-to-end reporting pipelines.
+Migrated legacy systems to Salesforce and Workday, enabling modern data architectures and improving data accessibility.
+Delivered scalable, metadata-driven integration solutions with enhanced performance across multiple enterprise platforms.
+Business Intelligence Consultant
+Wipro Technologies  ·  Melbourne, VIC & Chennai, India
+11/2006 – 08/2013  (~7 years)
+Designed and implemented large-scale data warehouse and BI solutions for global clients across multiple industry verticals.
+Delivered complex ETL pipelines using Informatica, PL/SQL, and Business Objects, handling high-volume transactional datasets.
+Managed geographically distributed teams, ensuring timely project delivery and consistent stakeholder alignment.
+Led migration and demerger projects, providing architectural guidance, risk analysis, and cross-functional solution design.
+Technical Stack & Skills Matrix
+Category	Technologies & Tools
+Cloud & Data Platforms	Databricks, Delta Lake, Snowflake, Oracle BIW, Azure Data Lake Storage (ADLS), Azure Blob Storage
+Languages & Frameworks	PySpark, Python, SQL, dbt (Core & Cloud), PL/SQL, Jinja Macros, Delta Sharing
+Orchestration & DevOps	Apache Airflow, Control-M, Azure Data Factory (ADF), Azure DevOps (CI/CD), Git, Databricks Job API
+Architecture & Modeling	Kimball Star Schema, Medallion Architecture, Point-in-Time Feature Engineering, SCD Type 1 & 2, Data Contracts, HLD/LLD
+Governance & Security	Unity Catalog, Databricks Feature Store, RBAC, Data Lineage, Data Quality Contracts, Snowflake Dynamic Data Masking
+BI & Visualization	Power BI, Tableau, OBIEE, Business Objects
+Legacy & Migration	Oracle BIW, ODI, Informatica, PL/SQL, Salesforce, Workday
+Awards & Recognition
+Customer Satisfaction Award – Infocentric (2023)
+Above & Beyond Award – Infocentric (2025)
+Delivery Excellence Award – Icon Clinical Research
+Role Excellence & Team Management Award – Wipro Technologies
+Education & Certifications
+Bachelor of Computer Science Engineering — Anna University, India (2002–2006)  |  GPA: 79% (Distinction)
+🎓 Databricks Certified Data Engineer Associate — Active Certification
