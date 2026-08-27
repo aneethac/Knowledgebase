@@ -1,0 +1,677 @@
+# Enterprise Agentic AI Platform — Platform Engineer Reference Guide
+
+> **Classification:** Internal Use  
+> **Audience:** Platform Engineers  
+> **Last Updated:** August 2026
+
+---
+
+## Table of Contents
+
+1. [Overview & Background](#1-overview--background)
+2. [Architecture & Design](#2-architecture--design)
+3. [Coles Agentic SDK](#3-coles-agentic-sdk)
+4. [Integration Patterns — A2A & MCP](#4-integration-patterns--a2a--mcp)
+5. [Security & Governance](#5-security--governance)
+6. [Key Design Decisions & Trade-offs](#6-key-design-decisions--trade-offs)
+7. [Current Challenges & Known Limitations](#7-current-challenges--known-limitations)
+8. [Benefits vs. Traditional Approach](#8-benefits-vs-traditional-approach)
+9. [Glossary](#9-glossary)
+
+---
+
+## 1. Overview & Background
+
+### What is the Agentic AI Foundation Platform?
+
+The **Agentic AI Foundation Platform** — referred to as the **AI Landing Zone (AI LZ)** — is a standardised, secure, and scalable platform blueprint enabling teams to build and deliver Generative AI (GenAI) and Agentic AI solutions consistently across the enterprise.
+
+It extends existing investments in strategic AI/ML, strategic GenAI (AIaaS), and cloud platform foundations. It leverages enterprise-wide shared services:
+
+- **AKS** — compute for agent runtimes
+- **Redis** — short-term conversational memory
+- **Kafka** — event-driven agent patterns
+- **APIM** — API gateway for all agent traffic
+- **Ada / OTel** — observability and telemetry
+
+It further integrates with:
+
+- **Entra ID** — agent and workload identity
+- **Azure Policy / Defender** — cloud security posture
+- **SIEM** — security event monitoring
+- **JFrog/Artifactory** — SDK distribution
+- **Azure DevOps** — CI/CD pipelines
+
+### Why Build This?
+
+The platform addresses observed challenges in the AI delivery landscape:
+
+- Fragmented implementation patterns across teams
+- Extended proof-of-concept cycles
+- Inconsistent security and compliance controls
+- Re-implementation of foundational concerns per use case
+
+By converging onto a unified design, the organisation can:
+
+- Reduce solution complexity
+- Improve time-to-value
+- Strengthen compliance alignment
+- Enable safe integration of agents into the broader data and application ecosystem
+
+### High-Level Platform Capabilities
+
+**Delivered:**
+
+- Standardised platform blueprint for agentic workloads (AI Landing Zone)
+- Operational and cybersecurity observability by design, end-to-end
+- Identity-centric security with least privilege
+- Standardised agent lifecycle management
+- Secure, consistent runtime memory
+- Clear boundary between memory and workflow state
+- Governed tool ecosystem for agents (MCP Server pattern)
+- Release-grade human evaluation
+- Capability hosts and governance (Vector Database)
+
+**Future Extension (not yet elaborated):**
+
+- Workflow Orchestration (Agentic BPM)
+- Agent Business Performance (KPI Measurement)
+- AI Agent DevSecOps
+- Machine Identity Visibility (SailPoint)
+- AI Firewall integration
+
+---
+
+## 2. Architecture & Design
+
+### Target State Architecture
+
+The AI Landing Zone operates alongside other core cloud capabilities within the broader Product Home and Enterprise Landing Zone. It leverages shared enterprise services — security, networking, privacy, compliance, and governance guardrails — ensuring all AI workloads are aligned to the organisation's risk, trust, and operational standards.
+
+**Core layers:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Enterprise Landing Zone                       │
+│  (Identity, Network, Firewall, Azure Policy, Defender, DevOps)  │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                   AI Landing Zone                         │   │
+│  │                                                           │   │
+│  │  ┌──────────────┐  ┌────────────┐  ┌─────────────────┐  │   │
+│  │  │ Azure AI     │  │ APIM       │  │ AKS-hosted      │  │   │
+│  │  │ Foundry      │  │ (Gateway)  │  │ MCP Servers     │  │   │
+│  │  │ (Agents,     │  │            │  │                 │  │   │
+│  │  │  Models)     │  │            │  │                 │  │   │
+│  │  └──────────────┘  └────────────┘  └─────────────────┘  │   │
+│  │                                                           │   │
+│  │  ┌──────────────┐  ┌────────────┐  ┌─────────────────┐  │   │
+│  │  │ Azure Managed│  │ Entra ID   │  │ OTel / Ada      │  │   │
+│  │  │ Redis        │  │ (Identity) │  │ (Observability) │  │   │
+│  │  │ (Memory)     │  │            │  │                 │  │   │
+│  │  └──────────────┘  └────────────┘  └─────────────────┘  │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### MCP Server Pattern
+
+A key capability embedded in the AI Landing Zone is the **MCP (Model Context Protocol) Server pattern**, which enables agents to safely execute tools against internal platforms and business systems.
+
+**Request flow:**
+
+```
+Agent → APIM → MCP Server (AKS) → Backend Systems
+              (Auth/AuthZ,         (Snowflake, 
+               Rate Limiting,       Databricks,
+               Payload Inspect)     SAP, APIs)
+```
+
+- APIM validates Entra-issued OAuth tokens
+- APIM enforces scope restrictions, payload inspection, rate limits, and throttling
+- APIM forwards only pre-validated traffic to the AKS-hosted MCP Server
+- MCP Server performs schema validation, optional on-behalf-of token exchange, and controlled tool dispatch
+- This design prevents direct model-to-system access, enforcing strict separation between untrusted LLM output and backend systems
+
+### Agentic Memory Architecture
+
+Short-term memory is implemented using **Azure Managed Redis**, deployed within the AI Landing Zone's protected virtual network:
+
+- Accessed exclusively via Private Endpoint (public access disabled)
+- Authenticated via Entra Managed Identity
+- Holds per-agent, per-thread conversational history for multi-turn continuity
+- Key space convention: `agent_id:orchestration_id:thread_id` — enforces logical isolation and prevents context bleed
+- Redis TTL applied for automated retention
+- Explicit deletion required as an application-level capability (privacy compliance)
+
+**Note:** Azure Managed Redis does not currently support granular ACLs. Memory segregation is therefore enforced at the **orchestrator layer**, ensuring each agent interacts only with its own working memory.
+
+### Interim / Transition State Design Patterns
+
+The platform is evolving rapidly. Several Microsoft features required for full target-state realisation are currently in Preview, necessitating approved interim patterns:
+
+| Constraint | Interim Design |
+|---|---|
+| Foundry networking constraints with private MCP in network-isolated topologies | **APIM-fronted MCP** pattern (external-facing MCP endpoint, not private MCP) |
+| Entra Agent Identity (preview) — lifecycle and governance limitations | **IaC-driven RBAC** (re-grant and cleanup cycles) |
+| Fine-grained ACL gap in Azure Managed Redis | **Key-prefix isolation enforced in the orchestrator** per agent |
+| Human Evaluation (preview) | Interim operationalisation controls |
+
+These transition patterns can be retired with minimal rework as Microsoft moves capabilities to General Availability.
+
+---
+
+## 3. Coles Agentic SDK
+
+### What is the Coles Agentic SDK?
+
+The **Coles Agentic SDK** is the recommended SDK surface for common, repeatable, governance-critical concerns when building MAF (Microsoft Agent Framework) and Azure AI Foundry–based use cases.
+
+It wraps a deliberately scoped set of foundational concerns so product teams do not re-implement them per use case:
+
+- Configuration loading
+- Credential resolution
+- Observability wiring
+- Agent factories
+- Control-plane prompt-agent publishing
+
+It does **not** replace MAF orchestration or Foundry platform capabilities.
+
+### SDK Public Surface
+
+| Surface | Value |
+|---|---|
+| **Package name** | `coles-agentic-sdk` |
+| **Python import root** | `coles_agentic_sdk` |
+| **CLI command** | `coles-agent` |
+| **Environment variable prefix** | `COLES_` |
+| **Config class** | `coles_agentic_sdk.config.ColesAgentConfig` |
+| **Bootstrap entry point** | `coles_agentic_sdk.workflow.bootstrap()` |
+| **Credential helper** | `coles_agentic_sdk.identity.get_credential()` |
+| **Runtime agent factory** | `coles_agentic_sdk.agents.connect_foundry_agent()` |
+| **Control-plane publish** | `coles_agentic_sdk.agentops.publish_prompt_agent()` |
+| **Observability wiring** | `coles_agentic_sdk.observability.init_observability()` |
+| **Module package prefix** | `coles-agent-<module>` |
+
+**Distribution:** Coles JFrog/Artifactory — default read access for all engineering identities.
+
+```bash
+pip install coles-agentic-sdk \
+  --index-url https://coles.jfrog.io/artifactory/api/pypi/coles-ai-pypi/simple/
+```
+
+### Core Modules
+
+| Module | File | Responsibility |
+|---|---|---|
+| Configuration management | `config.py` | `ColesAgentConfig` — Pydantic-based env loading, fail-fast validation |
+| Credential management | `identity.py` | `get_credential()` — environment-aware credential resolution |
+| Platform initialisation | `workflow.py` | `bootstrap()` — single startup call, returns `BootstrapResult` |
+| Observability | `observability/setup.py` | OTel + structured stdout JSON for AKS sidecar |
+| Agent management | `agents.py` | `connect_foundry_agent()` / `create_agent()` |
+| Control plane | `agentops.py` | `publish_prompt_agent()` — CI/CD only |
+| CLI scaffolding | `coles-agent` | `coles-agent new`, `coles-agent modules`, etc. |
+
+### Quick Start Pattern
+
+```python
+# Step 1 — load .env into os.environ BEFORE any other imports
+from dotenv import load_dotenv
+load_dotenv()  # no-op in deployed AKS environments
+
+from coles_agentic_sdk.workflow import bootstrap
+from coles_agentic_sdk.agents import connect_foundry_agent
+
+# Step 2 — bootstrap wires config, credential, and observability
+boot = bootstrap()
+
+# Step 3 — connect to the agent
+async with boot.credential() as cred:
+    agent = connect_foundry_agent(
+        boot.config,
+        credential=cred,
+        agent_name="my-agent",
+        orchestration_id="req-abc123",  # workflow-level correlation ID
+    )
+    session = agent.create_session()
+    response = await agent.run("What products are on promotion?", session=session)
+    print(response.text)
+```
+
+### Configuration Schema (illustrative)
+
+```python
+class ColesAgentConfig(BaseModel):
+    model_config = {"frozen": True, "extra": "forbid"}
+
+    project_endpoint: str          # AZURE_AI_PROJECT_ENDPOINT
+    model_deployment: str          # AZURE_AI_MODEL_DEPLOYMENT
+    service_name: str = "coles-agent"  # COLES_SERVICE_NAME
+    environment: Environment = Environment.DEV  # COLES_ENVIRONMENT
+    memory_store_url: str | None = None  # COLES_MEMORY_STORE_URL
+    applicationinsights_connection_string: str | None = None  # optional
+```
+
+### Credential Resolution Hierarchy
+
+| Priority | Signal | Credential | Context |
+|---|---|---|---|
+| 1 | Explicit `kind=` argument | As specified | CI/CD pipelines, test harnesses |
+| 2 | `COLES_ENVIRONMENT=dev` | `AzureCliCredential()` | Local development |
+| 3 | `COLES_ENVIRONMENT=test\|prod` | `ManagedIdentityCredential()` | Deployed AKS workload |
+| 4 | Managed-identity signals in runtime | `ManagedIdentityCredential()` | Deployed without explicit env var |
+| 5 | None of the above | `DefaultAzureCredential()` | CI runners, AML compute |
+
+**Key rule:** In `test` and `prod`, bootstrap fails immediately if not running under an approved managed identity — no silent fallback to developer credentials.
+
+### CLI Commands
+
+| Group | Command | Purpose |
+|---|---|---|
+| Scaffolding | `coles-agent new <name>` | Scaffold a compliant base project |
+| Scaffolding | `coles-agent new-module <name>` | Scaffold a new capability module |
+| Module management | `coles-agent modules` | List published capability modules |
+| Module management | `coles-agent modules add <name>` | Add approved module to project |
+| Control plane | `coles-agent init-agent` | Publish prompt agent from CI/CD |
+| Discovery | `coles-agent list-models` | List available Foundry model deployments |
+| Discovery | `coles-agent list-evaluators` | List approved evaluators |
+| Testing | `coles-agent init-tests` | Scaffold test harness |
+| Testing | `coles-agent validate-eval` | Validate eval-config.yaml |
+| Quality | `coles-agent lint` | Run ruff + mypy with SDK config |
+
+### Capability Boundary Matrix (Summary)
+
+| Concern | SDK Owns | Platform Owns | Use Case Owns |
+|---|---|---|---|
+| AI Landing Zone (subscriptions, networking) | — | ✓ Platform / Cloud team | — |
+| Azure AI Foundry project | Connection helpers only | ✓ Platform team | Agent instructions and tool attachments |
+| APIM (routing, keys, cost) | — | ✓ API platform | Own APIM-fronted API calls |
+| MCP servers and hosted tools | — | ✓ Platform / MCP owners | MCP tool attachments in Foundry |
+| CI/CD pipeline templates | Bootstraps approved templates | ✓ Engineering Standards team | Use case–specific stages |
+| Observability sidecar | Emits structured stdout + OTel | ✓ Observability capability | Custom log fields |
+| Memory platform | Runtime APIs for short-term memory | ✓ Memory capability | Memory keys and lifecycles |
+| Identity / credentials | `get_credential()` resolution | ✓ Azure RBAC, AKS WI | Managed identity and RBAC requests |
+
+---
+
+## 4. Integration Patterns — A2A & MCP
+
+### Overview
+
+The platform supports five integration patterns. Choosing the correct one is a primary decision gate for platform engineers and use case teams.
+
+### Integration Pattern Decision Matrix
+
+| Criterion | A2A | MCP Tool | Foundry Built-in Tool | MAF Executor Node | Direct API Call |
+|---|---|---|---|---|---|
+| **Connects to** | External agent with its own LLM/reasoning | Enterprise tool/service as a governed endpoint | Microsoft-managed tool (AI Search, etc.) | Custom Python logic in workflow | Standard REST/GraphQL API |
+| **Use when** | External system is an agent with dynamic reasoning and multi-turn capability | External system exposes bounded operations (read, search, lookup) | Microsoft-provided capability meets requirement | Custom code, policy gates, approvals, payload shaping | Simple API integration with known contract |
+| **Protocol** | A2A (HTTP + JSON, SSE) | MCP (HTTP + JSON-RPC 2.0, SSE) | Foundry-managed | Python function call (in-process) | HTTP/HTTPS |
+| **Multi-turn** | Yes — native | No | No | No | No |
+| **Long-running tasks** | Yes — native (continuation tokens, polling) | No | No | Yes (orchestrator manages) | Possible |
+| **Auth at APIM** | Required (Entra/OAuth) | Required (Entra/OAuth) | N/A (Foundry-managed) | N/A (in-process) | Depends |
+
+**Key principle:** A2A and MCP are complementary, not competing. A2A is for agent-to-agent conversation (reasoning + multi-turn). MCP is for agent-to-tool invocation (bounded operations).
+
+### When to Use A2A
+
+Use A2A when **all** of the following are true:
+
+1. The external system is an **agent** — it has its own LLM, reasoning loop, and can make autonomous decisions
+2. The interaction benefits from **multi-turn conversation** or **task delegation** (not a simple request/response)
+3. The external agent supports the **A2A protocol** (exposes an agent card and A2A-compliant endpoint)
+4. You want the external agent to **own its reasoning** — you send a task and receive a result
+
+### A2A Architecture
+
+**Network posture:** Outbound-only. The platform initiates requests to external agents. Inbound A2A (external agents calling internal agents) is not supported by design.
+
+**Traffic flow:**
+
+```
+Coles Agent → APIM → External A2A Agent
+(Entra token)  (Auth/Rate Limit/Circuit Breaker)
+```
+
+All A2A traffic routes through APIM. No direct agent-to-external-agent communication is permitted.
+
+### Two Integration Paths
+
+#### Path 1: Foundry Agent Service A2A Tool ⚠️ Not Recommended for Production
+
+- The Foundry prompt agent attaches an external A2A agent as a tool
+- Model-driven: Foundry decides when to call the external agent
+- Currently **Public Preview** — not recommended for production
+- No support for pre-call policy gates or validation
+- Text only; no streaming (SSE not supported)
+
+#### Path 2: MAF Code-Level Integration ✅ Recommended
+
+- Uses `A2AAgent` class from `agent-framework-a2a` Python package
+- Deterministic, orchestrator-driven — workflow explicitly controls when and how external agent is called
+- **Generally Available** — pin the package version
+- Full support for pre/post-call processing, policy gates, payload redaction
+- Long-running tasks supported via `background=True` with polling
+
+```
+Use Path 2 (MAF code-level) as the default for all production workloads.
+Only consider Path 1 once it reaches GA, and only where governance trade-offs are accepted.
+```
+
+### A2A Agent Registry (GitOps Model)
+
+External agents are onboarded via a GitOps model using an ADO repository:
+
+```
+a2a-agent-registry/
+  agents/
+    external-agent-1.yaml
+    external-agent-2.yaml
+  pipelines/
+    onboard-a2a-agents.yml
+    decommission-a2a-agent.yml
+```
+
+Each agent YAML config declares:
+- `name`, `vendor`, `owner`, `purpose`
+- `agent_card_url` — source of truth for agent capabilities
+- `credential_type` — `api_key` or `oauth2_client_credentials`
+- `data_classification` — highest classification permitted to be sent
+- `data_residency` — where external agent processes and stores data
+- `jsonrpc_backend_url` — runtime endpoint for APIM to forward to
+- `app_role` — Entra app role authorising calls to this agent
+
+### Onboarding Pipeline Steps (Automated)
+
+1. **Validate** — fetch and validate agent card from declared URL
+2. **Provision** — deploy A2A API to APIM as ARM resource; assign to A2A APIM product
+3. **Wire credential translation** — configure Key Vault named values, apply outbound policy template
+4. **Create Foundry connections** — (Path 1 only) create A2A tool connections in Foundry projects
+5. **Register** — record agent in Azure API Center with governance metadata
+6. **Emit** — output APIM-fronted endpoint URL as pipeline variable (`A2A_{NAME}_URL`)
+
+Human approval gates required for: Data Owner approval, Data Governance/Privacy approval, Cyber Security review, and production promotion.
+
+### Authorisation Model
+
+- A single Entra app registration represents the A2A API exposed through APIM
+- The calling agent authenticates with its workload identity (managed identity or service principal)
+- Each external agent integration has a dedicated app role (`A2A.<NAME>.Call`)
+- APIM validates both token audience and per-agent app role on every request
+- Onboarding a new external agent = adding one app role and one grant. No new app registrations.
+
+---
+
+## 5. Security & Governance
+
+### Five Security Lenses
+
+The security posture is described across five standard lenses plus a sixth for SDK-specific supply chain concerns:
+
+#### 5.1 Network
+
+- SDK is an outbound client only — no inbound listener or network service
+- All A2A traffic routes through APIM (no direct agent-to-external-agent communication)
+- Outbound egress constrained to an allow-list of registered FQDNs
+- New egress routes assessed individually per external agent onboarding
+- No SSE streaming through APIM (APIM buffers responses — streaming requires exception approval)
+
+#### 5.2 Identity
+
+- `get_credential()` resolution hierarchy enforced at SDK level
+- Deployed workloads use Managed Identity; fail-fast if not running under approved identity
+- CI/CD operations use separate pipeline identity (`kind="cli"` with OIDC)
+- Agent Blueprints and Agent Identities automatically created in Entra when agents are created in Foundry
+- SDK holds no secrets in code
+
+#### 5.3 Data
+
+- `ColesAgentConfig` provides field-stable interface across secret injection mechanism changes
+- Fail-fast validation surfaces misconfiguration before service connections
+- Short-term memory follows key-naming conventions (`agent_id:orchestration_id:thread_id`)
+- `enable_sensitive_data` flag (defaults `True`) controls whether prompts/responses are captured in OTel spans — review against data classification before enabling
+- PII/payload redaction is a use-case application responsibility
+
+#### 5.4 AI-Specific Security
+
+- A2A responses treated as **untrusted external content** — screened via Azure AI Content Safety (Prompt Shields) before re-entering agent reasoning
+- Outbound messages screened for adversarial content before forwarding to external agents
+- Grounding and authority boundary: A2A responses are input for reasoning, not privileged instructions
+- Agent card integrity validated at onboarding; weekly change-detection pipeline monitors registered agents
+- SDK does not expose any mechanism to override, bypass, or weaken mandatory backend security baseline
+
+**Key threat:** Prompt injection via A2A responses from a compromised external agent embedding instructions designed to hijack Coles agent behaviour.
+
+#### 5.5 Monitoring
+
+- All security-relevant events forwarded to SIEM
+- SDK emits structured stdout JSON logs + OTel traces consumed by AKS sidecar
+- `ErrorLoggingMiddleware` always active on all agents; stamps `orchestration_id` on every event
+- A2A-specific log fields: `a2a.task_id`, `a2a.context_id`, `a2a.task_state`, transport errors
+
+**Correlation fields across A2A traffic:**
+
+| Field | Source |
+|---|---|
+| `gen_ai.operation.name` | `invoke_agent` (constant) |
+| `gen_ai.provider.name` | `A2A` (constant) |
+| `gen_ai.agent.name` | Registered external agent name |
+| `server.address` | APIM-fronted URL |
+| `orchestration_id` | Coles workflow correlation ID |
+| `a2a.task_id` | A2A continuation token / task ID |
+| `a2a.context_id` | A2A context ID |
+| `a2a.task_state` | `completed` / `failed` / `canceled` / `rejected` |
+
+#### 5.6 Software Supply Chain and SDK Integrity
+
+- SDK distributed exclusively via approved JFrog/Artifactory feed
+- Scaffolded `pyproject.toml` pins JFrog as the only allowed package source — prevents dependency confusion from public PyPI
+- MAF and third-party dependencies pinned to approved version ranges
+- Capability modules resolvable only from approved feed; must be published and catalogued by Data & AI team
+- All modules undergo SCA, IaC, SAST, and secrets scans before publishing
+
+### APIM Security Controls
+
+| Control | Scope | Detail |
+|---|---|---|
+| Token validation | Inherited (global/product) | `validate-azure-ad-token` — verifies issuer, audience, expiry, tenant, calling-application identity |
+| App Role authorisation | Per integration (API scope) | Per-agent app role validates caller entitlement |
+| Base rate limiting | Inherited (product) | Applies to all APIs in product |
+| Agent-identity rate limiting | Per integration | `rate-limit-by-key` on calling agent managed identity |
+| Retry | Per integration | Exponential backoff on transient 429/5xx — app code does not implement retry loops |
+| Circuit breaker | Per integration (backend) | Trips on sustained failures; returns 503 (APIM v2 tier required) |
+| Timeout | Per integration | Defaults to 30s per integration (not APIM default 300s) |
+
+### API Center Registration
+
+Every external A2A agent registered in Azure API Center with mandatory metadata:
+
+- Type, Protocol, Boundary (External), Direction (Outbound)
+- Name, Vendor, Owner, Purpose, Version
+- APIM proxy URL, Data Owner
+- Permitted data classifications, Approved data exchange profile
+- Data classification, Data residency
+- Monitoring coverage, Agent card URL, Status (Active/Retired)
+
+---
+
+## 6. Key Design Decisions & Trade-offs
+
+### DD-1: Outbound A2A Only
+
+**Decision:** A2A is used only for outbound communication — the platform calls external agents. Internal agents are not exposed as A2A endpoints.
+
+**Rationale:** The immediate need is to consume external agent capabilities. Exposing internal agents via A2A introduces additional security surface, operational complexity, and governance requirements not required at this stage.
+
+**Trade-off:** Inbound A2A (if needed in future) requires a full separate design covering agent discovery controls, inbound authentication, rate limiting, and content filtering.
+
+---
+
+### DD-2: All A2A Traffic Routes Through APIM
+
+**Decision:** All outbound A2A calls route through APIM. No direct agent-to-external-agent communication.
+
+**Rationale:** Consistent authentication, authorisation, observability, rate limiting, and network control. Follows the same gateway pattern established for MCP and applies to all API traffic (MCP, A2A, REST, GraphQL).
+
+**Trade-off:** APIM buffers responses — SSE (Server-Sent Events) streaming is not supported. For integrations requiring streaming, a direct-path exception must be raised at security review with compensating controls.
+
+---
+
+### DD-3: Path 2 (MAF Code-Level) is the Recommended A2A Path
+
+**Decision:** MAF code-level integration is the default and recommended path. Foundry A2A tool (Path 1) is not recommended while in Public Preview.
+
+**Rationale:** Path 2 uses a GA package, provides deterministic control, pre/post-call processing, and policy gates. Path 1 cannot enforce pre-call validation or policy gates.
+
+**Trade-off:** Path 2 requires more code than Path 1. Path 1 may be appropriate (post-GA) for purely model-driven delegation where deterministic control is not required.
+
+---
+
+### DD-4: Per-Agent App Role Authorisation (Not Per-Capability)
+
+**Decision:** APIM authorises per external agent (not per skill/capability the agent exposes).
+
+**Rationale:** A2A routes all interactions through a single endpoint. APIM cannot inspect the message body to determine which skill is being exercised.
+
+**Trade-off:** Capability-level permission (e.g. allowing only a read skill on an agent that also supports writes) cannot be enforced at the gateway. Must be enforced as a policy gate in the MAF executor (application-level control, not gateway-enforced).
+
+---
+
+### DD-5: SDK is MAF-Coupled, Not Framework-Agnostic
+
+**Decision:** The Coles Agentic SDK is intentionally coupled to MAF and is not designed to be framework-agnostic.
+
+**Rationale:** Framework-agnostic abstraction adds complexity and fragility. MAF is the endorsed framework; decoupling would delay delivery of value.
+
+**Trade-off:** Coupling to Microsoft (specifically Azure AI Foundry) means alternative frameworks (e.g. LangChain) cannot access Foundry services. This is an accepted vendor entanglement trade-off, flagged against enterprise architecture principles.
+
+---
+
+### DD-6: SDK Adoption is Voluntary (Not CI/CD Enforced)
+
+**Decision:** SDK adoption is driven by education, documentation, and architectural review — not blocked at the CI/CD pipeline level.
+
+**Rationale:** The SDK is used "out of choice rather than explicitly enforced" to avoid restricting development activities.
+
+**Trade-off:** Teams that do not adopt the SDK lose all governance, observability, and security baseline wiring the SDK provides and must build equivalent capability themselves (including their own A2A onboarding pipelines and processes).
+
+---
+
+### DD-7: Redis Memory Isolation at Orchestrator Layer
+
+**Decision:** Memory segregation enforced at the orchestrator layer using key-prefix isolation, not at the Redis ACL layer.
+
+**Rationale:** Azure Managed Redis does not currently support granular ACLs.
+
+**Trade-off:** Isolation is a software-enforced control, not a hardware/infrastructure boundary. If orchestrator code is incorrect, context bleed is possible. This is an acknowledged interim design pending Redis ACL support.
+
+---
+
+### DD-8: Agent Card is the External Contract (No OpenAPI Schema in APIM)
+
+**Decision:** A2A APIs are imported from the external agent's agent card. No request/response schema is published in APIM or API Center.
+
+**Rationale:** A2A communicates over JSON-RPC using the standard A2A message/task envelope — not an OpenAPI/JSON Schema document. The agent card is the contract.
+
+**Trade-off:** Teams should not expect an APIM or API Center request/response schema view for A2A integrations. The approved data exchange profile captured at onboarding governs which fields Coles is approved to exchange.
+
+---
+
+### DD-9: No Payload (SSL) Inspection of A2A Traffic
+
+**Decision:** A2A traffic through APIM is not subject to SSL/deep-payload inspection.
+
+**Rationale:** Content inspection is out of scope for this design. Controls in place are trust validation at onboarding, outbound egress allow-list, and APIM integration validation.
+
+**Residual risk:** A compromised endpoint on either side represents a trusted pathway for the duration of the integration. Available containment is full deregistration of the agent from APIM.
+
+---
+
+## 7. Current Challenges & Known Limitations
+
+### Preview Feature Dependencies
+
+| Component | Maturity | Impact |
+|---|---|---|
+| Foundry Agent Service A2A Tool (Path 1) | **Public Preview** | Not recommended for production; breaking changes may occur |
+| Entra Agent Identity | **Preview** | Lifecycle and governance limitations; IaC-driven RBAC workaround required |
+| Human Evaluation (Foundry) | **Preview** | Operationalisation workarounds required |
+| Private MCP for network-isolated Foundry | **Not yet available** | APIM-fronted MCP used as interim pattern |
+| APIM v2 tier for A2A circuit breaker | **Requirement to verify** | Circuit breaker and agent card import require v2 tier — current tier must be confirmed |
+
+### No SSE Streaming Through APIM
+
+APIM cannot proxy SSE streams — responses are buffered. For integrations requiring streaming, a direct-path exception must be raised with compensating governance controls documented and approved.
+
+### No Task Cancellation Signal in A2A
+
+The A2A protocol has no cancellation primitive. If a long-running task exceeds maximum poll lifetime, the client stops waiting but the external agent may still be running (resource locks and billing implications).
+
+**Mitigation:** Set `max_polls` and `poll_interval_seconds` deliberately; treat poll timeout as a failure outcome; confirm provider billing behaviour at onboarding.
+
+### Authorisation Granularity Limitation
+
+APIM authorises per external agent, not per capability/skill. Skill-level enforcement must be a policy gate in the MAF executor (application-level, not gateway-enforced).
+
+### APIM Request/Response Logging Not Currently Enabled
+
+APIM request and response logging is not currently enabled on the APIM instance. This affects end-to-end traceability until enabled and confirmed to reach the telemetry/SIEM store.
+
+### A2A Protocol Maturity
+
+The A2A protocol is a young open standard (v1.0 released March 2026). Risks include:
+
+- Breaking specification changes
+- Vendor interpretation differences
+- Ecosystem fragmentation (not all external systems support A2A)
+
+### Rapid Evolution of Agentic AI Ecosystem
+
+Microsoft has evolved the agent framework stack from Semantic Kernel/Autogen to MAF. This design will likely require evolution — factored into forward financial plans and the roadmap.
+
+---
+
+## 8. Benefits vs. Traditional Approach
+
+### Traditional vs. Agentic AI Platform
+
+| Dimension | Traditional Approach | Agentic AI Platform |
+|---|---|---|
+| **Development pattern** | Each team re-implements foundational concerns (config, credentials, observability) | SDK provides reusable, governed foundation — teams focus on domain logic |
+| **Agent lifecycle** | Ad hoc deployment, no standardised publish/version/retire cycle | Standardised agent lifecycle — CI/CD publish, version control, `coles-agent new` scaffold |
+| **Integration governance** | Direct API calls, no central catalogue or auth enforcement | All API traffic through APIM; API Center catalogue; GitOps onboarding for external agents |
+| **Security controls** | Inconsistent across teams; manual review per implementation | Security by default — `bootstrap()` wires auth, `ErrorLoggingMiddleware` always active, no bypass mechanisms |
+| **Observability** | Per-team logging implementations; no cross-agent correlation | Structured OTel + stdout JSON; `orchestration_id` correlates events across agents and components |
+| **Memory management** | Custom implementations, varying isolation approaches | Standardised Redis short-term memory with key-prefix isolation and TTL |
+| **External agent integration** | No pattern; ad hoc HTTP calls | Governed A2A pattern — GitOps registry, APIM routing, Cyber review gate, API Center registration |
+| **Time to value** | Extended PoC cycles; significant re-implementation | Reduced complexity; `coles-agent new` provides compliant starting point |
+| **Compliance** | Governance bolted on after build | Governance embedded in platform design — Entra identity, APIM auth, SIEM routing by design |
+
+### Business Outcomes
+
+- **Faster delivery:** Teams do not re-implement foundational patterns; compliant scaffolding from day one
+- **Reduced incidents:** Standardised security baseline eliminates common misconfiguration patterns
+- **Audit readiness:** Agent lifecycle, tool usage, and external integrations all have traceable registration and approval trails
+- **Scalability:** Governed pattern scales — new external agents onboarded via PR without platform team bottleneck
+- **Safe innovation:** Platform handles security-critical concerns; teams can experiment on domain logic without compromising compliance posture
+
+---
+
+## 9. Glossary
+
+| Term | Meaning |
+|---|---|
+| **AI Landing Zone (AI LZ)** | The standardised, secure, scalable infrastructure blueprint for agentic AI workloads, layered on the Enterprise Landing Zone |
+| **A2A (Agent-to-Agent)** | Open protocol for communication between agents across process, service, and organisational boundaries via HTTP |
+| **Agent Card** | Metadata document published by an external agent describing its capabilities, skills, supported input/output modes, security schemes, and endpoint URL |
+| **APIM** | Azure API Management — the central gateway for all API traffic (REST, MCP, A2A, GraphQL) |
+| **Coles Agentic SDK** | The Python package and CLI providing standardised, governed foundational concerns for building MAF/Foundry-based agents |
+| **Foundry Agent Service** | Azure AI Foundry's managed agent runtime — hosts Prompt Agent definitions and orchestrates model calls |
+| **MAF (Microsoft Agent Framework)** | Microsoft-provided Python framework (`agent-framework-core`, `agent-framework-foundry`) |
+| **MCP (Model Context Protocol)** | Protocol enabling agents to safely invoke tools against internal platforms and business systems via a governed server endpoint |
+| **Orchestration ID** | Workflow-level correlation identifier stamped on all structured events to enable cross-component log correlation |
+| **Path 1** | Foundry Agent Service A2A tool integration — model-driven, Public Preview, not recommended for production |
+| **Path 2** | MAF code-level A2A integration — orchestrator-driven, GA, recommended default |
+| **Prompt Agent** | An agent definition (instructions, model, tools) created and versioned in Azure AI Foundry |
+| **Short-term Memory** | Per-agent, per-thread conversational state stored in Azure Managed Redis with TTL; key-prefix isolation enforced at orchestrator |
+| **Trust Boundary** | The perimeter within which systems are assumed to be governed and monitored. External A2A agents always remain outside this boundary regardless of TLS/auth controls |
