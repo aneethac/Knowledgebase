@@ -1,0 +1,1325 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lead Data Engineer Interview Playbook</title><style>*{box-sizing:border-box}html,body{margin:0;width:100%;overflow-x:hidden;font:15px/1.65 system-ui;background:var(--bg);color:var(--tx)}:root{--bg:#f7f8fa;--p:#fff;--tx:#172033;--mu:#667085;--bd:#e4e7ec;--code:#101828;--ct:#f2f4f7}body.dark{--bg:#0b0f19;--p:#111827;--tx:#e5e7eb;--mu:#98a2b3;--bd:#293244;--code:#050914}header{position:sticky;top:0;z-index:10;display:flex;gap:9px;align-items:center;padding:10px 15px;background:var(--p);border-bottom:1px solid var(--bd)}header strong{max-width:430px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sp{flex:1}input{flex:1 1 350px;max-width:560px;min-width:180px;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}button{padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--p);color:var(--tx)}.shell{display:grid;grid-template-columns:280px minmax(0,1fr);width:100%}aside{position:sticky;top:56px;height:calc(100vh - 56px);overflow:auto;padding:14px;background:var(--p);border-right:1px solid var(--bd)}.nav{display:block;padding:6px 8px;text-decoration:none;color:var(--tx);overflow-wrap:break-word}.nav.l2{padding-left:14px;font-size:13px}.nav.l3{padding-left:24px;font-size:12px;color:var(--mu)}main{min-width:0;padding:30px clamp(22px,3.5vw,60px) 100px;overflow:hidden}main>*{max-width:100%}h1{font-size:clamp(27px,2.5vw,38px);line-height:1.2;border-bottom:2px solid var(--bd);padding-bottom:10px}h2{font-size:clamp(21px,2vw,28px);margin-top:42px;border-top:1px solid var(--bd);padding-top:24px}h1,h2,h3,p,li,td,th{word-break:normal;overflow-wrap:break-word}table{display:block;width:100%;border-collapse:collapse;overflow-x:auto}th,td{border:1px solid var(--bd);padding:8px 10px;vertical-align:top}pre{position:relative;width:100%;overflow-x:auto;background:var(--code);color:var(--ct);padding:16px;border-radius:9px;white-space:pre}.copy{position:absolute;right:7px;top:7px;background:white;color:#111;font-size:11px}.study{float:right;font-size:12px;font-weight:400}progress{width:100%}body.off .shell{grid-template-columns:0 minmax(0,1fr)}body.off aside{width:0;padding:0;border:0;overflow:hidden}@media(max-width:760px){header{flex-wrap:wrap}input{order:3;flex:1 0 100%;max-width:none}.shell{grid-template-columns:1fr}aside{position:relative;top:0;height:220px}main{padding:18px 14px 60px}}@media print{header,aside,.copy,.study{display:none!important}.shell{display:block}main{padding:0}}</style></head><body><header><strong>Lead Data Engineer · Interactive Interview Playbook</strong><button id="menu">☰ Hide Menu</button><span class="sp"></span><input id="search" placeholder="Search complete guide…"><button id="theme">Dark / Light</button><button id="prt">Print</button></header><div class="shell"><aside><b>Study progress</b><br><progress id="pg" max="100"></progress> <span id="pct">0%</span><hr></aside><main>
+<h1
+id="lead-data-engineer-interactive-technical-interview-playbook">Lead
+Data Engineer — Interactive Technical Interview Playbook</h1>
+<h1 id="review-interview-refinement-layer">Review &amp; Interview
+Refinement Layer</h1>
+<blockquote>
+<p>The complete uploaded playbook is preserved verbatim below. These
+additions are coaching notes and do not silently replace the source.</p>
+</blockquote>
+<h2 id="principal-answer-pattern">Principal answer pattern</h2>
+<p><strong>Context → Requirement → Scale/constraint → My decision → Why
+→ Trade-off → Operational control → Measured result</strong></p>
+<h2 id="architecture-memory-map">Architecture memory map</h2>
+<p><strong>Business → Grain → Sources → Landing → Bronze → Silver → Gold
+→ Governance → Delivery → Operations</strong></p>
+<p>For Principal-level answers, explicitly add why you chose the design,
+what alternative you rejected, how failures are handled, and how
+production success is measured.</p>
+<h2 id="system-design-framework">System-design framework</h2>
+<p><strong>Clarify → Estimate scale → Define grain/contracts → Draw flow
+→ Choose load pattern → Model → Quality → Security → Reliability →
+Observability → Cost → Trade-offs</strong></p>
+<h2 id="cdc-load-pattern-decision">CDC / load-pattern decision</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Pattern</th>
+<th>Use when</th>
+<th>Main risk</th>
+<th>Control</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Full reload</td>
+<td>small/reference data</td>
+<td>repeated compute</td>
+<td>size/runtime threshold</td>
+</tr>
+<tr class="even">
+<td>Append</td>
+<td>immutable events</td>
+<td>duplicates</td>
+<td>deterministic key + dedupe</td>
+</tr>
+<tr class="odd">
+<td>Watermark</td>
+<td>reliable timestamp/key</td>
+<td>late updates</td>
+<td>lookback + dedupe</td>
+</tr>
+<tr class="even">
+<td>CDC</td>
+<td>mutable high-volume source</td>
+<td>ordering/deletes/replay</td>
+<td>sequence + idempotent application</td>
+</tr>
+<tr class="odd">
+<td>Snapshot diff</td>
+<td>no CDC</td>
+<td>comparison cost</td>
+<td>hashes + scoped processing</td>
+</tr>
+</tbody>
+</table>
+<h2 id="idempotency-replay-and-backfill">Idempotency, replay and
+backfill</h2>
+<p>Be ready for <strong>“What if the same batch runs twice?”</strong>
+Discuss deterministic keys, deduplication, transactional writes/MERGE,
+persisted checkpoints or watermarks, run IDs, parameterised backfills,
+validation-before-publish and source-to-target audit counts. Prefer
+explaining <strong>exactly-once business effects</strong> rather than
+casually promising exactly-once delivery.</p>
+<h2 id="late-arriving-data">Late-arriving data</h2>
+<p>The source uses a 7-day reprocessing example. Treat that as a project
+policy only if accurate. Derive the lookback from observed lateness and
+downstream correction tolerance, with an explicit backfill path outside
+the normal window.</p>
+<h2 id="data-quality-publication-gates">Data-quality publication
+gates</h2>
+<p>Think <strong>Arrival → Schema → Structural → Business →
+Reconciliation</strong>. Every critical rule needs <strong>threshold →
+severity → owner → action → escalation</strong>. Quarantine only when
+downstream correctness remains safe; otherwise block publication.</p>
+<h2 id="incident-response">Incident response</h2>
+<p><strong>Detect → Assess blast radius → Contain → Recover → Validate →
+Communicate → RCA → Prevent</strong>. Distinguish “pipeline green” from
+“data correct”, and technical recovery from business recovery.</p>
+<h2 id="spark-databricks-performance">Spark / Databricks
+performance</h2>
+<p>Before adding workers: <strong>Profile → Scan → File/layout → Shuffle
+→ Skew → Join strategy → Spill → Repeated work → Compute sizing →
+Benchmark</strong>. Be ready on broadcast/shuffle joins, AQE, skew,
+small files, Photon, incremental processing, pruning/layout, serverless
+vs job compute and cost per successful workload.</p>
+<h2 id="scd2-correctness">SCD2 correctness</h2>
+<p>Verify per business key: no overlapping effective periods, at most
+one current row, deterministic same-time ordering, defined delete
+semantics, defined late-change behavior, and safe historical
+backfill.</p>
+<h2 id="feature-engineering-point-in-time-correctness">Feature
+engineering / point-in-time correctness</h2>
+<p><strong>Delta time travel</strong> retrieves an earlier table state.
+<strong>Point-in-time feature lookup</strong> retrieves, for each
+training event, only the feature value valid/available at or before that
+event time. Discuss entity keys, timestamps, training-serving
+consistency, backfill, freshness, lineage, ownership and leakage
+prevention.</p>
+<h2 id="cicd-leadprincipal-version">CI/CD — Lead/Principal version</h2>
+<p><strong>Feature branch → PR → static/unit tests → data tests → Dev →
+integration → UAT → approval → Prod → post-deploy validation →
+rollback</strong>. Also cover secrets/config separation, workload
+identity, versioned artifacts, permissions, schema migration/backfill
+and release observability.</p>
+<h2 id="environmentsecurity-follow-up">Environment/security
+follow-up</h2>
+<p>The source says Dev engineers can read Prod data for debugging.
+Interviewers may challenge this. Prefer least privilege and
+masked/tokenised/representative non-production data; direct production
+access should be exceptional, approved, audited and role-bound.</p>
+<h2 id="dr-resilience">DR / resilience</h2>
+<p>Separate <strong>time travel/restore</strong>,
+<strong>backup/replication</strong>,
+<strong>IaC/config-as-code</strong>, <strong>RPO</strong>, and
+<strong>RTO</strong>. Only quote a recovery time if it was measured.</p>
+<h2 id="cost-optimisation">Cost optimisation</h2>
+<p>Use <strong>Baseline → bottleneck → change → benchmark → cost impact
+→ regression guardrail</strong>. Be prepared to defend savings with the
+measurement source and period.</p>
+<h2 id="leadership-signal">Leadership signal</h2>
+<p>Show technical direction, delegation, standards, stakeholder
+negotiation, risk management, mentoring, incident leadership,
+prioritisation and influence without authority. Pattern:
+<strong>Situation → competing priorities → decision framework →
+alignment → outcome → repeatable improvement</strong>.</p>
+<h2 id="requirement-workshop-checklist">Requirement workshop
+checklist</h2>
+<p>Ask about business outcome, source owner/contract, grain,
+volume/growth, SLA, batch/streaming need, mutability/deletes, lateness,
+history/backfill, DQ thresholds, PII/security, retention,
+consumers/concurrency, RPO/RTO, cost, cutover/rollback and definition of
+done.</p>
+<h2 id="extra-interview-follow-ups">25 extra interview follow-ups</h2>
+<ol type="1">
+<li>What makes the pipeline idempotent?</li>
+<li>How do you replay one failed business date?</li>
+<li>Watermark vs CDC?</li>
+<li>How do you process deletes?</li>
+<li>What if two changes have the same sequence timestamp?</li>
+<li>What happens when a dimension arrives after the fact?</li>
+<li>How do you prevent SCD2 overlap?</li>
+<li>How do you handle a six-month backfill?</li>
+<li>How do you stop backfill impacting daily SLA?</li>
+<li>How do you detect a green-but-wrong pipeline?</li>
+<li>What blocks Gold publication?</li>
+<li>How do you define freshness?</li>
+<li>How do you handle schema type changes?</li>
+<li>How do you recover a corrupted Delta table?</li>
+<li>Time travel vs backup vs DR?</li>
+<li>How do you diagnose Spark skew?</li>
+<li>When would you broadcast?</li>
+<li>Why do small files hurt?</li>
+<li>How do you choose layout/clustering keys?</li>
+<li>How do you prove cost optimisation worked?</li>
+<li>How do you secure Dev/UAT/Prod?</li>
+<li>How do you test incremental output against a full rebuild?</li>
+<li>How do you prove migration parity?</li>
+<li>How do you roll back a bad data release?</li>
+<li>What decision would you revisit if scale doubled?</li>
+</ol>
+<h2 id="claims-to-personally-verify-before-saying-them">Claims to
+personally verify before saying them</h2>
+<p>The source is preserved, but prepare evidence for project-specific
+numbers/statements such as 500M+ records/day, store counts, 40%/$300K
+savings, 65% query improvement, 14% forecast uplift, 45% incident
+reduction, exact SLA/reconciliation thresholds, migration dates, zero
+downtime, 12 feature tables and DR recovery time.</p>
+<p>For every metric prepare <strong>baseline → engineering change →
+measurement method → period → your ownership</strong>.</p>
+<h2 id="current-product-terminology-note">Current-product terminology
+note</h2>
+<p>The source contains Databricks roadmap/product terminology and both
+older/newer pipeline terminology. Product names and GA/preview status
+can change, so verify current names before the interview while
+preserving the underlying architectural concept.</p>
+<h2 id="final-memory-card">Final memory card</h2>
+<p><strong>Architecture:</strong> Context → Grain → Sources → Bronze →
+Silver → Gold → Governance → Delivery → Operations<br />
+<strong>System design:</strong> Requirement → Scale → Correctness →
+Replay → Security → Reliability → Cost → Trade-off<br />
+<strong>Incident:</strong> Detect → Contain → Recover → Validate →
+Communicate → RCA → Prevent<br />
+<strong>Leadership:</strong> Problem → Alignment → Decision → Delegation
+→ Outcome → Repeatable improvement</p>
+<hr />
+<h1 id="complete-original-playbook-verbatim">Complete Original Playbook
+— Verbatim</h1>
+<h1 id="lead-data-engineer-technical-interview-playbook">Lead Data
+Engineer — Technical Interview Playbook</h1>
+<p><strong>Candidate:</strong> Aneetha Chandhirasekar<br />
+<strong>Target Role:</strong> Lead Data Engineer / Principal Data
+Engineer<br />
+<strong>Stack:</strong> Azure Databricks, Delta Lake, Unity Catalog,
+Lakeflow, ADLS Gen2, Snowflake, Azure DevOps<br />
+<strong>Prepared:</strong> August 2026</p>
+<hr />
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#1-walk-me-through-your-architecture">1. Walk Me Through
+Your Architecture</a></li>
+<li><a
+href="#2-tell-me-about-a-time-something-went-wrong-in-production">2.
+Tell Me About a Time Something Went Wrong in Production</a></li>
+<li><a href="#3-mock-interview-round--technical-deep-dive">3. Mock
+Interview Round — Technical Deep Dive</a></li>
+<li><a href="#4-follow-up-questions-they-always-ask">4. Follow-Up
+Questions They Always Ask</a></li>
+<li><a href="#5-leadership--team-management-questions">5. Leadership
+&amp; Team Management Questions</a></li>
+<li><a href="#6-scenario-based-problem-solving-questions">6.
+Scenario-Based Problem Solving Questions</a></li>
+<li><a href="#7-databricks-roadmap--forward-looking-questions">7.
+Databricks Roadmap &amp; Forward-Looking Questions</a></li>
+<li><a href="#8-behavioural--star-questions">8. Behavioural / STAR
+Questions</a></li>
+<li><a href="#9-questions-you-should-ask-them">9. Questions YOU Should
+Ask Them</a></li>
+<li><a href="#10-quick-reference--key-numbers--metrics">10. Quick
+Reference — Key Numbers &amp; Metrics</a></li>
+</ul>
+<hr />
+<h2 id="walk-me-through-your-architecture">1. Walk Me Through Your
+Architecture</h2>
+<h3 id="what-they-are-actually-testing">What They Are Actually
+Testing</h3>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">They Want to See</th>
+<th style="text-align: left;">What They Listen For</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Can you think architecturally?</td>
+<td style="text-align: left;">You talk about layers and boundaries, not
+just tables</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Do you own decisions?</td>
+<td style="text-align: left;">You say “I chose X because…” not “We used
+X”</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Do you understand tradeoffs?</td>
+<td style="text-align: left;">You explain what you rejected and why</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Can you operate at scale?</td>
+<td style="text-align: left;">Concrete numbers, not vague “large
+volumes”</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Can you explain to non-technical
+people?</td>
+<td style="text-align: left;">Could a PM follow your explanation?</td>
+</tr>
+</tbody>
+</table>
+<h3 id="your-answer-natural-spoken-version">Your Answer — Natural Spoken
+Version</h3>
+<p><strong>Opening (10 seconds — set the scene):</strong></p>
+<blockquote>
+<p>“So the main platform I architected at Coles is a Databricks
+Lakehouse that feeds demand forecasting for their entire supermarket and
+express network — about 800+ stores, 500 million records flowing through
+daily. Let me walk you through how data moves from source to
+consumption.”</p>
+</blockquote>
+<p><strong>Layer by Layer (60–90 seconds — the meat):</strong></p>
+<blockquote>
+<p>“Data lands from multiple source systems — range data from their
+merchandising system, pricing and promo feeds, store-level POS
+transactions, and supply chain signals. It all lands into ADLS Gen2 in
+raw Parquet/CSV format.</p>
+<p>From there I designed a Medallion architecture — so three core
+layers:</p>
+<p><strong>Bronze</strong> is raw ingestion — we do COPY INTO or Auto
+Loader to get everything landed with minimal transformation, just
+append-only with audit columns and source lineage metadata.</p>
+<p><strong>Silver</strong> is where the heavy lifting happens — that’s
+where I apply CDC merge logic. So for slowly changing dimensions like
+product master or store hierarchy, we run SCD Type 2 merges — expire the
+old row, insert the new one with effective dates. For high-volume
+transactional data like POS, we do incremental deduplication and
+business key validation here.</p>
+<p><strong>Gold</strong> is the consumption layer — pre-aggregated
+feature tables optimised for downstream consumers. In our case that’s
+the ML forecasting engine and also Snowflake via Delta Sharing for BI
+reporting.</p>
+<p>On top of all this sits Unity Catalog for governance — RBAC at table
+and column level, automated lineage tracking so we can always trace a
+Gold table back to its Bronze source.”</p>
+</blockquote>
+<p><strong>How You Deployed It (30 seconds — DevOps angle):</strong></p>
+<blockquote>
+<p>“For deployment, everything is config-as-code. Pipeline definitions,
+table schemas, quality expectations — all stored in Azure DevOps Repos.
+We use YAML pipelines for CI/CD, so when an engineer merges a PR, it
+automatically promotes from Dev to UAT to Prod. No manual deployments,
+no ClickOps.”</p>
+</blockquote>
+<p><strong>How You Operated It (20 seconds — shows
+maturity):</strong></p>
+<blockquote>
+<p>“In production we have SLA sensors on every pipeline step. If Bronze
+hasn’t completed by 6am, alerts fire. We have runbooks for every common
+failure mode — schema drift, late-arriving data, source system outages.
+That operational rigour brought our incident rate down by about
+45%.”</p>
+</blockquote>
+<p><strong>Close (10 seconds — bring it home):</strong></p>
+<blockquote>
+<p>“So that’s the end-to-end picture — ADLS Gen2 landing zone, Medallion
+through Databricks with Delta Lake, Unity Catalog for governance, Azure
+DevOps for deployment, and feature tables served to ML engines and via
+Delta Sharing to Snowflake consumers.”</p>
+</blockquote>
+<h3 id="mental-map-5-beats-to-remember">Mental Map — 5 Beats to
+Remember</h3>
+<pre><code>1. CONTEXT        →  Coles, 800+ stores, 500M/day, demand forecasting
+2. LANDING        →  ADLS Gen2, raw files, Auto Loader
+3. BRONZE→SILVER→GOLD  →  Raw → CDC/SCD2 → Feature tables
+4. GOVERNANCE     →  Unity Catalog, RBAC, lineage
+5. DEPLOYMENT     →  Azure DevOps, config-as-code, CI/CD YAML pipelines</code></pre>
+<h3 id="whiteboard-diagram-draw-this-if-offered">Whiteboard Diagram
+(Draw This If Offered)</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                        SOURCE SYSTEMS                                 │
+│  [Merchandising]  [POS/Sales]  [Pricing]  [Promos]  [Supply Chain]  │
+└───────────┬──────────┬───────────┬──────────┬──────────┬────────────┘
+            │          │           │          │          │
+            ▼          ▼           ▼          ▼          ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    ADLS Gen2 (Landing Zone)                           │
+│              Raw Parquet / CSV / JSON files                           │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │ Auto Loader / COPY INTO
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  🥉 BRONZE — Raw Ingestion Layer                                     │
+│  • Append-only Delta tables                                          │
+│  • Schema-on-read, audit columns (load_ts, source_file, batch_id)   │
+│  • No transformations, just land it faithfully                       │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │ CDC MERGE / DLT APPLY CHANGES
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  🥈 SILVER — Cleansed &amp; Conformed Layer                              │
+│  • SCD Type 2 for dimensions (product, store, supplier)             │
+│  • Deduplication + business key validation for facts                │
+│  • Data quality expectations enforced here                          │
+│  • Schema contracts (expected columns, types, not-null rules)       │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │ Aggregation / Feature Engineering
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  🥇 GOLD — Consumption / Feature Layer                               │
+│  • Pre-aggregated feature tables for ML (PFS/PFUS)                  │
+│  • Point-in-Time joins for forecasting (no data leakage)            │
+│  • Star schema facts + dimensions for BI                            │
+│  • Delta Sharing → Snowflake / external consumers                   │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │
+                    ┌─────────────┼─────────────┐
+                    ▼             ▼             ▼
+              [ML Engine]   [Snowflake]   [BI Dashboards]
+              (Relex/AA)    (via Delta    (Power BI)
+                            Sharing)</code></pre>
+<h3 id="governance-deployment-overlay">Governance &amp; Deployment
+Overlay</h3>
+<pre><code>┌──────────────────────────────────────────────────────┐
+│  UNITY CATALOG                                        │
+│  • RBAC at table/column level                        │
+│  • Automated lineage (Bronze → Silver → Gold)        │
+│  • Audit logging for compliance                      │
+│  • Data discovery &amp; tagging                          │
+└──────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────┐
+│  AZURE DEVOPS CI/CD                                   │
+│  • Git repos (all pipeline code + schema contracts)  │
+│  • YAML pipelines: PR → Dev → UAT → Prod            │
+│  • Databricks Asset Bundles for config-as-code       │
+│  • Zero manual deployment, full audit trail          │
+└──────────────────────────────────────────────────────┘</code></pre>
+<hr />
+<h2 id="tell-me-about-a-time-something-went-wrong-in-production">2. Tell
+Me About a Time Something Went Wrong in Production</h2>
+<h3 id="why-they-ask-this">Why They Ask This</h3>
+<p>They want to know: - Do you take ownership or blame others? - Do you
+have a structured incident response process? - Did you fix the root
+cause or just the symptom? - Did you prevent it from happening
+again?</p>
+<h3 id="your-answer-star-format-natural-speech">Your Answer — STAR
+Format (Natural Speech)</h3>
+<p><strong>Setup (15 seconds):</strong></p>
+<blockquote>
+<p>“So about a year ago, we had a production incident that impacted our
+downstream forecasting engine. It was a Friday morning — the worst
+timing.”</p>
+</blockquote>
+<p><strong>What Happened (30 seconds):</strong></p>
+<blockquote>
+<p>“Our Bronze ingestion pipeline for product range data completed
+successfully — no errors, green ticks everywhere. But the source system
+had silently changed their file schema. They added two new columns and
+renamed an existing one. Because Bronze is append-only and
+schema-tolerant, it ingested the file happily. But when the Silver layer
+tried to run the SCD2 merge, it couldn’t find the expected column for
+the business key join. Pipeline failed at 5:30am, and by the time our
+forecasting team noticed at 8am, they had no fresh data for the morning
+replenishment run.”</p>
+</blockquote>
+<p><strong>What You Did (45 seconds):</strong></p>
+<blockquote>
+<p>“I was the incident lead. First thing — I triaged the impact.
+Forecasting was using yesterday’s Gold data as a fallback, so stores
+weren’t immediately affected, but we had about a 4-hour window before it
+would matter.</p>
+<p>I identified the root cause within 20 minutes — the schema change
+from the source team was unannounced. I made a quick decision: rather
+than waiting for the source team to revert, I patched the Silver merge
+logic to handle the renamed column with a column alias, validated it in
+Dev, promoted it through our CI/CD pipeline to Prod, and retriggered the
+pipeline. We were back to green by 9:15am — well within the SLA
+window.</p>
+<p>Then in the afternoon I ran a proper post-incident review with the
+team.”</p>
+</blockquote>
+<p><strong>What You Changed (30 seconds):</strong></p>
+<blockquote>
+<p>“Three things came out of that:</p>
+<p>One — I added schema validation at the Bronze layer. Not just
+schema-on-read anymore. We now compare incoming schema against an
+expected schema contract, and if there’s a breaking change, it alerts
+immediately rather than silently ingesting.</p>
+<p>Two — I set up a weekly schema change notification from the source
+team. Just an automated diff that tells us if their extract schema has
+changed before it hits our pipelines.</p>
+<p>Three — I added that scenario to our runbook so any engineer on
+support rotation can handle it without needing me.”</p>
+</blockquote>
+<p><strong>Result (10 seconds):</strong></p>
+<blockquote>
+<p>“Since then, we’ve caught three more unannounced schema changes
+before they hit Silver. Zero production impact. And the runbook meant my
+team could handle similar issues independently — I wasn’t a single point
+of failure anymore.”</p>
+</blockquote>
+<h3 id="key-phrases-that-show-leadership-not-just-engineering">Key
+Phrases That Show Leadership (Not Just Engineering)</h3>
+<ul>
+<li><em>“I was the incident lead”</em> — ownership</li>
+<li><em>“I made a quick decision”</em> — decisiveness under
+pressure</li>
+<li><em>“I ran a post-incident review”</em> — process maturity</li>
+<li><em>“I added it to the runbook so my team could handle it”</em> —
+scalable leadership</li>
+<li><em>“I wasn’t a single point of failure anymore”</em> — thinking
+about team resilience</li>
+</ul>
+<hr />
+<h2 id="mock-interview-round-technical-deep-dive">3. Mock Interview
+Round — Technical Deep Dive</h2>
+<p>Here are 12 questions an interviewer is likely to ask, with
+natural-sounding answers.</p>
+<hr />
+<h3 id="q1-why-medallion-architecture-and-not-just-raw-final">Q1: “Why
+Medallion architecture and not just raw → final?”</h3>
+<blockquote>
+<p>“I tried simpler two-layer designs early on and they always collapse
+under real-world complexity. The Silver layer is critical because it
+isolates transformation logic from consumption contracts. If Gold schema
+changes, Silver doesn’t break. If a new source arrives in Bronze, Silver
+handles the merge without touching Gold consumers.</p>
+<p>It also gives you independent deployment — one team can be
+refactoring Silver CDC logic while another team is adding new Gold
+feature tables. With two layers you can’t do that safely. At our scale —
+8 engineers working in parallel across different domains — that
+separation is essential.”</p>
+</blockquote>
+<hr />
+<h3 id="q2-how-do-you-handle-schema-drift-from-source-systems">Q2: “How
+do you handle schema drift from source systems?”</h3>
+<blockquote>
+<p>“Three levels of defence.</p>
+<p>At Bronze, Auto Loader runs in schema evolution mode — it detects new
+columns and merges them into the Delta table automatically. That handles
+additive changes gracefully.</p>
+<p>For breaking changes — column renames, type changes, column removals
+— we have a schema contract check. Before Silver processes a batch, it
+validates the Bronze table schema against an expected contract defined
+in code. If there’s a mismatch, the pipeline fails fast with a clear
+error message rather than silently propagating bad data downstream.</p>
+<p>And preventively, we have an automated weekly schema diff job that
+compares source extract schemas against our contracts and notifies us in
+Slack if anything changed. That gives us a heads-up before it even hits
+our pipeline.”</p>
+</blockquote>
+<hr />
+<h3
+id="q3-walk-me-through-a-cdc-scenario-how-does-a-changed-record-flow">Q3:
+“Walk me through a CDC scenario — how does a changed record flow?”</h3>
+<blockquote>
+<p>“Sure. Say a product description changes in the source merchandising
+system. The source publishes that as a delta extract — just the changed
+rows.</p>
+<p>Auto Loader picks up the file and lands it into Bronze as a new
+append row — we don’t overwrite anything in Bronze, so we have full
+history of what arrived and when.</p>
+<p>At Silver, my merge logic runs. It looks up the existing record by
+business key — say product_id. It hashes the payload columns and
+compares against what’s stored. If the hash differs — meaning something
+actually changed — it expires the current row by setting end_date to the
+batch timestamp, and inserts a new row with the updated values, a new
+start_date, and end_date as null. That’s the SCD Type 2 pattern.</p>
+<p>Gold then picks up the current view by filtering where end_date is
+null. Downstream consumers always see the latest state, but the full
+history is preserved in Silver for auditing or time-travel queries.”</p>
+</blockquote>
+<hr />
+<h3
+id="q4-whats-the-difference-between-auto-cdc-in-dlt-vs-your-custom-cdc-merge">Q4:
+“What’s the difference between Auto CDC in DLT vs your custom CDC
+merge?”</h3>
+<blockquote>
+<p>“Functionally they achieve the same thing — both detect changes and
+apply SCD patterns. The difference is declarative vs imperative.</p>
+<p>With DLT’s APPLY CHANGES INTO, you declare the source, the keys, the
+sequence column, and the SCD type — and the engine handles the merge
+mechanics, ordering, deduplication, and retry logic for you. It’s less
+code to maintain and inherently handles out-of-order events.</p>
+<p>My custom PySpark merge gives me more control — I can add custom
+validation between the detect-and-merge steps, I can apply conditional
+logic like ‘only expire if the change is above a materiality threshold’,
+and I can integrate custom audit logging. But it’s more code to maintain
+and test.</p>
+<p>For this role, where the roadmap is moving towards Lakeflow
+Declarative Pipelines, I’d default to DLT APPLY CHANGES INTO for
+standard CDC patterns and only drop into custom merge for edge cases
+that need special handling. Less code, less maintenance, more consistent
+behaviour.”</p>
+</blockquote>
+<hr />
+<h3 id="q5-how-do-you-ensure-data-quality-across-the-pipeline">Q5: “How
+do you ensure data quality across the pipeline?”</h3>
+<blockquote>
+<p>“Three layers of quality enforcement.</p>
+<p>First — at the DLT / pipeline level, I define expectations. These are
+declarative quality rules — things like ‘product_id is never null’,
+‘price_amount is positive’, ‘effective_date is not in the future’. If a
+critical expectation fails, the pipeline halts. If a warning expectation
+fails, bad rows are quarantined but the pipeline continues.</p>
+<p>Second — at the Silver-to-Gold boundary, I use dbt tests. Uniqueness
+on business keys, not-null on required fields, referential integrity
+between fact and dimension tables, accepted value ranges. These run as
+part of the CI/CD pipeline on every promotion.</p>
+<p>Third — reconciliation checks. A daily job compares record counts and
+key aggregates between source, Bronze, Silver, and Gold. If variance
+exceeds threshold — say more than 0.1% — it alerts the support team.
+This catches subtle issues that row-level tests miss — like a source
+silently sending an empty file.”</p>
+</blockquote>
+<hr />
+<h3 id="q6-how-do-you-handle-late-arriving-facts">Q6: “How do you handle
+late-arriving facts?”</h3>
+<blockquote>
+<p>“Late-arriving facts are common in retail — a transaction from a
+store might arrive hours or even days late due to connectivity
+issues.</p>
+<p>My approach: Bronze doesn’t care — it just appends with the arrival
+timestamp. At Silver, the merge logic uses the business event timestamp,
+not the arrival timestamp, for ordering. So when a late record arrives,
+it gets placed in the correct temporal position.</p>
+<p>For Gold feature tables that are point-in-time — like the ML feature
+store — I have a reprocessing window. Gold tables for the last 7 days
+are rebuilt nightly rather than just incrementally appended. This means
+a late-arriving fact from 3 days ago gets correctly picked up in the
+next rebuild. Beyond 7 days, we accept the data as finalised — this is a
+pragmatic tradeoff between correctness and compute cost that I agreed
+with the data science team.”</p>
+</blockquote>
+<hr />
+<h3
+id="q7-tell-me-about-your-cicd-how-does-code-go-from-a-developers-laptop-to-production">Q7:
+“Tell me about your CI/CD — how does code go from a developer’s laptop
+to production?”</h3>
+<blockquote>
+<p>“End to end:</p>
+<p>An engineer writes their pipeline code locally — could be a dbt
+model, a PySpark notebook, or a DLT pipeline definition. They commit to
+a feature branch in Azure DevOps Repos.</p>
+<p>When they open a PR, a YAML pipeline triggers automatically. It runs
+linting, unit tests on the transformation logic using synthetic data,
+and dbt compile to check for SQL syntax issues.</p>
+<p>After code review — which I require at least one approval on — the PR
+merges to the dev branch. That triggers a deployment to the Dev
+Databricks workspace using Databricks Asset Bundles. The pipeline runs
+against dev data automatically.</p>
+<p>Once dev is green, promoting to UAT is another PR from dev to the
+release branch. UAT runs against a full copy of production data
+(anonymised where needed). This is where we catch scale issues that
+didn’t show up with synthetic data.</p>
+<p>Finally, production deployment is a gated release — it requires my
+approval. The YAML pipeline deploys the bundle to the Production
+workspace, and we monitor the first run before closing the change.</p>
+<p>No one ever logs into the Databricks UI and clicks buttons to deploy.
+Everything is in code, everything is auditable, everything is
+repeatable.”</p>
+</blockquote>
+<hr />
+<h3
+id="q8-how-do-you-decide-what-goes-into-a-feature-table-vs-a-regular-gold-table">Q8:
+“How do you decide what goes into a feature table vs a regular Gold
+table?”</h3>
+<blockquote>
+<p>“A feature table has a very specific contract — it’s designed to be
+consumed by a machine learning model at training time and inference
+time. That means:</p>
+<p>One — it must be point-in-time correct. When the model asks ‘what was
+the value of this feature on date X?’, it must return ONLY data that was
+available as of date X — no future data leakage. Regular Gold tables
+don’t have this constraint.</p>
+<p>Two — it has a defined primary key and timestamp key that the feature
+store uses for lookup. The model requests features by entity_id +
+as_of_date, and the feature store does a point-in-time join.</p>
+<p>Three — it needs to work for both batch training and online serving.
+So the schema and granularity must be compatible with both use
+cases.</p>
+<p>Regular Gold tables are for BI, reporting, ad-hoc analytics — they
+can be aggregated, denormalized, and optimised for query performance
+without worrying about temporal correctness.”</p>
+</blockquote>
+<hr />
+<h3
+id="q9-how-do-you-handle-environments-dev-uat-prod-in-databricks">Q9:
+“How do you handle environments — Dev, UAT, Prod — in Databricks?”</h3>
+<blockquote>
+<p>“I use workspace separation combined with Unity Catalog metastore for
+shared governance.</p>
+<p>Each environment has its own Databricks workspace — Dev, UAT, Prod.
+They share the same Unity Catalog metastore, but data access is
+controlled by catalog grants. Dev engineers can read Prod data for
+debugging but can’t write to Prod catalogs.</p>
+<p>Pipeline code is identical across environments — the only difference
+is configuration: which catalog to write to, which storage location,
+which cluster policy. That configuration is injected by the Databricks
+Asset Bundle at deploy time based on the target environment.</p>
+<p>This means what runs in UAT is byte-for-byte the same code that will
+run in Prod. The only difference is the data volume and the config
+variables. It eliminates ‘works in dev but breaks in prod’
+problems.”</p>
+</blockquote>
+<hr />
+<h3 id="q10-what-monitoring-and-alerting-do-you-have-in-production">Q10:
+“What monitoring and alerting do you have in production?”</h3>
+<blockquote>
+<p>“Multiple layers:</p>
+<p>Pipeline-level: Every Databricks job has SLA sensors. Bronze must
+complete by 5:30am, Silver by 6:30am, Gold by 7:30am. If any step
+breaches SLA, it fires an alert to our PagerDuty rotation and a Slack
+channel.</p>
+<p>Data quality level: DLT expectations fire metrics to a monitoring
+dashboard. If the percentage of quarantined rows exceeds threshold, it
+alerts.</p>
+<p>Reconciliation level: A daily summary compares expected vs actual
+record counts at each layer. Variance above 0.1% triggers
+investigation.</p>
+<p>Cost level: I have Databricks usage dashboards tracking DBU
+consumption by pipeline. If a pipeline’s cost spikes 20% above its 7-day
+average, I get an alert. This has caught runaway jobs multiple times
+before they burned budget.</p>
+<p>Infrastructure level: Cluster health, storage capacity, Auto Loader
+checkpoint lag — standard infrastructure monitoring.</p>
+<p>And all of this is documented in runbooks — so whoever is on support
+rotation knows exactly what to do for each alert type.”</p>
+</blockquote>
+<hr />
+<h3
+id="q11-how-would-you-migrate-an-existing-custom-pyspark-pipeline-to-lakeflow-delta-live-tables">Q11:
+“How would you migrate an existing custom PySpark pipeline to Lakeflow /
+Delta Live Tables?”</h3>
+<blockquote>
+<p>“I’d take an incremental approach, not a big-bang rewrite.</p>
+<p>First, I’d identify which pipelines are ‘standard pattern’ — simple
+ingestion → merge → aggregate with no complex custom logic. Those are
+the easiest wins for DLT because you’re replacing 200 lines of
+imperative PySpark with 20 lines of declarative SQL/Python.</p>
+<p>Second, I’d leave complex pipelines — ones with custom validation
+logic, conditional branching, or external API calls in the middle — for
+later. Those need careful design to determine what stays imperative and
+what becomes declarative.</p>
+<p>For the migration itself, I’d run both old and new in parallel for a
+sprint. Compare output tables row-for-row. Once parity is confirmed, I’d
+cut over the downstream consumers to read from the DLT-managed tables
+and decommission the old pipeline.</p>
+<p>The key decision point is: does the pipeline fit DLT’s declarative
+model cleanly? If yes — migrate. If it needs escape hatches everywhere —
+maybe keep it as a Databricks Workflow with PySpark and just adopt DLT
+expectations for quality monitoring.”</p>
+</blockquote>
+<hr />
+<h3 id="q12-whats-your-approach-to-cost-optimisation-in-databricks">Q12:
+“What’s your approach to cost optimisation in Databricks?”</h3>
+<blockquote>
+<p>“Four main levers I use:</p>
+<p><strong>Cluster right-sizing:</strong> I profile every production
+pipeline’s actual CPU and memory utilisation. Most pipelines were
+over-provisioned when I inherited them. I moved to autoscaling clusters
+with appropriate min/max workers based on actual load patterns. That
+alone cut compute costs 25%.</p>
+<p><strong>Photon engine:</strong> For SQL-heavy Silver and Gold
+transformations, I enable Photon. It’s free in terms of DBU cost on
+certain SKUs but gives 2-3x performance — meaning the cluster runs for
+less time.</p>
+<p><strong>Incremental processing:</strong> This is the biggest one.
+Moving from full-table-rebuild to incremental merge means you process
+only what’s new. For a table with 500 million rows where 2 million
+change daily, that’s 99.6% less compute.</p>
+<p><strong>Serverless SQL Warehouses for ad-hoc:</strong> Rather than
+keeping interactive clusters running for analysts, I moved them to
+serverless SQL warehouses that spin up in seconds and scale to zero when
+idle. No more idle cluster costs during off-hours.</p>
+<p>Combined, these got us about 40% reduction — roughly $300K
+annually.”</p>
+</blockquote>
+<hr />
+<h2 id="follow-up-questions-they-always-ask">4. Follow-Up Questions They
+Always Ask</h2>
+<p>These are the curveball questions that come after your initial
+answers. Have a mental answer ready.</p>
+<hr />
+<h3 id="architecture-follow-ups">Architecture Follow-Ups</h3>
+<p><strong>Q: “What would you do differently if you started this
+platform from scratch today?”</strong></p>
+<blockquote>
+<p>“Two things. One — I’d use DLT / Lakeflow from day one instead of
+custom PySpark for the standard CDC patterns. Less code to maintain,
+better out-of-the-box quality monitoring. Two — I’d implement Unity
+Catalog from the start rather than retrofitting it. We lost about 3
+weeks migrating existing tables into the catalog after the fact.
+Starting with it means governance is baked in, not bolted on.”</p>
+</blockquote>
+<hr />
+<p><strong>Q: “How do you handle multi-tenancy — multiple teams
+consuming the same platform?”</strong></p>
+<blockquote>
+<p>“Unity Catalog solves the access control piece — each team gets a
+catalog or schema-level grant. But the bigger challenge is resource
+isolation. I use cluster policies to ensure one team’s heavy workload
+can’t starve another team’s production pipeline. Critical production
+pipelines run on dedicated job clusters. Ad-hoc analytics runs on shared
+autoscaling clusters with per-user cost limits. And I separate the
+scheduling — production DAGs run on dedicated orchestration, not mixed
+with exploratory work.”</p>
+</blockquote>
+<hr />
+<p><strong>Q: “What’s your disaster recovery plan?”</strong></p>
+<blockquote>
+<p>“Delta Lake gives you time travel out of the box — I can restore any
+table to a previous version within the retention window (30 days in our
+case). For full DR, ADLS Gen2 has geo-redundant replication. Delta table
+transaction logs are backed up daily to a separate storage account. And
+our pipeline code is entirely in Git — so I can redeploy the entire
+platform to a new workspace from code in under 2 hours. We tested this
+scenario during a DR drill last year.”</p>
+</blockquote>
+<hr />
+<p><strong>Q: “How do you handle PII / sensitive data?”</strong></p>
+<blockquote>
+<p>“Unity Catalog column-level security. Sensitive columns like customer
+name, email, phone are tagged as PII during ingestion. Column masks are
+applied — downstream consumers see hashed or redacted values unless they
+have explicit PII-access grants. For regulated reporting that needs raw
+PII, there’s a separate Gold view with restricted access and audit
+logging. Every access to PII columns is logged and reviewable.”</p>
+</blockquote>
+<hr />
+<h3 id="cdc-scd-follow-ups">CDC / SCD Follow-Ups</h3>
+<p><strong>Q: “SCD Type 2 tables get very large over time. How do you
+manage that?”</strong></p>
+<blockquote>
+<p>“Two strategies. First, partition by effective_date year/month. This
+means queries filtering for ‘current’ records (end_date is null) only
+scan the most recent partition, not the full history. Second, I separate
+the ‘current state’ view from the ‘full history’ table. Gold consumers
+get a view filtered to current records only — it’s fast and small. The
+full history lives in Silver for audit and time-travel queries but isn’t
+scanned by routine pipelines.”</p>
+</blockquote>
+<hr />
+<p><strong>Q: “What if two CDC events arrive for the same record in the
+same batch — how do you handle ordering?”</strong></p>
+<blockquote>
+<p>“Every CDC event has a sequence column — usually a source timestamp
+or LSN (log sequence number). In my merge logic, I group by business
+key, order by sequence descending, and take the latest event per key
+before applying the merge. This deduplicates within the batch. DLT’s
+APPLY CHANGES INTO does this automatically if you specify the
+sequence_by column — it’s one of the advantages of the declarative
+approach.”</p>
+</blockquote>
+<hr />
+<h3 id="cost-performance-follow-ups">Cost &amp; Performance
+Follow-Ups</h3>
+<p><strong>Q: “How did you achieve the 65% query performance
+improvement?”</strong></p>
+<blockquote>
+<p>“Combination of four things: One, Z-ordering Gold tables on the most
+common filter columns — store_id and product_id. Two, converting wide
+denormalized tables into properly modelled star schemas with narrow fact
+tables and separate dimension lookups. Three, enabling Photon for the
+SQL warehouse layer. Four, replacing full-scan aggregations with
+pre-computed Gold summaries. The 65% was measured on the top-20 most
+expensive queries that BI analysts ran daily.”</p>
+</blockquote>
+<hr />
+<p><strong>Q: “How do you forecast and control cloud costs
+month-over-month?”</strong></p>
+<blockquote>
+<p>“I tag every cluster, pipeline, and storage container with
+cost-centre and project labels. Then I have a weekly dashboard showing
+actual spend vs budget by team and pipeline. If any pipeline’s weekly
+cost exceeds 110% of its 4-week rolling average, I get an alert.
+Quarterly, I do a cost review with the delivery manager to identify
+optimisation opportunities. The $300K saving wasn’t one big win — it was
+dozens of small right-sizing decisions compounded over a year.”</p>
+</blockquote>
+<hr />
+<h2 id="leadership-team-management-questions">5. Leadership &amp; Team
+Management Questions</h2>
+<p>These questions test whether you’re genuinely a <strong>Lead</strong>
+or just a Senior who happens to sit next to other engineers.</p>
+<hr />
+<h3
+id="q-how-do-you-manage-your-teams-delivery-alongside-managed-service-partners">Q:
+“How do you manage your team’s delivery alongside managed service
+partners?”</h3>
+<blockquote>
+<p>“Clear boundaries and shared tooling. My core team of 4 permanent
+engineers owns new feature development, architectural decisions, and
+production incident response. Managed service partners handle BAU
+support, monitoring, minor change requests, and documentation
+updates.</p>
+<p>We share the same Jira board, same Git repos, same CI/CD pipeline.
+Partners submit PRs just like my team — same review standards, same
+quality gates. I run a combined standup three times a week so everyone
+has visibility.</p>
+<p>The key is clear RACI — partners know they can merge BAU fixes
+autonomously after review, but anything touching architecture or schema
+contracts requires my approval. This gives them autonomy for routine
+work while protecting the platform’s integrity.”</p>
+</blockquote>
+<hr />
+<h3 id="q-how-do-you-handle-underperformance-in-your-team">Q: “How do
+you handle underperformance in your team?”</h3>
+<blockquote>
+<p>“Directly but constructively. I had a situation where a managed
+service consultant was consistently submitting PRs that failed basic
+linting and had no tests. Rather than escalating to their manager
+immediately, I pulled them aside and walked through our engineering
+standards document. I paired with them on their next two PRs — showed
+them our testing patterns, explained why we enforce them.</p>
+<p>After two weeks, their quality improved significantly. If it hadn’t,
+I would have escalated — but addressing it directly first is faster,
+less political, and usually more effective. I keep it focused on the
+work, not the person.”</p>
+</blockquote>
+<hr />
+<h3 id="q-how-do-you-prioritise-when-everything-is-urgent">Q: “How do
+you prioritise when everything is urgent?”</h3>
+<blockquote>
+<p>“I categorise into three buckets: production impact (fix now),
+committed delivery (this sprint), and strategic improvement (backlog).
+Production always wins. Within committed delivery, I look at downstream
+dependencies — if team B is blocked waiting for our output, that gets
+priority.</p>
+<p>I’m also honest with stakeholders. If the sprint is full and a new
+urgent request arrives, I ask ‘what do you want me to deprioritise to
+make room?’ I don’t just say yes to everything and quietly fail on all
+of them.”</p>
+</blockquote>
+<hr />
+<h3 id="q-how-do-you-onboard-a-new-engineer-onto-your-platform">Q: “How
+do you onboard a new engineer onto your platform?”</h3>
+<blockquote>
+<p>“Structured ramp-up over two weeks. Week one — read the architecture
+docs, run the pipelines locally, review the last 10 merged PRs to
+understand our patterns. I pair them with a buddy from the team. Week
+two — they pick up a small, well-scoped BAU ticket end-to-end: write
+code, write tests, submit PR, deploy to dev, verify. By the end of week
+two they’ve touched every part of the workflow.</p>
+<p>I also maintain a ‘platform onboarding’ Confluence page that
+documents all our decisions and why — not just what we built, but why we
+built it that way. This prevents new engineers from re-proposing
+solutions we already evaluated and rejected.”</p>
+</blockquote>
+<hr />
+<h3
+id="q-tell-me-about-a-time-you-disagreed-with-a-stakeholder-on-a-technical-decision.">Q:
+“Tell me about a time you disagreed with a stakeholder on a technical
+decision.”</h3>
+<blockquote>
+<p>“Sure. Our business analytics team wanted us to flatten all dimension
+data directly into the fact table — a single wide denormalized table for
+their dashboards. Their argument was simplicity and query speed.</p>
+<p>I pushed back because that approach would mean every time a dimension
+attribute changes — like a product category rename — we’d need to
+rebuild the entire fact table. At our scale, that’s 500 million rows
+rebuilt for a metadata change. It also breaks our incremental processing
+model and wastes compute.</p>
+<p>I proposed a compromise: I’d give them a Gold view that joins fact
+and dimensions at query time, but the underlying storage stays
+normalised. With Photon and proper Z-ordering, the join performance was
+indistinguishable from the flat table for their query patterns. They got
+the simplicity they wanted; I kept the architecture maintainable.</p>
+<p>The key was understanding their actual need — fast, simple queries —
+and solving it without compromising the data model.”</p>
+</blockquote>
+<hr />
+<h2 id="scenario-based-problem-solving-questions">6. Scenario-Based
+Problem Solving Questions</h2>
+<p>These test how you think under pressure with incomplete
+information.</p>
+<hr />
+<h3
+id="q-its-monday-morning.-your-entire-silver-layer-has-stale-data-nothing-processed-over-the-weekend.-walk-me-through-your-investigation.">Q:
+“It’s Monday morning. Your entire Silver layer has stale data — nothing
+processed over the weekend. Walk me through your investigation.”</h3>
+<blockquote>
+<p>“Step 1: Check the orchestrator. Did the scheduled jobs actually
+trigger? If not — is it a scheduler issue, a credential expiry, or a
+workspace outage?</p>
+<p>Step 2: If jobs triggered but failed — check the first failure in the
+DAG. Downstream failures are usually cascading from one root cause.</p>
+<p>Step 3: Common weekend failure causes in my experience: expired
+service principal tokens (90-day rotation), source system maintenance
+windows that weren’t communicated to us, or storage throttling from a
+concurrent backup job.</p>
+<p>Step 4: Once I identify root cause — fix it, retrigger the pipeline
+from the last successful checkpoint, and verify data flows through to
+Gold.</p>
+<p>Step 5: Communicate impact to downstream consumers — ‘forecasting
+data will be updated by 11am instead of 7am, here’s why.’</p>
+<p>Step 6: After resolution — add the scenario to the runbook so the
+next on-call engineer doesn’t need to investigate from scratch.”</p>
+</blockquote>
+<hr />
+<h3
+id="q-a-data-scientist-tells-you-their-model-accuracy-dropped-5-last-week.-they-think-its-a-data-issue.-how-do-you-investigate">Q:
+“A data scientist tells you their model accuracy dropped 5% last week.
+They think it’s a data issue. How do you investigate?”</h3>
+<blockquote>
+<p>“First — I’d correlate the timing. When exactly did accuracy drop?
+Was it gradual or sudden? If sudden, what deployed to the feature
+pipeline that day?</p>
+<p>Second — I’d check the feature table lineage. Pull up the Gold
+feature table they’re consuming, trace it back through Silver to Bronze.
+Are all source feeds arriving on time and complete? Any nulls or
+unexpected values showing up that weren’t there before?</p>
+<p>Third — I’d run a before/after comparison on the feature
+distributions. If a numeric feature that normally averages 50 suddenly
+averages 5, that’s a unit change or a source system bug.</p>
+<p>Fourth — check if there was a source system change that changed the
+meaning of a field without changing its schema. This is the hardest to
+catch because the pipeline runs green but the data semantics
+changed.</p>
+<p>In my experience, 80% of model accuracy drops trace back to a silent
+upstream data quality issue — not a code bug.”</p>
+</blockquote>
+<hr />
+<h3
+id="q-a-new-data-source-needs-to-be-onboarded.-it-has-50-columns-updated-every-15-minutes-and-they-want-it-in-gold-within-30-minutes-of-source-update.-how-do-you-approach-this">Q:
+“A new data source needs to be onboarded. It has 50 columns, updated
+every 15 minutes, and they want it in Gold within 30 minutes of source
+update. How do you approach this?”</h3>
+<blockquote>
+<p>“First — is the 30-minute latency requirement real? I’d validate with
+the business consumer what they actually need. Often ‘30 minutes’ is a
+wish, and ‘2 hours’ is the actual business requirement. This matters
+because it determines whether I use batch or streaming.</p>
+<p>If 30 minutes is genuinely required — this is a streaming use case.
+I’d use Auto Loader in streaming mode for Bronze, DLT with continuous
+mode for Silver (streaming CDC), and a streaming Gold
+materialisation.</p>
+<p>If 2 hours is acceptable — I’d use micro-batch. Auto Loader triggered
+every 15 minutes, batch Silver merge on a 30-minute schedule, Gold
+refresh hourly.</p>
+<p>For the 50 columns — I’d work with the source team to identify which
+columns are actually needed by downstream consumers. Often it’s 15–20.
+I’d ingest all 50 into Bronze (never lose data), but only propagate
+relevant columns to Silver and Gold. Keeps the merge logic fast and the
+Gold tables lean.</p>
+<p>Then: define schema contract, build Bronze pipeline, add quality
+expectations, Silver merge logic with appropriate SCD type, Gold
+aggregation — standard Medallion pattern. I’d estimate 2 sprints for a
+new source end-to-end including testing and documentation.”</p>
+</blockquote>
+<hr />
+<h2 id="databricks-roadmap-forward-looking-questions">7. Databricks
+Roadmap &amp; Forward-Looking Questions</h2>
+<p>They specifically mentioned Lakebase, Delta Share, Omnigent, and AI
+Gateway. Show you track this.</p>
+<hr />
+<h3
+id="q-whats-your-understanding-of-databricks-direction-where-is-the-platform-heading">Q:
+“What’s your understanding of Databricks’ direction? Where is the
+platform heading?”</h3>
+<blockquote>
+<p>“Databricks is clearly moving towards being a unified AI + data
+platform, not just a data engineering tool. A few key bets I’m
+tracking:</p>
+<p><strong>Lakebase</strong> — serverless transactional database built
+on Delta Lake. This means OLTP-style workloads can now live in the same
+platform as analytics. For us, that could eliminate the need for a
+separate operational database for feature serving at low latency.</p>
+<p><strong>AI Gateway</strong> — unified endpoint for managing LLM
+access, token governance, rate limiting, and cost tracking. As teams
+start embedding GenAI features, this prevents the ‘wild west’ problem
+where every team deploys their own OpenAI key with no visibility.</p>
+<p><strong>Omnigent</strong> — Databricks’ enterprise AI agent
+framework. It lets you build agents that operate on your data governed
+by Unity Catalog. For data engineering specifically, I see this enabling
+natural-language pipeline monitoring — ‘show me what failed last night
+and why.’</p>
+<p><strong>Delta Sharing evolution</strong> — increasingly becoming the
+standard for cross-platform data exchange. I’ve already implemented it
+for Databricks-to-Snowflake sharing. The direction is towards clean-room
+collaboration between organisations without copying data.</p>
+<p>For this role, I’d want to establish a solid Medallion foundation
+first, then progressively adopt these capabilities as they mature — not
+chase every preview feature, but have the architecture ready to plug
+them in when they’re production-grade.”</p>
+</blockquote>
+<hr />
+<h3 id="q-have-you-used-delta-sharing-in-production">Q: “Have you used
+Delta Sharing in production?”</h3>
+<blockquote>
+<p>“Yes. In my current platform, Gold feature tables are shared to
+Snowflake consumers via Delta Sharing. The BI team runs their dashboards
+on Snowflake, and rather than duplicating data via ETL into Snowflake,
+they read directly from Delta Sharing endpoints. This means they always
+get fresh data without us maintaining a separate Snowflake ingestion
+pipeline.</p>
+<p>The setup: I register Gold tables as shares in Unity Catalog, define
+recipient credentials, and the Snowflake side configures a Delta Sharing
+reader. Zero data copying, governed by the same Unity Catalog ACLs, and
+full audit trail of who accessed what.”</p>
+</blockquote>
+<hr />
+<h2 id="behavioural-star-questions">8. Behavioural / STAR Questions</h2>
+<hr />
+<h3
+id="q-tell-me-about-a-time-you-delivered-something-complex-under-tight-deadlines.">Q:
+“Tell me about a time you delivered something complex under tight
+deadlines.”</h3>
+<blockquote>
+<p><strong>Situation:</strong> “We had a hard business deadline for the
+Product Feature Store go-live — the forecasting engine needed our
+features by a specific date to calibrate for a seasonal peak.”</p>
+<p><strong>Task:</strong> “I had to deliver end-to-end: Bronze through
+Gold, 12 feature tables, point-in-time joins, full UAT sign-off, and
+production deployment — in 6 weeks.”</p>
+<p><strong>Action:</strong> “I broke it into two-week sprints with clear
+milestones. Sprint 1: Bronze landing + schema contracts. Sprint 2:
+Silver CDC + SCD2 + quality gates. Sprint 3: Gold feature tables + PIT
+joins + UAT + deployment. I assigned domain ownership — one engineer per
+feature domain — and ran daily standups to unblock issues fast. I also
+negotiated with the business to reduce scope from 15 to 12 feature
+tables by deferring three that weren’t critical for the initial
+calibration.”</p>
+<p><strong>Result:</strong> “Delivered on time. All 12 feature tables
+passed UAT validation. The forecasting engine achieved a 14% accuracy
+improvement compared to the previous feature set. The remaining 3 tables
+were delivered in the next sprint.”</p>
+</blockquote>
+<hr />
+<h3 id="q-tell-me-about-a-time-you-had-to-push-back-on-a-request.">Q:
+“Tell me about a time you had to push back on a request.”</h3>
+<blockquote>
+<p><strong>Situation:</strong> “A product manager wanted us to expose
+raw Bronze data directly to their analysts via a SQL endpoint — they
+wanted speed and didn’t want to wait for Silver/Gold processing.”</p>
+<p><strong>Task:</strong> “I needed to say no without being obstructive,
+and offer a viable alternative.”</p>
+<p><strong>Action:</strong> “I explained the risks: Bronze data has
+duplicates, schema inconsistencies, no quality validation. If they built
+dashboards on it, they’d get incorrect numbers and lose trust in the
+platform. Instead, I offered a ‘fast Silver’ layer — a lightweight
+cleansed view with just deduplication and null handling, updated within
+30 minutes of Bronze landing. Not full SCD2, just clean enough for
+directional analytics.”</p>
+<p><strong>Result:</strong> “They accepted the compromise. The fast
+Silver view was ready in 3 days. They got their speed, we maintained
+data quality standards, and it became a standard pattern we reuse for
+other ‘exploration-grade’ use cases.”</p>
+</blockquote>
+<hr />
+<h3 id="q-tell-me-about-a-time-you-mentored-someone.">Q: “Tell me about
+a time you mentored someone.”</h3>
+<blockquote>
+<p><strong>Situation:</strong> “A junior engineer joined our managed
+service partner team. Good Python skills, but no experience with Delta
+Lake, Databricks, or production-grade data engineering patterns.”</p>
+<p><strong>Task:</strong> “Get them productive within 3 weeks without
+slowing down the team’s delivery.”</p>
+<p><strong>Action:</strong> “I created a structured onboarding path.
+Week 1: documentation reading + environment setup + observe code
+reviews. Week 2: paired programming on a small BAU ticket — I drove
+first, then they drove while I watched. Week 3: solo ticket with review.
+I also recorded a 20-minute walkthrough of our architecture that any
+future joiner could watch.</p>
+<p>Beyond technical skills, I taught them our engineering culture — why
+we enforce tests, why we document decisions, why PRs need context in the
+description. These habits matter more than knowing a specific API.”</p>
+<p><strong>Result:</strong> “Within a month they were independently
+delivering BAU tickets. Within three months they were contributing to
+feature development. They told me later it was the most structured
+onboarding they’d experienced.”</p>
+</blockquote>
+<hr />
+<h3 id="q-whats-your-biggest-professional-failure">Q: “What’s your
+biggest professional failure?”</h3>
+<blockquote>
+<p>“Early in the Coles engagement, I underestimated the complexity of
+migrating a legacy Oracle batch job. I estimated 2 sprints, it took 5.
+The issue wasn’t technical — it was that I didn’t spend enough time
+understanding the undocumented business logic buried in 15-year-old
+stored procedures.</p>
+<p>What I learned: now I always do a discovery phase before estimating
+migration work. I trace every stored procedure end-to-end, document the
+implicit business rules, and validate with business SMEs before
+committing to a timeline. It slows down the start but dramatically
+reduces surprises mid-delivery.</p>
+<p>I also learned to add a buffer for legacy unknowns — if I think it’s
+3 sprints, I estimate 4 and explain why. Stakeholders appreciate honesty
+upfront more than missed deadlines later.”</p>
+</blockquote>
+<hr />
+<h2 id="questions-you-should-ask-them">9. Questions YOU Should Ask
+Them</h2>
+<p>Asking good questions shows you’re evaluating the role seriously, not
+just hoping to be picked.</p>
+<p><strong>About the team:</strong> - “How many engineers are on the
+team today, and how many are permanent vs managed service partners?” -
+“Who would I be reporting to, and how technical are they?” - “What does
+success look like in the first 90 days?”</p>
+<p><strong>About the platform:</strong> - “How mature is the current
+Medallion architecture — are you building from scratch or evolving an
+existing platform?” - “What’s the current state of CI/CD — is it fully
+automated or is there still manual deployment?” - “What’s your biggest
+data quality challenge right now?”</p>
+<p><strong>About the roadmap:</strong> - “You mentioned Lakebase and AI
+Gateway on the roadmap — what’s the timeline? Next quarter, next year?”
+- “How much autonomy does this role have in making architectural
+decisions vs following a prescribed design?”</p>
+<p><strong>About the culture:</strong> - “How do you handle production
+incidents — is there a formal on-call rotation?” - “What’s the biggest
+challenge the team has faced in the last 6 months?”</p>
+<hr />
+<h2 id="quick-reference-key-numbers-metrics">10. Quick Reference — Key
+Numbers &amp; Metrics</h2>
+<p>Use these naturally throughout your answers. Don’t force them — just
+drop them in where they fit.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Metric</th>
+<th style="text-align: left;">Value</th>
+<th style="text-align: left;">Context</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Daily records processed</td>
+<td style="text-align: left;">500M+</td>
+<td style="text-align: left;">Across all Bronze pipelines</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Store coverage</td>
+<td style="text-align: left;">800+ supermarkets + 700+ Coles
+Express</td>
+<td style="text-align: left;">National retail</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Team size</td>
+<td style="text-align: left;">4–8 engineers</td>
+<td style="text-align: left;">Direct + managed service partners</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Cost saving</td>
+<td style="text-align: left;">$300K+ annually</td>
+<td style="text-align: left;">40% compute reduction</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Query performance improvement</td>
+<td style="text-align: left;">65%</td>
+<td style="text-align: left;">After migration to Snowflake +
+optimisation</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Forecast accuracy uplift</td>
+<td style="text-align: left;">14%</td>
+<td style="text-align: left;">From feature store implementation</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Incident reduction</td>
+<td style="text-align: left;">45%</td>
+<td style="text-align: left;">From runbooks + SLA monitoring</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Migration parity validation</td>
+<td style="text-align: left;">3-week parallel run</td>
+<td style="text-align: left;">June 8–26, 2026</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Cutover downtime</td>
+<td style="text-align: left;">Zero</td>
+<td style="text-align: left;">Blue-Green view repointing</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Feature tables delivered</td>
+<td style="text-align: left;">12</td>
+<td style="text-align: left;">Initial PFS/PFUS go-live</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Experience</td>
+<td style="text-align: left;">19+ years</td>
+<td style="text-align: left;">Data engineering across 3 companies</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Databricks certification</td>
+<td style="text-align: left;">Certified Data Engineer Associate</td>
+<td style="text-align: left;">Current</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Regulated industry experience</td>
+<td style="text-align: left;">Pharmaceutical clinical trials (Icon)</td>
+<td style="text-align: left;">5 years</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="delivery-tips-general">Delivery Tips — General</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Do</th>
+<th style="text-align: left;">Don’t</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Pause between sections — let them ask
+questions</td>
+<td style="text-align: left;">Monologue for 5+ minutes without
+stopping</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Say “I” not “we” when describing your
+decisions</td>
+<td style="text-align: left;">Hide behind team language</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Mention what you rejected and why</td>
+<td style="text-align: left;">Make it sound like every decision was
+obvious</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Use exact numbers casually</td>
+<td style="text-align: left;">Say “massive scale” or “huge volumes”</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Offer to draw on a whiteboard</td>
+<td style="text-align: left;">Just talk into the air</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Admit tradeoffs and limitations</td>
+<td style="text-align: left;">Pretend everything was perfect</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ask “Shall I go deeper on that?” after key
+points</td>
+<td style="text-align: left;">Assume they want the maximum detail</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">End answers with a clear conclusion</td>
+<td style="text-align: left;">Trail off without landing the point</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>End of Interview Playbook</em></p>
+</main></div><script>const P='ldep:';[...document.querySelectorAll('main h2')].forEach((h,i)=>{let k=h.id||'s'+i;h.id=k;let l=document.createElement('label');l.className='study';l.innerHTML='<input type=checkbox data-k="'+k+'"> studied';h.appendChild(l)});function r(){let a=[...document.querySelectorAll('[data-k]')],n=0;a.forEach(x=>{x.checked=localStorage.getItem(P+x.dataset.k)==='1';if(x.checked)n++});let v=a.length?Math.round(100*n/a.length):0;pg.value=v;pct.textContent=v+'%'}document.addEventListener('change',e=>{if(e.target.dataset.k){localStorage.setItem(P+e.target.dataset.k,e.target.checked?'1':'0');r()}});document.querySelectorAll('pre').forEach(p=>{let b=document.createElement('button');b.className='copy';b.textContent='Copy';b.onclick=()=>navigator.clipboard.writeText(p.innerText.replace(/^Copy\n/,''));p.appendChild(b)});menu.onclick=()=>{document.body.classList.toggle('off');menu.textContent=document.body.classList.contains('off')?'☰ Show Menu':'☰ Hide Menu'};theme.onclick=()=>document.body.classList.toggle('dark');prt.onclick=()=>print();search.oninput=e=>{let q=e.target.value.toLowerCase().trim();document.querySelectorAll('.nav').forEach(a=>a.style.display=!q||a.dataset.label.includes(q)?'block':'none');if(q.length>2){let z=[...document.querySelectorAll('main h1,main h2,main h3,main p,main li,main td')].find(x=>x.innerText.toLowerCase().includes(q));if(z)z.scrollIntoView({behavior:'smooth',block:'center'})}};r();</script></body></html>
