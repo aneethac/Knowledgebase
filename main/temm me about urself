@@ -1,0 +1,7 @@
+"Sure! So I've been in data engineering for about 19 years now. I started out in India, did my engineering degree, and then moved through a few different roles — I spent some time at Wipro and then Icon Clinical Research before moving to Australia.
+
+For the last 7 years I've been a Lead Data Engineer at Infocentric, which is a consultancy — so my client has been Coles the whole time. And my work there has really been two big things — one is building their Databricks Lakehouse platform for ML forecasting, so feature stores, Medallion architecture, Delta Lake pipelines at quite large scale — we're talking 500 million records a day across 800+ stores. And the second big piece has been migrating their legacy Oracle data warehouse across to Snowflake, which was a pretty complex multi-year project.
+
+I also lead a small team — usually around 4 to 8 engineers — and I work alongside managed service partners as well, so I'm used to owning delivery end to end, not just the technical side.
+
+The reason I'm looking now is I feel like I've taken that platform as far as I can in the current engagement, and I'm really keen to step into a role where I can own the architectural direction from scratch. When I saw this role and the roadmap — Lakeflow, Lakebase, AI Gateway — honestly that's the exact space I want to be building in."
