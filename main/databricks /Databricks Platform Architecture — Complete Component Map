@@ -1,0 +1,76 @@
+%md
+## Databricks Platform Architecture — Complete Component Map
+
+---
+
+### 1. Platform Layers
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        UNITY CATALOG (Governance Layer)                 │
+│   Access Control │ Lineage │ Data Discovery │ Audit │ Data Sharing     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌────────────┐  │
+│  │   Databricks │  │  Databricks  │  │  Lakeflow    │  │   Model    │  │
+│  │     SQL      │  │  Notebooks   │  │  Jobs        │  │  Serving   │  │
+│  │  (Warehouses)│  │  (IDE)       │  │  (Orchestr.) │  │  (ML Ops)  │  │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └─────┬──────┘  │
+│         │                 │                 │                │          │
+│  ┌──────▼─────────────────▼─────────────────▼────────────────▼──────┐  │
+│  │              COMPUTE LAYER                                       │  │
+│  │  SQL Warehouses │ All-Purpose │ Job Clusters │ Serverless │ GPU  │  │
+│  │  (Photon)       │ Clusters    │ (ephemeral)  │ Compute    │      │  │
+│  └──────────────────────────┬───────────────────────────────────────┘  │
+│                             │                                          │
+│  ┌──────────────────────────▼───────────────────────────────────────┐  │
+│  │              STORAGE LAYER (Delta Lake on Cloud Storage)         │  │
+│  │  ADLS Gen2 (Azure) │ S3 (AWS) │ GCS (Google)                    │  │
+│  │  Delta Format: Parquet files + _delta_log/ (transaction log)    │  │
+│  └─────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2. Control Plane vs Data Plane
+
+| Component | Control Plane (Databricks-managed) | Data Plane (Your Cloud Account) |
+| --- | --- | --- |
+| **What lives here** | Web UI, REST APIs, Notebooks, Job configs, Unity Catalog metadata | Compute (clusters/warehouses), Data files, DBFS |
+| **Who manages** | Databricks | You (your Azure/AWS/GCP subscription) |
+| **Network** | Databricks cloud account | Your VNet/VPC |
+| **Key implication** | Metadata never leaves Databricks | Data never leaves your cloud account |
+| **Exam tip** | Credentials are stored in the control plane (encrypted) | Results and data are processed in the data plane |
+
+### 3. Workspace Hierarchy
+
+```
+Databricks Account
+ ├── Workspace 1 (Dev)
+ │    ├── Users / Groups / Service Principals
+ │    ├── Notebooks, Repos, Files
+ │    ├── Jobs, Pipelines
+ │    └── Compute (Clusters, Warehouses)
+ ├── Workspace 2 (Prod)
+ └── Unity Catalog Metastore (shared across workspaces)
+      ├── Catalog 1
+      │    ├── Schema A
+      │    │    ├── Tables, Views, Volumes, Functions
+      │    │    └── Models (ML)
+      │    └── Schema B
+      └── Catalog 2
+```
+
+### 4. Key Services at a Glance
+
+| Service | What It Does | Exam Weight | Key Commands |
+| --- | --- | --- | --- |
+| **Delta Lake** | ACID storage layer on Parquet + transaction log | HIGH | `DESCRIBE DETAIL`, `DESCRIBE HISTORY`, `OPTIMIZE`, `VACUUM`, `RESTORE` |
+| **Unity Catalog** | Centralized governance: access, lineage, sharing | HIGH | `GRANT`, `REVOKE`, `SHOW GRANTS`, `CREATE CATALOG/SCHEMA` |
+| **Lakeflow Jobs** | Orchestration: schedule notebooks, pipelines, SQL | HIGH | Job UI, REST API, task dependencies |
+| **Spark Declarative Pipelines (SDP)** | Declarative ETL with quality expectations | MEDIUM | `CREATE STREAMING TABLE`, `CREATE MATERIALIZED VIEW`, expectations |
+| **Databricks SQL** | SQL analytics with warehouses | HIGH | SQL Warehouse config, query profile, dashboards |
+| **MLflow** | ML experiment tracking, model registry, serving | MEDIUM | `mlflow.log_param`, `mlflow.log_metric`, model stages |
+| **Auto Loader** | Incremental file ingestion (cloud_files) | HIGH | `cloud_files`, `cloudFiles.format`, schema inference/evolution |
+| **Repos / Git** | Version control integration | LOW | Git integration, CI/CD |
+| **Secrets** | Credential management | LOW | `dbutils.secrets.get()`, secret scopes |
+| **Delta Sharing** | Cross-org data sharing (open protocol) | MEDIUM | `CREATE SHARE`, `CREATE RECIPIENT`, `GRANT SELECT ON SHARE` |
