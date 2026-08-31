@@ -1,0 +1,271 @@
+%md
+## Spark Internals & Databricks Optimization — Complete Cheat Sheet
+
+---
+
+### 1. Query Lifecycle: What Happens When You Run a Query
+
+| Step | What Happens | Key Detail |
+| --- | --- | --- |
+| **1. Parsing** | SQL text → Abstract Syntax Tree (AST) | Syntax errors caught here |
+| **2. Analysis** | Resolves table/column names against Unity Catalog | "Table not found" errors here |
+| **3. Logical Plan** | AST → logical operators (Scan, Filter, Join, Aggregate) | Describes WHAT to do, not HOW |
+| **4. Catalyst Optimizer** | Rewrites logical plan (predicate pushdown, constant folding, join reorder) | This is Spark's "brain" — automatically makes your query smarter |
+| **5. Physical Plan** | Chooses algorithms: which join type, scan method, shuffle strategy | You can see this with `EXPLAIN EXTENDED <query>` |
+| **6. Code Generation (Photon/Tungsten)** | Compiles plan into executable bytecode | Photon (C++ engine on Databricks) replaces Tungsten for supported ops |
+| **7. Execution** | Distributes tasks across executors in stages | Stages run in parallel where possible |
+| **8. Write** | Results written to Delta files (Parquet + transaction log) | Commit recorded in `_delta_log/` |
+
+---
+
+### 2. How Work Maps: Query → Jobs → Stages → Tasks → Partitions
+
+```
+Query (1 SQL statement)
+ └── Job (1 per action: INSERT, SELECT, etc.)
+      └── Stage (separated by SHUFFLES — each shuffle = new stage)
+           └── Tasks (1 task per data partition within that stage)
+                └── Each task processes 1 partition of data on 1 CPU core
+```
+
+| Concept | What It Is | How Size Is Decided |
+| --- | --- | --- |
+| **Job** | One complete execution triggered by an action (write, collect, display) | 1 query = usually 1 job (can be more for subqueries) |
+| **Stage** | A chunk of work that can run without a shuffle | Every shuffle (JOIN, GROUP BY, ORDER BY) creates a stage boundary |
+| **Task** | The smallest unit of work — runs on 1 core, processes 1 partition | Number of tasks = number of partitions in that stage |
+| **Partition** | A chunk of data (default \~128 MB target for reads) | Read partitions come from file layout; shuffle partitions from AQE |
+
+---
+
+### 3. Mapping to Compute Size (SQL Warehouse)
+
+| Warehouse Size | Max Concurrent Tasks (approx) | Best For |
+| --- | --- | --- |
+| 2X-Small | 8 | Quick lookups, small tables |
+| X-Small | 16 | Light dashboards |
+| Small | 32 | Medium queries, dev/test |
+| Medium | 64 | Production workloads |
+| Large | 128 | Heavy ETL, large joins |
+| X-Large+ | 256+ | Massive data processing |
+
+> With 303 tasks on a Small warehouse (\~32 concurrent slots), tasks run in waves: \~32 at a time → 303/32 ≈ 10 waves. A bigger warehouse = more parallelism = fewer waves = faster.
+
+---
+
+### 4. What Triggers Each Operation
+
+#### Scans (Reading Data)
+
+| Trigger | What Happens | How to Optimize |
+| --- | --- | --- |
+| `FROM table` / any table reference | Reads Parquet files from cloud storage | Partition pruning, file pruning via stats |
+| Full table scan (no filters) | Reads ALL files | Always add WHERE clauses on partition columns |
+| Predicate pushdown | Filter pushed INTO the scan — reads less data | Spark does this automatically for supported predicates |
+| Column pruning | Only reads columns you SELECT | Parquet is columnar — unused columns cost almost nothing |
+
+#### Shuffles (Data Movement Across Network)
+
+| Trigger | Why It Shuffles | Cost |
+| --- | --- | --- |
+| `JOIN` (most types) | Both sides must be co-located by join key | HIGH — serializes, writes to disk, sends over network, deserializes |
+| `GROUP BY` / `DISTINCT` | All rows with same key must land on same partition | MEDIUM-HIGH |
+| `ORDER BY` / `SORT BY` | Global ordering requires data movement | HIGH (global sort) |
+| `WINDOW OVER (PARTITION BY ...)` | Rows in same partition-by group must be co-located | MEDIUM-HIGH |
+| `UNION` / `MINUS` / `INTERSECT` | Deduplication requires co-location | MEDIUM |
+| `INSERT INTO partitioned_table` | Data repartitioned by target partition column | MEDIUM |
+
+#### Exchanges
+
+| Type | When | Detail |
+| --- | --- | --- |
+| **HashExchange** | JOIN, GROUP BY | Hashes the key, sends to matching partition |
+| **RangeExchange** | ORDER BY | Samples data, creates range boundaries |
+| **BroadcastExchange** | Small table JOIN | Copies entire small table to every executor — NO shuffle on the big table |
+| **SinglePartition** | Final aggregation | All data → 1 partition |
+
+---
+
+### 5. Join Strategies Spark Chooses (Automatically)
+
+| Strategy | When Chosen | Performance |
+| --- | --- | --- |
+| **Broadcast Hash Join** | One side < 10 MB (default threshold) | FASTEST — no shuffle on big table |
+| **Sort Merge Join** | Both sides large, equi-join | Good for large-large joins, requires sort + shuffle on both sides |
+| **Shuffle Hash Join** | One side much smaller (but > broadcast threshold) | Shuffles both, builds hash table on smaller side |
+| **Broadcast Nested Loop Join** | Non-equi join with small table (`BETWEEN`) | Broadcasts small side, loops through big side |
+| **Cartesian Product** | No join condition | AVOID — explodes row count |
+
+> Spark picks the strategy automatically based on table statistics. Run `ANALYZE TABLE <table> COMPUTE STATISTICS` to give Spark better info.
+
+---
+
+### 6. Spill to Disk — When & Why
+
+| Aspect | Detail |
+| --- | --- |
+| **What is spill** | When a task's in-memory data exceeds its allocation, excess is written to local SSD |
+| **Why it's bad** | Turns an in-memory operation into disk I/O — 10-100x slower |
+| **Common causes** | Skewed joins (one key has millions of rows), huge sorts, insufficient memory |
+| **Where to check** | Query Profile tab → look for "spill" metrics on each operator node |
+| **How to fix** | (1) Reduce data volume with filters, (2) increase warehouse size, (3) fix skew |
+
+---
+
+### 7. Adaptive Query Execution (AQE)
+
+| Feature | What It Does |
+| --- | --- |
+| **Dynamic partition coalescing** | Merges many tiny shuffle partitions into fewer, larger ones at runtime |
+| **Dynamic join strategy switching** | If one side of a join turns out smaller than expected after a filter, switches to broadcast |
+| **Skew join optimization** | Detects partitions with disproportionately many rows, splits them into sub-partitions |
+| **Enabled by default** | YES on Databricks — no config needed |
+
+> AQE is why your planned task count (303) may differ from what static analysis would predict — Spark adjusts at each stage boundary.
+
+---
+
+### 8. Delta Table Automatic Optimizations
+
+| Feature | What It Does | Enabled By Default? |
+| --- | --- | --- |
+| **Auto Optimize (auto-compact)** | Merges small files after writes into \~128 MB files | YES on Databricks |
+| **Optimized Writes** | Repartitions data before writing to avoid small files | YES on Databricks |
+| **Predictive I/O** | Skips unnecessary file reads using file-level statistics | YES with Photon |
+| **Data Skipping** | Uses min/max stats per file to skip irrelevant files | YES — stored in `_delta_log` |
+| **Deletion Vectors** | Marks rows as deleted without rewriting files (faster DELETE/MERGE) | YES on newer tables |
+| **Z-Ordering** | Co-locates related data in same files by specified columns | MANUAL — `OPTIMIZE table ZORDER BY (col)` |
+| **Transaction Log** | ACID guarantees via `_delta_log/` JSON + checkpoint files | Always — this IS Delta |
+| **Schema Evolution** | New columns added automatically with `mergeSchema` option | Must be enabled |
+| **Time Travel** | Query previous versions: `SELECT * FROM table VERSION AS OF 5` | Always available (retention default 30 days) |
+
+---
+
+### 9. Photon Engine (Databricks Proprietary)
+
+| Aspect | Detail |
+| --- | --- |
+| **What** | C++ native vectorized engine replacing Spark's JVM-based Tungsten |
+| **Speed** | 2-8x faster for supported operations (scans, filters, joins, aggregations) |
+| **Best for** | SQL workloads, ETL, large scans, aggregations |
+| **Not used for** | UDFs, some Python operations, unsupported data types |
+| **Cost** | Included with SQL Warehouses and Photon-enabled clusters |
+
+---
+
+### 10. File Formats Comparison
+
+| Format | Read Speed | Write Speed | Compression | Schema Evolution | ACID | Best For |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Delta (Parquet + Log)** | Fastest (stats, skipping, caching) | Fast (optimized writes) | Excellent | Yes | Yes | Everything on Databricks |
+| **Parquet** | Fast (columnar) | Fast | Excellent | Limited | No | External interchange |
+| **ORC** | Fast (columnar) | Fast | Good | Limited | No | Hive ecosystem |
+| **CSV** | Slow (parse every row) | Fast | Poor | No | No | Human-readable exchange only |
+| **JSON** | Slow (parse + nested) | Moderate | Poor | Partial | No | API data, semi-structured |
+| **Avro** | Moderate (row-based) | Fast | Good | Yes | No | Streaming, schema evolution |
+
+> **Rule: Always use Delta on Databricks.** The transaction log, auto-optimize, and data skipping are massive advantages.
+
+---
+
+### 11. External Tables vs Managed Tables
+
+| Aspect | Managed Table | External Table |
+| --- | --- | --- |
+| **Data location** | Controlled by Unity Catalog (cloud storage managed by Databricks) | You control the storage path (`LOCATION 'abfss://...'`) |
+| **DROP TABLE** | Deletes data + metadata | Deletes metadata only — data files remain |
+| **Auto Optimize** | Full support | Full support |
+| **Performance** | Slightly better (optimized storage layout) | Same for reads if well-organized |
+| **Governance** | Full UC lineage + access control | Full UC lineage + access control |
+| **Portability** | Tied to Databricks workspace | Data accessible outside Databricks |
+| **Best for** | All internal analytics tables | Shared data lakes, multi-tool access, regulatory data retention |
+
+> **Recommendation**: Use **managed tables** unless you have a specific reason to control the storage location (multi-cloud, external tool access, regulatory hold).
+
+---
+
+### 12. Liquid Clustering vs Partitioning vs Z-ORDER
+
+| Aspect | PARTITION BY | Liquid Clustering | Z-ORDER |
+| --- | --- | --- | --- |
+| **Syntax** | `PARTITIONED BY (col)` | `CLUSTER BY (col1, col2)` | `OPTIMIZE ... ZORDER BY (col)` |
+| **When set** | At CREATE TABLE time — cannot change | At CREATE TABLE or ALTER — can change anytime | On-demand via OPTIMIZE |
+| **How it works** | Creates physical directories per partition value | Dynamically regroups data within files using Hilbert curves | Interleaves sort order within files |
+| **Best for** | Low-cardinality columns (date, region) | Any cardinality, multi-column filtering | Ad-hoc optimization of existing tables |
+| **Small file problem** | YES — high cardinality = millions of tiny files | NO — files stay \~1 GB | NO — only rewrites existing files |
+| **Filter performance** | Excellent if query filters on partition column | Excellent for clustered columns | Good but degrades with many Z-ORDER columns |
+| **Can change columns** | NO — requires table rebuild | YES — `ALTER TABLE ... CLUSTER BY (new_col)` | YES — just re-run OPTIMIZE |
+| **Maintenance** | None needed | `OPTIMIZE table` periodically | `OPTIMIZE table ZORDER BY (cols)` periodically |
+
+> **Recommendation**: Prefer **Liquid Clustering** for new tables. Use **PARTITION BY** only for low-cardinality date columns that are always in your WHERE clause.
+
+---
+
+### 13. Compute Type Comparison
+
+| Aspect | SQL Warehouse (Serverless) | All-Purpose Cluster | Job Cluster |
+| --- | --- | --- | --- |
+| **Purpose** | SQL queries, BI dashboards, ad-hoc analytics | Interactive dev (Python, Scala, R, SQL) | Scheduled production jobs |
+| **Startup time** | Seconds (Serverless) | 5-10 minutes | 5-10 minutes |
+| **Auto-scaling** | Yes (instant) | Yes (slower) | Yes |
+| **Auto-stop** | Yes (configurable) | Yes (configurable) | Terminates after job completes |
+| **Photon** | Always enabled | Optional | Optional |
+| **Languages** | SQL only | Python, SQL, Scala, R | Python, SQL, Scala, R |
+| **Cost** | Pay per query (DBU/hour while running) | DBU/hour while cluster is up | DBU/hour while job runs |
+| **Cost efficiency** | Best for sporadic SQL | Most expensive (sits idle) | Best for scheduled workloads |
+| **Concurrency** | High (multi-user) | Limited (shared cluster) | Single job |
+| **Best for** | SQL analytics, INSERT queries | Notebook development with Python/ML | Nightly ETL pipelines, scheduled jobs |
+| **Unity Catalog** | Full support | Full support | Full support |
+
+**When to use which:**
+
+| Scenario | Best Choice |
+| --- | --- |
+| Ad-hoc SQL exploration | SQL Warehouse (Serverless) |
+| Dashboard serving for many users | SQL Warehouse (Serverless) |
+| Python ML model training | All-Purpose Cluster with ML Runtime |
+| Nightly ETL pipeline | Job Cluster via Lakeflow Jobs |
+| One-off data investigation | SQL Warehouse |
+| Streaming workload | All-Purpose or Job Cluster |
+
+---
+
+### 14. Complete Optimization Checklist
+
+| # | Check | Why | Impact |
+| --- | --- | --- | --- |
+| 1 | Filter early — WHERE on partition column | Eliminates files before reading | HIGH |
+| 2 | SELECT only needed columns | Parquet reads only requested columns | MEDIUM |
+| 3 | Avoid `SELECT *` in subqueries/CTEs | Carries unnecessary columns through shuffles | MEDIUM |
+| 4 | Use Delta format for all tables | Stats, caching, auto-optimize | HIGH |
+| 5 | Run `ANALYZE TABLE` on large tables | Gives optimizer accurate row counts for join strategy selection | HIGH |
+| 6 | Avoid non-equi joins on large tables | `BETWEEN` joins cannot use hash/sort-merge — use broadcast or pre-filter | HIGH |
+| 7 | Pre-filter before JOIN | Reduce rows entering the join | HIGH |
+| 8 | Check for spill to disk in query profile | Spill = memory pressure = slow | HIGH |
+| 9 | Use `OPTIMIZE` + Z-ORDER or Liquid Clustering | Co-locates data for common filters | MEDIUM |
+| 10 | Right-size your warehouse | Too small = spill + many waves; too big = wasted cost | MEDIUM |
+| 11 | Avoid redundant self-joins | Self-joining a table with no filter returns every row unchanged | CRITICAL |
+| 12 | Use `EXPLAIN EXTENDED` to inspect plan | Verify join types, scan types, predicate pushdown | DIAGNOSTIC |
+| 13 | Check file sizes (`DESCRIBE DETAIL table`) | Ideal: 64-256 MB per file; too small = overhead, too big = poor parallelism | MEDIUM |
+| 14 | Partition by low-cardinality date column | Enables partition pruning | HIGH |
+| 15 | Avoid type casts in JOIN conditions | `INT(col_a) = INT(col_b)` prevents predicate pushdown | MEDIUM |
+| 16 | Use broadcast hints for known small tables | `/*+ BROADCAST(small_table) */` | MEDIUM |
+| 17 | Limit `ROW_NUMBER` scope | Window functions sort + partition all data | MEDIUM |
+| 18 | Run `OPTIMIZE` after large writes | Compacts small files, improves future read performance | MEDIUM |
+| 19 | Enable result caching | Repeated queries hit cache automatically | LOW-MEDIUM |
+| 20 | Monitor query profile after every heavy query | Catch regressions early | ONGOING |
+
+---
+
+### 15. Key Databricks SQL Commands for Diagnostics
+
+| Command | Purpose |
+| --- | --- |
+| `EXPLAIN EXTENDED <query>` | See full logical + physical plan, join strategies, scan types |
+| `DESCRIBE DETAIL <table>` | File count, size, partitioning, Delta version, table properties |
+| `DESCRIBE HISTORY <table>` | All operations (writes, deletes, optimizes) with timestamps |
+| `ANALYZE TABLE <table> COMPUTE STATISTICS` | Compute row counts + column stats for better optimizer decisions |
+| `ANALYZE TABLE <table> COMPUTE STATISTICS FOR COLUMNS col1, col2` | Column-level stats (min, max, distinct count, nulls) |
+| `OPTIMIZE <table>` | Compact small files, apply Z-ORDER or Liquid Clustering |
+| `OPTIMIZE <table> ZORDER BY (col1, col2)` | Co-locate data by columns for faster filtered reads |
+| `SHOW TBLPROPERTIES <table>` | See Delta properties (auto-optimize, liquid clustering config) |
+| `VACUUM <table> RETAIN 168 HOURS` | Remove old files no longer referenced by Delta log (default 7 days) |
