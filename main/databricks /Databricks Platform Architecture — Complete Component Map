@@ -74,3 +74,594 @@ Databricks Account
 | **Repos / Git** | Version control integration | LOW | Git integration, CI/CD |
 | **Secrets** | Credential management | LOW | `dbutils.secrets.get()`, secret scopes |
 | **Delta Sharing** | Cross-org data sharing (open protocol) | MEDIUM | `CREATE SHARE`, `CREATE RECIPIENT`, `GRANT SELECT ON SHARE` |
+
+
+ 
+## Delta Lake — Complete Feature Reference
+
+---
+
+### 1. What Makes Delta Lake Different from Plain Parquet
+
+| Feature | Parquet | Delta Lake |
+| --- | --- | --- |
+| ACID Transactions | No | Yes — via `_delta_log/` |
+| Time Travel | No | Yes — `VERSION AS OF`, `TIMESTAMP AS OF` |
+| Schema Enforcement | No (schema-on-read) | Yes — rejects bad writes |
+| Schema Evolution | Manual | `ALTER TABLE ADD COLUMNS` or `mergeSchema` option |
+| UPDATE/DELETE/MERGE | No | Yes — full DML support |
+| Data Skipping | No | Yes — min/max stats per file per column |
+| Streaming Source/Sink | Limited | Yes — exactly-once with checkpointing |
+| Audit History | No | Yes — `DESCRIBE HISTORY` |
+
+### 2. Delta Transaction Log (`_delta_log/`)
+
+| Concept | Detail | Exam Tip |
+| --- | --- | --- |
+| **Location** | `_delta_log/` directory inside table directory | Every table has one |
+| **Format** | JSON files (one per commit) + Parquet checkpoints every 10 commits | Checkpoint = snapshot for fast reads |
+| **What it records** | Add file, remove file, metadata changes, protocol changes | Each commit is atomic |
+| **Optimistic concurrency** | Writers check if conflicts exist at commit time | `ConcurrentAppendException` if conflict |
+| **Conflict resolution** | File-level (not row-level) — two writers to different files = no conflict | This is why partitioning helps concurrency |
+
+### 3. Time Travel
+
+| Method | Syntax | Use Case |
+| --- | --- | --- |
+| **By version** | `SELECT * FROM table VERSION AS OF 42` | Audit, debug, reproduce |
+| **By timestamp** | `SELECT * FROM table TIMESTAMP AS OF '2026-08-01'` | Point-in-time reporting |
+| **Restore** | `RESTORE TABLE table TO VERSION AS OF 42` | Undo bad writes |
+| **History** | `DESCRIBE HISTORY table` | See all commits with timestamps, operations, users |
+| **Retention** | Default 30 days for data files | Controlled by `delta.logRetentionDuration` (log) and `delta.deletedFileRetentionDuration` (data) |
+
+### 4. Table Maintenance Commands
+
+| Command | What It Does | When to Run | Exam Tip |
+| --- | --- | --- | --- |
+| **OPTIMIZE** | Compacts small files into larger ones (\~1 GB target) | After many small writes (streaming, frequent appends) | Does NOT delete old files — just adds new compacted ones |
+| **OPTIMIZE ... ZORDER BY** | Compacts + co-locates data by specified columns | When queries filter on specific non-partition columns | Max 4 columns recommended; diminishing returns after |
+| **VACUUM** | Deletes files older than retention period that are no longer referenced | Weekly or after OPTIMIZE | Default retention = 7 days. **Cannot undo VACUUM** — breaks time travel for vacuumed versions |
+| **ANALYZE TABLE** | Computes column-level statistics for the optimizer | After large data changes; before expensive queries | Critical for correct join strategy selection |
+| **DESCRIBE DETAIL** | Shows file count, size, partition columns, table properties | Diagnostic — check table health | Key fields: `numFiles`, `sizeInBytes`, `partitionColumns` |
+| **DESCRIBE HISTORY** | Shows commit log with timestamps, operations, metrics | Debugging, auditing | Shows `operationMetrics` (rows written, files added) |
+
+### 5. Deletion Vectors
+
+| Aspect | Detail |
+| --- | --- |
+| **What** | A bitmap that marks rows as "deleted" within a Parquet file without rewriting the file |
+| **Why** | DELETE/UPDATE/MERGE no longer need to rewrite entire files — just append a deletion vector |
+| **Performance** | 2-10x faster DELETE/UPDATE/MERGE on large tables |
+| **Enable** | `ALTER TABLE t SET TBLPROPERTIES ('delta.enableDeletionVectors' = true)` |
+| **Default** | Enabled by default on new tables (DBR 14.0+) |
+| **Read impact** | Readers apply the deletion vector as a filter — slight overhead, but much less than rewriting |
+| **Exam tip** | Deletion vectors make MERGE cheaper because only the deletion bitmap is written, not new Parquet files |
+
+### 6. Change Data Feed (CDF)
+
+| Aspect | Detail |
+| --- | --- |
+| **What** | Records row-level changes (insert, update_preimage, update_postimage, delete) for downstream consumers |
+| **Enable** | `ALTER TABLE t SET TBLPROPERTIES ('delta.enableChangeDataFeed' = true)` |
+| **Query** | `SELECT * FROM table_changes('my_table', 2)` — changes since version 2 |
+| **Use case** | Incremental ETL: downstream tables read only changed rows instead of full table |
+| **Storage** | Changes stored in `_change_data/` directory inside the table |
+| **Exam tip** | CDF is the foundation for incremental MERGE patterns — enables "process only what changed" |
+
+### 7. Liquid Clustering vs Partitioning vs Z-Order
+
+| Aspect | PARTITION BY | Z-ORDER BY | CLUSTER BY (Liquid) |
+| --- | --- | --- | --- |
+| **Set at** | CREATE TABLE time only | On-demand with OPTIMIZE | CREATE TABLE or ALTER TABLE anytime |
+| **Change columns** | Cannot change — rebuild required | Can change anytime | Can change with ALTER TABLE |
+| **How it works** | Physical directories per value | Interleaved sort within files | Hilbert-curve layout within files |
+| **Best for** | Low-cardinality (date, region) | Ad-hoc optimization, 1-4 columns | Any cardinality, up to 4 columns |
+| **Small file problem** | Yes — high cardinality = millions of tiny files | No | No |
+| **Incremental** | N/A | Must re-run OPTIMIZE on all data | OPTIMIZE processes only new/changed files |
+| **Exam tip** | Legacy — use Liquid Clustering for new tables | Being replaced by Liquid Clustering | **Recommended approach** for all new Delta tables |
+
+ 
+## Unity Catalog — Governance & Security
+
+---
+
+### 1. Hierarchy
+
+```
+Metastore (1 per region — shared across workspaces)
+ └── Catalog (top-level namespace — like a database in traditional RDBMS)
+      └── Schema (like a schema/database — groups related objects)
+           ├── Tables (managed or external)
+           ├── Views (standard, materialized, dynamic)
+           ├── Volumes (managed or external file storage)
+           ├── Functions (SQL UDFs, Python UDFs)
+           └── Models (ML models registered via MLflow)
+```
+
+### 2. Object Types
+
+| Object | Managed | External | Key Difference |
+| --- | --- | --- | --- |
+| **Table** | Data in UC-managed storage; DROP deletes data | Data at your LOCATION; DROP removes metadata only | Managed = simpler; External = portable |
+| **Volume** | Files in UC-managed storage | Files at your LOCATION | Use for non-tabular files (images, CSVs, JARs) |
+| **View** | Always virtual (no storage) | N/A | `CREATE VIEW` — query alias with access control |
+| **Dynamic View** | Row/column filtering based on user | N/A | `CASE WHEN is_member('group') THEN col ELSE 'REDACTED' END` |
+| **Materialized View** | Pre-computed + auto-refreshed | N/A | Speeds up dashboards and repeated queries |
+
+### 3. Access Control (Privileges)
+
+| Privilege | Applies To | What It Allows |
+| --- | --- | --- |
+| `ALL PRIVILEGES` | Any securable | Full access (owner-level) |
+| `SELECT` | Table, View | Read data |
+| `MODIFY` | Table | INSERT, UPDATE, DELETE, MERGE |
+| `CREATE TABLE` | Schema | Create new tables |
+| `CREATE SCHEMA` | Catalog | Create new schemas |
+| `CREATE CATALOG` | Metastore | Create new catalogs |
+| `USE CATALOG` | Catalog | Access the catalog (required to see schemas) |
+| `USE SCHEMA` | Schema | Access the schema (required to see tables) |
+| `EXECUTE` | Function | Run a UDF |
+| `READ VOLUME` | Volume | Read files from a volume |
+| `WRITE VOLUME` | Volume | Write files to a volume |
+
+**Exam-critical syntax:**
+```sql
+GRANT SELECT ON TABLE catalog.schema.table TO `user@example.com`;
+GRANT USE CATALOG ON CATALOG my_catalog TO `group_name`;
+GRANT USE SCHEMA ON SCHEMA my_catalog.my_schema TO `group_name`;
+GRANT CREATE TABLE ON SCHEMA my_catalog.my_schema TO `group_name`;
+REVOKE SELECT ON TABLE catalog.schema.table FROM `user@example.com`;
+SHOW GRANTS ON TABLE catalog.schema.table;
+SHOW GRANTS `user@example.com`;
+```
+
+### 4. Row-Level & Column-Level Security
+
+| Type | How | Syntax |
+| --- | --- | --- |
+| **Row Filter** | Function that returns TRUE/FALSE per row | `ALTER TABLE t SET ROW FILTER func ON (col1, col2)` |
+| **Column Mask** | Function that transforms a column value per user/group | `ALTER TABLE t ALTER COLUMN ssn SET MASK mask_ssn` |
+| **Dynamic View** | CASE WHEN inside a VIEW definition | `CREATE VIEW v AS SELECT CASE WHEN is_member('hr') THEN salary ELSE NULL END ...` |
+
+### 5. Data Lineage
+
+| Feature | Detail |
+| --- | --- |
+| **What** | Automatic tracking of data flow: which tables/columns are read/written by which notebooks/jobs |
+| **Granularity** | Table-level and column-level |
+| **Where to see** | Catalog Explorer → Table → Lineage tab |
+| **Use case** | Impact analysis ("if I change this column, what downstream tables break?") |
+| **Exam tip** | Lineage is automatic — no configuration needed. Works for SQL, Python, Scala, R |
+
+### 6. Delta Sharing
+
+| Concept | Detail |
+| --- | --- |
+| **What** | Open protocol for secure cross-organization data sharing |
+| **Types** | Open sharing (any client, token-based) and Databricks-to-Databricks (UC-level) |
+| **Share** | A named container of tables you want to share: `CREATE SHARE my_share` |
+| **Recipient** | Who you share with: `CREATE RECIPIENT partner_corp` |
+| **Grant** | `GRANT SELECT ON SHARE my_share TO RECIPIENT partner_corp` |
+| **Add tables** | `ALTER SHARE my_share ADD TABLE catalog.schema.table` |
+| **Consumer** | Creates a catalog from the share: `CREATE CATALOG partner_data USING SHARE provider.share_name` |
+| **Exam tip** | Data is NOT copied — consumers query it in place. Provider controls access |
+
+ 
+## Data Engineering — ETL, Pipelines, Auto Loader & SDP
+
+---
+
+### 1. Auto Loader (cloudFiles)
+
+| Aspect | Detail |
+| --- | --- |
+| **What** | Incrementally and efficiently processes new files as they arrive in cloud storage |
+| **How** | Uses file notification (event-based) or directory listing to detect new files |
+| **Format** | `spark.readStream.format('cloudFiles')` |
+| **Key option** | `.option('cloudFiles.format', 'json')` — supports JSON, CSV, Parquet, Avro, ORC, text, binary |
+| **Schema inference** | Automatic with `cloudFiles.inferColumnTypes = true` |
+| **Schema evolution** | `cloudFiles.schemaEvolutionMode = addNewColumns` — auto-adds new columns |
+| **Rescue column** | `_rescued_data` — captures data that doesn't match the schema instead of failing |
+| **Checkpoint** | Tracks which files have been processed — exactly-once semantics |
+
+**Two modes:**
+
+| Mode | How | When to Use |
+| --- | --- | --- |
+| **Directory Listing** | Lists the directory periodically | < 10K files/day, simpler setup |
+| **File Notification** | Cloud events (Azure Event Grid, AWS SNS/SQS) | > 10K files/day, lower latency |
+
+**Exam-critical pattern:**
+```python
+df = (spark.readStream
+  .format('cloudFiles')
+  .option('cloudFiles.format', 'json')
+  .option('cloudFiles.inferColumnTypes', 'true')
+  .option('cloudFiles.schemaLocation', '/path/to/schema')
+  .load('/path/to/source/')
+)
+df.writeStream.option('checkpointLocation', '/path/to/checkpoint').table('bronze.events')
+```
+
+### 2. Spark Declarative Pipelines (SDP, formerly DLT)
+
+| Concept | Detail | Exam Tip |
+| --- | --- | --- |
+| **What** | Declarative ETL framework — you define WHAT, Spark handles HOW | You write `CREATE STREAMING TABLE` or `CREATE MATERIALIZED VIEW` |
+| **Streaming Table** | Append-only table fed by a streaming source | Use for raw/bronze data, CDC |
+| **Materialized View** | Auto-refreshed query result | Use for aggregations, gold layer |
+| **Expectations** | Data quality constraints with actions | `CONSTRAINT valid_id EXPECT (id IS NOT NULL) ON VIOLATION DROP ROW` |
+| **Pipeline modes** | Triggered (batch) or Continuous (streaming) | Triggered for cost savings; Continuous for low latency |
+| **Development vs Production** | Dev mode = reuses cluster, fast iteration; Prod mode = new cluster per run | Always use Production for scheduled jobs |
+
+**Expectations actions:**
+
+| Action | Behavior | When to Use |
+| --- | --- | --- |
+| `ON VIOLATION WARN` | Logs the violation, keeps the row | Monitoring — see how many bad records |
+| `ON VIOLATION DROP ROW` | Silently drops the row | Filter out bad data |
+| `ON VIOLATION FAIL UPDATE` | Fails the entire pipeline | Critical data — no bad records allowed |
+
+### 3. Structured Streaming Concepts
+
+| Concept | Detail | Exam Tip |
+| --- | --- | --- |
+| **Trigger** | How often to process: `availableNow` (all pending, then stop), `processingTime` (interval), continuous | `availableNow` = batch-like but incremental |
+| **Checkpoint** | Stores progress (which files/offsets processed) | Required for exactly-once; cannot change query between restarts without resetting |
+| **Watermark** | Threshold for late data: `withWatermark('event_time', '10 minutes')` | Data arriving after watermark is dropped |
+| **Output modes** | Append (new rows only), Complete (full result), Update (changed rows) | Append is most common; Complete for aggregations |
+
+### 4. Medallion Architecture Exam Reference
+
+| Layer | Purpose | Table Type | Data Quality | Consumers |
+| --- | --- | --- | --- | --- |
+| **Bronze** | Raw ingestion, append-only | Streaming Table | Minimal — schema enforcement only | Silver layer |
+| **Silver** | Cleaned, conformed, deduplicated | Streaming Table or MV | High — expectations, null handling, type casting | Gold layer, data science |
+| **Gold** | Business-ready aggregations | Materialized View | Highest — pre-aggregated, validated | Dashboards, reports, APIs |
+
+### 5. COPY INTO vs Auto Loader
+
+| Aspect | COPY INTO | Auto Loader |
+| --- | --- | --- |
+| **Type** | SQL command (batch) | Streaming source |
+| **Idempotent** | Yes — tracks loaded files | Yes — via checkpoint |
+| **Scale** | Millions of files (slower at very high volume) | Billions of files (file notification scales better) |
+| **Schema evolution** | Manual | Automatic with rescue column |
+| **Use case** | One-time loads, simple ETL | Production incremental ingestion |
+| **Exam tip** | Good for ad-hoc; Auto Loader for production pipelines |
+
+ 
+## Databricks SQL & Warehouses
+
+---
+
+### 1. SQL Warehouse Types
+
+| Type | Startup | Scaling | Best For | Exam Tip |
+| --- | --- | --- | --- | --- |
+| **Serverless** | Seconds | Instant auto-scale | Most SQL workloads | Recommended default — no infra to manage |
+| **Pro** | Minutes | Auto-scale (slower) | Advanced SQL features needed | Has Photon, serverless-like features |
+| **Classic** | Minutes | Auto-scale (slower) | Legacy/cost-sensitive | Being deprecated in favor of Serverless |
+
+### 2. Warehouse Sizing
+
+| Size | Clusters (min) | Concurrent Queries | Monthly Cost (approx) |
+| --- | --- | --- | --- |
+| 2X-Small | 1 | Low | Lowest |
+| X-Small | 1 | Low-Medium | Low |
+| Small | 1 | Medium | Medium |
+| Medium | 1 | Medium-High | High |
+| Large | 1 | High | Higher |
+| X-Large+ | 1+ | Very High | Highest |
+
+**Scaling = adding more clusters** (not bigger clusters). Each cluster handles a set of concurrent queries. `Max clusters = 2` means up to 2 identical clusters for double throughput.
+
+### 3. Query Execution Features
+
+| Feature | What It Does | Exam Tip |
+| --- | --- | --- |
+| **Photon** | C++ vectorized engine — 2-8x faster for SQL | Enabled by default on SQL Warehouses |
+| **Result Caching** | Identical queries return cached results instantly | Cache invalidated when underlying data changes |
+| **Adaptive Query Execution (AQE)** | Optimizes plan at runtime based on actual data | Auto-coalesces partitions, handles skew |
+| **Predictive I/O** | ML model predicts which files to read | Reduces unnecessary file scans |
+| **Query Profile** | Visual DAG showing operators, time, rows, spill | Primary debugging tool for slow queries |
+
+### 4. SQL Objects You Can Create
+
+| Object | Syntax | Persisted? | Exam Tip |
+| --- | --- | --- | --- |
+| **Table** | `CREATE TABLE t (...)` | Yes — data + metadata | Default: managed Delta table |
+| **External Table** | `CREATE TABLE t (...) LOCATION 'path'` | Metadata only — data at location | DROP removes metadata only |
+| **View** | `CREATE VIEW v AS SELECT ...` | Metadata only — no data | Re-executes query each time |
+| **Materialized View** | `CREATE MATERIALIZED VIEW mv AS SELECT ...` | Yes — pre-computed result | Auto-refreshes; faster than views |
+| **Streaming Table** | `CREATE OR REFRESH STREAMING TABLE st AS SELECT ...` | Yes — incrementally updated | Append-only from streaming sources |
+| **Temporary View** | `CREATE TEMP VIEW tv AS SELECT ...` | Session only — gone after disconnect | Use for intermediate results |
+| **Function (SQL UDF)** | `CREATE FUNCTION f(x INT) RETURNS INT RETURN x * 2` | Yes — stored in UC | Reusable across queries |
+| **Volume** | `CREATE VOLUME v` | Yes — file container | Non-tabular file storage in UC |
+
+### 5. Key SQL Patterns for Exam
+
+| Pattern | Syntax | When |
+| --- | --- | --- |
+| **MERGE (Upsert)** | `MERGE INTO target USING source ON ... WHEN MATCHED THEN UPDATE WHEN NOT MATCHED THEN INSERT` | Incremental loads, SCD Type 1 |
+| **COPY INTO** | `COPY INTO table FROM 'path' FILEFORMAT = CSV` | One-time or periodic file ingestion |
+| **INSERT OVERWRITE** | `INSERT OVERWRITE table SELECT ...` | Replace all data (or partition) |
+| **CREATE OR REPLACE TABLE** | `CREATE OR REPLACE TABLE t AS SELECT ...` | Atomic table replacement |
+| **CTAS** | `CREATE TABLE t AS SELECT ...` | Create + populate in one step |
+| **DEEP CLONE** | `CREATE TABLE t DEEP CLONE source` | Full copy (data + metadata) |
+| **SHALLOW CLONE** | `CREATE TABLE t SHALLOW CLONE source` | Metadata-only copy (references same files) |
+
+### 6. Dashboards (Lakeview)
+
+| Feature | Detail |
+| --- | --- |
+| **What** | Native BI dashboards built from SQL queries |
+| **Types** | Bar, line, area, pie, scatter, heatmap, histogram, table, counter |
+| **Parameters** | Dynamic filters that apply across widgets: `:param_name` syntax |
+| **Refresh** | Manual or scheduled (e.g., every 1 hour) |
+| **Sharing** | Viewer/Editor/Owner permissions via workspace |
+| **Exam tip** | Dashboards run on SQL Warehouses — no cluster needed |
+ 
+## Lakeflow Jobs & Compute Types
+
+---
+
+### 1. Lakeflow Jobs (formerly Workflows)
+
+| Concept | Detail | Exam Tip |
+| --- | --- | --- |
+| **Job** | A scheduled execution of one or more tasks | Top-level orchestration unit |
+| **Task** | A single unit of work: notebook, SQL, Python script, SDP pipeline, JAR, dbt | Building block of a job |
+| **Task Dependencies** | Tasks can depend on other tasks — creates a DAG | Downstream tasks wait for upstream to succeed |
+| **Trigger types** | Manual, Scheduled (cron), File arrival, Continuous, Table update | Table update = run when a Delta table changes |
+| **Retry policy** | Per-task: max retries + retry on timeout | Use for transient failures (network, spot preemption) |
+| **Parameters** | Pass values from job to task or between tasks | `{{job.parameter_name}}` syntax |
+| **Notifications** | Email/webhook on start, success, failure | Best practice: always set failure notifications |
+
+### 2. Task Types
+
+| Task Type | What It Runs | Use Case |
+| --- | --- | --- |
+| **Notebook** | Databricks notebook (Python/SQL/Scala/R) | Most common — ETL, ML, analysis |
+| **SQL** | SQL query or dashboard refresh | Scheduled queries, report refresh |
+| **Python Script** | .py file from workspace or Git | Lightweight Python jobs |
+| **SDP Pipeline** | Spark Declarative Pipeline | Managed ETL with quality expectations |
+| **JAR** | Java/Scala JAR file | Legacy Spark jobs |
+| **dbt** | dbt project | dbt SQL transformations |
+| **If/else condition** | Conditional branching based on task results | "Run task B only if task A output > 100" |
+| **For each** | Loop over a list, running subtasks per item | Process multiple files/tables in parallel |
+
+### 3. Compute Types — Complete Comparison
+
+| Aspect | SQL Warehouse (Serverless) | All-Purpose Cluster | Job Cluster | Serverless Compute |
+| --- | --- | --- | --- | --- |
+| **Languages** | SQL only | Python, SQL, Scala, R | Python, SQL, Scala, R | Python, SQL |
+| **Startup** | Seconds | 5-10 minutes | 5-10 minutes | Seconds |
+| **Lifecycle** | Auto-stop (configurable) | Manual or auto-stop | Created per job run, terminated after | Auto-managed |
+| **Shared by** | Multiple users/queries | Multiple users (interactive) | Single job run only | Single notebook/job |
+| **Photon** | Always on | Optional (enable at cluster creation) | Optional | Always on |
+| **Cost model** | DBU/hr while running | DBU/hr while cluster is up | DBU/hr while job runs | DBU/hr while running |
+| **Scaling** | Auto (add warehouse clusters) | Auto (add worker nodes) | Fixed or auto | Auto |
+| **Best for** | SQL analytics, dashboards, BI | Interactive development, ML experimentation | Production ETL, scheduled jobs | Notebooks (Python/SQL) |
+| **Exam tip** | Default choice for SQL workloads | Most expensive (stays up) | Most cost-effective for batch | Newest option — no cluster management |
+
+### 4. Cluster Configuration Exam Points
+
+| Setting | What It Does | Exam Tip |
+| --- | --- | --- |
+| **Spot/Preemptible instances** | Use discounted cloud VMs (can be reclaimed) | Use for workers (not driver) — saves 30-70% |
+| **Auto-scaling** | Add/remove workers based on load | Set min/max workers; good for variable workloads |
+| **Auto-termination** | Shut down after idle period | Always enable — prevents forgotten clusters |
+| **Cluster policies** | Admin-defined rules limiting cluster configs | Enforce cost controls: max workers, instance types, auto-stop |
+| **Init scripts** | Shell scripts that run on cluster startup | Install custom libraries, configure environments |
+| **Spark config** | Key-value Spark settings | `spark.sql.shuffle.partitions`, `spark.sql.autoBroadcastJoinThreshold` |
+| **Instance pools** | Pre-warmed VMs ready to attach | Reduces cluster startup time to \~2 minutes |
+
+### 5. When to Use Which Compute
+
+| Scenario | Best Compute | Why |
+| --- | --- | --- |
+| Analyst running ad-hoc SQL | Serverless SQL Warehouse | Instant start, pay-per-query, SQL-optimized |
+| Dashboard serving 100 users | Serverless SQL Warehouse (Medium+) | Auto-scales with concurrent users |
+| Data engineer developing in notebook | Serverless Compute or All-Purpose | Interactive, supports Python |
+| Nightly ETL pipeline | Job Cluster | Ephemeral — created and destroyed per run |
+| ML model training (GPU) | All-Purpose with ML Runtime | Needs GPU + ML libraries |
+| Streaming pipeline (24/7) | Job Cluster (always-on) | Continuous, dedicated resources |
+| Quick one-off query | Serverless SQL Warehouse | Starts in seconds |
+
+ 
+## MLflow & Machine Learning on Databricks
+
+---
+
+### 1. MLflow Components
+
+| Component | What It Does | Key APIs |
+| --- | --- | --- |
+| **Tracking** | Logs parameters, metrics, artifacts per experiment run | `mlflow.log_param()`, `mlflow.log_metric()`, `mlflow.log_artifact()` |
+| **Models** | Packages models in a standard format with dependencies | `mlflow.sklearn.log_model()`, `mlflow.pyfunc.log_model()` |
+| **Model Registry (UC)** | Version control for models in Unity Catalog | `mlflow.register_model()`, model stages (None → Staging → Production) |
+| **Model Serving** | Deploy models as REST API endpoints | Real-time inference, auto-scaling |
+| **Evaluate** | Automated evaluation for GenAI and ML models | `mlflow.evaluate()` with built-in scorers |
+
+### 2. Experiment Tracking Pattern
+
+```python
+import mlflow
+
+mlflow.set_experiment('/Users/user@example.com/my-experiment')
+
+with mlflow.start_run():
+    mlflow.log_param('learning_rate', 0.01)
+    mlflow.log_param('max_depth', 5)
+    # ... train model ...
+    mlflow.log_metric('rmse', 0.85)
+    mlflow.log_metric('r2', 0.92)
+    mlflow.sklearn.log_model(model, 'model')
+```
+
+### 3. Model Registry in Unity Catalog
+
+| Concept | Detail | Exam Tip |
+| --- | --- | --- |
+| **Register** | `mlflow.register_model('runs:/run_id/model', 'catalog.schema.model_name')` | Model stored in UC with governance |
+| **Versions** | Each registration creates a new version (v1, v2, v3...) | Immutable — can't modify, only add new versions |
+| **Aliases** | Named pointers to versions: "Champion", "Challenger" | Use aliases instead of version numbers in production |
+| **Lineage** | Automatic — which table trained which model version | Visible in UC lineage graph |
+| **Access Control** | UC permissions: GRANT EXECUTE on model | Same governance as tables |
+
+### 4. Feature Store
+
+| Concept | Detail |
+| --- | --- |
+| **What** | Centralized repository of reusable ML features (stored as Delta tables) |
+| **Why** | Consistency between training and serving; feature reuse across models |
+| **Create** | `fe.create_table()` with primary key + timestamp key |
+| **Lookup** | `FeatureLookup` — joins features by key at training and serving time |
+| **Point-in-time** | Prevents data leakage by joining on the correct historical value |
+| **Serving** | Features automatically looked up at inference time |
+
+ 
+## New Features (2024–2026) — Exam Hot Topics
+
+---
+
+### 1. Feature Reference Table
+
+| Feature | Year | Category | What / Why | Key Detail |
+| --- | --- | --- | --- | --- |
+| **Liquid Clustering** | 2024 | Storage | Replaces partitioning + Z-ORDER with adaptive Hilbert-curve file layout | `CREATE TABLE t CLUSTER BY (col1, col2)` — can be changed with ALTER TABLE |
+| **Deletion Vectors** | 2024 | Storage | Soft-delete rows without rewriting Parquet files | 2-10x faster MERGE/DELETE/UPDATE |
+| **Predictive I/O** | 2024 | Query | ML model predicts which files to skip during scans | Automatic on Photon — no configuration |
+| **Serverless Compute** | 2024 | Compute | No-cluster Python/SQL notebooks — starts in seconds | Replaces all-purpose clusters for notebooks |
+| **AI Functions** | 2024 | AI/SQL | Call LLMs from SQL: `ai_query()`, `ai_generate_text()`, `ai_classify()`, `ai_extract()` | `SELECT ai_classify(review, ARRAY('positive','negative')) FROM reviews` |
+| **Genie Data Rooms** | 2024 | AI/BI | Natural language to SQL — self-service analytics for business users | Define tables + instructions → users ask questions in English |
+| **Lakeflow Connect** | 2025 | Ingestion | Managed connectors for SaaS sources (Salesforce, HubSpot, ServiceNow, etc.) | No-code ingestion setup in UI |
+| **Materialized Views in DBSQL** | 2024 | SQL | Pre-computed, auto-refreshed query results | `CREATE MATERIALIZED VIEW mv AS SELECT ...` — refresh on schedule or trigger |
+| **Row/Column Security** | 2024 | Governance | Row filters and column masks in Unity Catalog | Applied at the table level — all queries automatically filtered/masked |
+| **Volumes** | 2024 | Storage | UC-governed file storage (images, CSVs, JARs, model artifacts) | `CREATE VOLUME v` — files accessed via `/Volumes/catalog/schema/volume/` |
+| **Model Serving v2** | 2025 | ML | Serverless model endpoints with auto-scaling and GPU | Pay-per-request, Foundation Model APIs |
+| **Delta Sharing (Open)** | 2024 | Sharing | Share Delta tables with any client (Pandas, Spark, Tableau) outside Databricks | Open protocol — recipients don't need Databricks |
+| **Vector Search** | 2025 | AI | Managed vector database for RAG and similarity search | Create index → query with natural language |
+| **Compound AI Systems** | 2025 | AI | Build multi-step AI agents using tools, retrieval, functions | Agent framework with MLflow tracing |
+| **Lakebase** | 2026 | Database | Managed Postgres on Databricks — operational/transactional workloads | Auto-scaling, integrated with UC |
+| **ABAC Policies** | 2025 | Governance | Attribute-based access control — tag-driven row/column filtering | Tag columns with sensitivity levels → policies auto-apply |
+
+### 2. AI Functions in SQL — Quick Reference
+
+| Function | What It Does | Example |
+| --- | --- | --- |
+| `ai_query()` | Send any prompt to an LLM | `SELECT ai_query('databricks-meta-llama-3-1-70b', 'Summarize: ' \|\| text)` |
+| `ai_classify()` | Classify text into categories | `SELECT ai_classify(review, ARRAY('positive','negative','neutral'))` |
+| `ai_extract()` | Extract structured fields from text | `SELECT ai_extract(email, ARRAY('name','company','phone'))` |
+| `ai_fix_grammar()` | Fix grammar in text | `SELECT ai_fix_grammar(comment)` |
+| `ai_gen()` | Generate text from prompt | `SELECT ai_gen('Write a product description for ' \|\| product_name)` |
+| `ai_similarity()` | Semantic similarity score between texts | `SELECT ai_similarity(query, document)` |
+| `ai_translate()` | Translate text | `SELECT ai_translate(text, 'French')` |
+| `ai_forecast()` | Time series forecasting | `SELECT * FROM ai_forecast(TABLE sales, horizon => 30)` |
+| `ai_parse_document()` | Extract text from PDFs/images | `SELECT ai_parse_document(content, 'pdf')` |
+
+### 3. Databricks Assistant / Genie
+
+| Feature | Detail |
+| --- | --- |
+| **Databricks Assistant** | AI coding assistant in notebooks — generates code, explains errors, writes SQL |
+| **Genie Data Rooms** | Self-service BI — business users ask questions in natural language, get SQL results |
+| **Setup** | Define tables, add instructions/guardrails, invite users |
+| **How it works** | Genie generates SQL from the question, runs it on a SQL warehouse, returns results |
+| **Governance** | Respects Unity Catalog permissions — users only see data they're allowed to |
+
+ 
+## Databricks Professional Certification — Quick Reference & Exam Tips
+
+---
+
+### 1. Exam Structure
+
+| Aspect | Data Engineer Associate | Data Engineer Professional |
+| --- | --- | --- |
+| **Questions** | 45 | 60 |
+| **Duration** | 90 minutes | 120 minutes |
+| **Passing** | 70% | 70% |
+| **Format** | Multiple choice, multiple select | Multiple choice, multiple select |
+| **Focus** | Breadth — all Databricks components | Depth — production patterns, optimization, troubleshooting |
+
+### 2. High-Weight Exam Topics
+
+| Topic | Weight | Must-Know Concepts |
+| --- | --- | --- |
+| **Delta Lake** | 20-25% | Time Travel, MERGE, OPTIMIZE, VACUUM, Deletion Vectors, CDF, Liquid Clustering |
+| **ELT with Spark SQL** | 20-25% | CTEs, CTAS, COPY INTO, MERGE patterns, higher-order functions, JSON handling |
+| **Incremental Processing** | 15-20% | Auto Loader, Structured Streaming, `trigger(availableNow=True)`, checkpoints, watermarks |
+| **Pipeline Design** | 15% | Medallion architecture, SDP expectations, streaming vs batch |
+| **Unity Catalog** | 10-15% | GRANT/REVOKE, 3-level namespace, managed vs external, row/column security |
+| **Orchestration** | 10% | Lakeflow Jobs, task dependencies, retry policies, notifications |
+| **Production Patterns** | 10% | Monitoring, error handling, idempotent writes, CI/CD |
+
+### 3. Must-Know SQL Commands (Top 30)
+
+| # | Command | What & When |
+| --- | --- | --- |
+| 1 | `CREATE TABLE t USING DELTA` | Create managed Delta table |
+| 2 | `CREATE TABLE t LOCATION 'path'` | Create external table |
+| 3 | `CREATE OR REPLACE TABLE t AS SELECT ...` | Atomic table replacement (CRAS) |
+| 4 | `CREATE TABLE t CLUSTER BY (col)` | Liquid Clustering |
+| 5 | `ALTER TABLE t CLUSTER BY (new_col)` | Change clustering columns (liquid only) |
+| 6 | `MERGE INTO target USING source ON ...` | Upsert — exam favourite |
+| 7 | `COPY INTO table FROM 'path'` | Idempotent file ingestion |
+| 8 | `INSERT OVERWRITE table SELECT ...` | Replace data (or partition) |
+| 9 | `OPTIMIZE table` | Compact small files |
+| 10 | `OPTIMIZE table ZORDER BY (col)` | Compact + co-locate by column |
+| 11 | `VACUUM table RETAIN 168 HOURS` | Delete unreferenced old files |
+| 12 | `DESCRIBE DETAIL table` | File count, size, properties |
+| 13 | `DESCRIBE HISTORY table` | Commit log with operations |
+| 14 | `RESTORE TABLE t TO VERSION AS OF n` | Undo bad writes |
+| 15 | `SELECT * FROM t VERSION AS OF n` | Time travel query |
+| 16 | `SELECT * FROM t TIMESTAMP AS OF '...'` | Time travel by timestamp |
+| 17 | `SELECT * FROM table_changes('t', 2)` | Read Change Data Feed |
+| 18 | `ALTER TABLE t SET TBLPROPERTIES (...)` | Enable CDF, deletion vectors, etc. |
+| 19 | `SHOW TBLPROPERTIES table` | View all table properties |
+| 20 | `GRANT SELECT ON TABLE t TO user` | Unity Catalog permission |
+| 21 | `REVOKE SELECT ON TABLE t FROM user` | Remove permission |
+| 22 | `SHOW GRANTS ON TABLE t` | List permissions |
+| 23 | `CREATE SCHEMA catalog.schema` | Create a schema in UC |
+| 24 | `CREATE VIEW v AS SELECT ...` | Virtual view |
+| 25 | `CREATE MATERIALIZED VIEW mv AS ...` | Pre-computed view |
+| 26 | `CREATE STREAMING TABLE st AS ...` | Incremental streaming table |
+| 27 | `CREATE SHARE s` | Delta Sharing — create share |
+| 28 | `CREATE VOLUME v` | Unity Catalog volume |
+| 29 | `ANALYZE TABLE t COMPUTE STATISTICS` | Update optimizer stats |
+| 30 | `EXPLAIN EXTENDED query` | Show full query plan |
+
+### 4. Common Exam Traps
+
+| Trap | Correct Answer |
+| --- | --- |
+| "VACUUM deletes the transaction log" | NO — VACUUM only deletes unreferenced DATA files. The log is separate. |
+| "OPTIMIZE deletes old files" | NO — OPTIMIZE creates new compacted files. Old files remain until VACUUM. |
+| "Shallow clone copies data" | NO — Shallow clone only copies metadata. Data files are referenced, not duplicated. |
+| "DROP external table deletes data" | NO — DROP external table removes metadata only. Data files remain at the LOCATION. |
+| "Streaming tables support UPDATE/DELETE" | NO — Streaming tables are append-only. Use materialized views for full DML. |
+| "VACUUM with 0 hours is safe" | NO — VACUUM RETAIN 0 HOURS breaks concurrent readers. Minimum safe retention = 7 days (168 hours). |
+| "Auto Loader is a SQL command" | NO — Auto Loader uses `spark.readStream.format('cloudFiles')`. COPY INTO is the SQL alternative. |
+| "Materialized Views store a query, not data" | NO — MVs store pre-computed data (unlike standard views). They are refreshed, not re-executed. |
+| "Time Travel works forever" | NO — Limited by VACUUM retention (default 7 days for data files). After VACUUM, old versions are gone. |
+| "All clusters have Photon" | NO — Photon is on SQL Warehouses (always) and Photon-enabled clusters (opt-in). |
+
+### 5. Study Priority Matrix
+
+| Priority | Topic | Study Method |
+| --- | --- | --- |
+| **Critical** | MERGE syntax and patterns | Write 10 MERGE queries by hand |
+| **Critical** | Auto Loader vs COPY INTO | Know when to use each, exact syntax |
+| **Critical** | OPTIMIZE + VACUUM lifecycle | Understand what each does and doesn't do |
+| **Critical** | Unity Catalog GRANT/REVOKE | Practice 3-level namespace + permissions |
+| **High** | Structured Streaming triggers | Know `availableNow`, `processingTime`, `continuous` |
+| **High** | SDP expectations syntax | Know all 3 violation actions |
+| **High** | Time Travel (VERSION/TIMESTAMP) | Write queries + RESTORE |
+| **High** | Delta table properties | CDF, deletion vectors, retention settings |
+| **Medium** | Medallion architecture design | Know bronze/silver/gold purpose + table types |
+| **Medium** | Job orchestration | Task dependencies, retries, triggers |
+| **Medium** | Delta Sharing | CREATE SHARE/RECIPIENT, GRANT |
+| **Lower** | MLflow basics | log_param, log_metric, register_model |
+| **Lower** | Cluster configuration | Spot instances, auto-scaling, pools |
