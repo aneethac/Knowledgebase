@@ -1,0 +1,409 @@
+%md
+## Principal Data Engineer Interview — Real-World Problems & Solutions
+
+---
+
+### PART A: Production Failures & Debugging
+
+---
+
+#### Problem 1: Silent Data Loss in a Medallion Pipeline
+
+**Scenario you describe:**
+> "Our silver layer table was showing 15% fewer records than bronze for the same day. No errors in the job logs — the pipeline reported SUCCESS every night. The business noticed revenue numbers were off after 3 weeks."
+
+**Root Cause:**
+A schema change upstream added a new `currency_code` column with `NULL` values for the first 2 weeks. The bronze-to-silver transformation had an `INNER JOIN` to a currency reference table on `currency_code`. NULLs don't match in inner joins — so 15% of rows silently dropped.
+
+**How you debugged it:**
+
+| Step | Action | Tool/Technique |
+| --- | --- | --- |
+| 1 | Compared bronze vs silver row counts by day using Delta Time Travel | `SELECT count(*) FROM bronze.orders VERSION AS OF 42` |
+| 2 | Found the drop started on a specific date — checked `DESCRIBE HISTORY bronze.orders` | Delta transaction log showed a schema evolution merge on that date |
+| 3 | Profiled NULL rates per column on bronze | `SELECT count_if(currency_code IS NULL) / count(*) FROM bronze.orders` |
+| 4 | Identified the INNER JOIN as the filter | Changed to `LEFT JOIN` + COALESCE for default currency |
+| 5 | Backfilled silver from bronze using Time Travel | Delta kept all bronze versions — no data was actually lost |
+
+**What makes this principal-level:**
+- You built a **data quality monitoring framework** after this: row count reconciliation between layers with automated alerts
+- You introduced **schema evolution policies**: any new nullable column triggers a review before silver transformation changes
+- You added **expectations/assertions** at the silver layer: `CONSTRAINT valid_currency EXPECT (currency_code IS NOT NULL) ON VIOLATION DROP ROW` with logging
+
+---
+
+#### Problem 2: Job Succeeds But Takes 8 Hours Instead of 40 Minutes
+
+**Scenario you describe:**
+> "Our daily MERGE into a 2 TB fact table gradually degraded from 40 minutes to 8 hours over 6 months. The query plan and data volume hadn't changed. No errors — just slow."
+
+**Root Cause:**
+The table had accumulated 180,000 small files (avg 2 MB each). The MERGE operation was opening every file to check for matches. The `OPTIMIZE` job had been accidentally disabled 6 months earlier when someone reconfigured the workflow.
+
+**How you debugged it:**
+
+| Step | Action | Finding |
+| --- | --- | --- |
+| 1 | `DESCRIBE DETAIL fact_table` | numFiles: 180,247 — avgFileSize: 2.1 MB (should be 128-256 MB) |
+| 2 | `DESCRIBE HISTORY fact_table` | No OPTIMIZE operations for 6 months |
+| 3 | Query Profile showed 95% time in scan | 180K file listing + opening overhead dominated |
+| 4 | Checked `SHOW TBLPROPERTIES fact_table` | `delta.autoOptimize.optimizeWrite = false` — someone had disabled it |
+| 5 | Ran `OPTIMIZE fact_table ZORDER BY (date_key, customer_id)` | Compacted to 8,200 files (~256 MB each) |
+| 6 | Next MERGE: 35 minutes | File listing went from 180K to 8.2K files |
+
+**What makes this principal-level:**
+- You implemented a **file health monitoring dashboard** that alerts when any table exceeds 50K files or avg file size drops below 32 MB
+- You designed an **OPTIMIZE scheduling framework**: tables classified by write pattern (append-heavy, merge-heavy, low-churn) with different OPTIMIZE frequencies
+- You added `OPTIMIZE` as a post-write step in the pipeline DAG rather than a separate job — so it can never be "accidentally" disabled independently
+
+---
+
+#### Problem 3: Concurrent Writes Causing ConcurrentAppendException
+
+**Scenario you describe:**
+> "Two teams were writing to the same gold table — one via a streaming job (append) and another via a nightly MERGE. Every few days the MERGE failed with `ConcurrentAppendException`. The streaming job was critical and couldn't be paused."
+
+**Root Cause:**
+Delta Lake's optimistic concurrency control detected that both operations modified overlapping file ranges. The MERGE was rewriting files that the streaming append had just written to.
+
+**Solution:**
+
+| Approach | Detail |
+| --- | --- |
+| **Partitioned isolation** | Restructured the table with `PARTITIONED BY (source_system)` — streaming writes to partition `source_system='realtime'`, MERGE only touches `source_system='batch'` |
+| **Write serialization** | For the overlap period, used Delta's `delta.isolationLevel = WriteSerializable` (less strict than Serializable) |
+| **Idempotent writes** | Made the streaming job idempotent using `foreachBatch` with MERGE instead of append — so retries are safe |
+| **Architecture change** | Long-term: separated into two tables + a UNION ALL view for consumers. Eliminated contention entirely |
+
+**What makes this principal-level:**
+- You understood Delta's **MVCC (multi-version concurrency control)** at the protocol level — conflict detection is file-level, not row-level
+- You evaluated multiple solutions and chose based on tradeoffs (partition isolation is simple but adds query complexity; separate tables are cleanest but require consumer changes)
+- You documented a **write contention playbook** for the team
+
+---
+
+#### Problem 4: OOM (Out of Memory) on a Join That Used to Work
+
+**Scenario you describe:**
+> "A daily report query that joined a 500M-row transaction table with a 'small' reference table started failing with OOM. Nothing in the query changed. The job had run fine for a year."
+
+**Root Cause:**
+The "small" reference table had grown from 8 MB to 15 MB over the year (new products added daily). Spark's broadcast threshold is 10 MB by default. When the table crossed 10 MB, Spark switched from **Broadcast Hash Join** (small table copied to all executors) to **Sort Merge Join** (both tables shuffled). The shuffle of the 500M-row table didn't fit in memory.
+
+**How you debugged it:**
+
+| Step | Action | Finding |
+| --- | --- | --- |
+| 1 | `EXPLAIN EXTENDED` on the failing query | Join strategy: SortMergeJoin (was BroadcastHashJoin last month) |
+| 2 | `DESCRIBE DETAIL reference_table` | sizeInBytes: 15.2 MB (crossed 10 MB threshold) |
+| 3 | Query Profile | 18 GB spill to disk on the sort phase of SMJ |
+| 4 | Added broadcast hint: `/*+ BROADCAST(ref) */` | Query succeeded in 3 minutes |
+| 5 | Long-term: `ANALYZE TABLE reference_table COMPUTE STATISTICS` | Ensured optimizer always has fresh stats |
+
+**What makes this principal-level:**
+- You didn't just add a hint — you built a **table growth monitoring alert** that flags when reference tables approach the broadcast threshold
+- You created a policy: all reference/dimension tables must have `ANALYZE TABLE` as a post-write step
+- You evaluated raising `spark.sql.autoBroadcastJoinThreshold` to 50 MB but rejected it because it would mask future issues with genuinely large tables
+
+---
+
+#### Problem 5: Data Skew Causing One Task to Run 100x Longer
+
+**Scenario you describe:**
+> "A GROUP BY aggregation on customer_id had 200 tasks finishing in 5 seconds each, but 1 task took 45 minutes. The job SLA was 10 minutes. Total data was only 50 GB."
+
+**Root Cause:**
+One `customer_id` (a B2B wholesale account) had 800M transactions while the median customer had 50. That single key landed in one partition, creating a **skewed partition** 1000x larger than the rest.
+
+**Solution:**
+
+| Technique | How It Works | When to Use |
+| --- | --- | --- |
+| **AQE Skew Join** | Spark detects the large partition and auto-splits it into sub-partitions | First thing to try — enabled by default on Databricks |
+| **Salting** | Append a random number (0-9) to the skewed key, aggregate in two stages: first by `(key, salt)`, then by `key` | When AQE isn't enough or for non-join skew |
+| **Isolate and union** | Process the skewed key separately with a broadcast join, UNION ALL with the rest | When one key dominates and needs special logic |
+| **Pre-aggregate** | Reduce the 800M rows for that customer to daily summaries before joining | Best long-term solution |
+
+**What makes this principal-level:**
+- You built a **skew detection query** that runs pre-flight before expensive jobs: `SELECT key, count(*) as cnt FROM table GROUP BY key HAVING cnt > 10 * (SELECT percentile(cnt, 0.5) FROM (SELECT count(*) cnt FROM table GROUP BY key))`
+- You designed the pipeline to handle skew architecturally (pre-aggregation at silver layer) rather than relying on runtime hints
+
+---
+
+#### Problem 6: Streaming Job Silently Stops Processing New Data
+
+**Scenario you describe:**
+> "Our Structured Streaming job showed as RUNNING in the Spark UI. No errors. But the watermark hadn't advanced in 6 hours — no new data was being processed. The source Kafka topic was actively receiving events."
+
+**Root Cause:**
+A bad record in Kafka had a timestamp of year 2099 (corrupted data). The watermark is computed as `max(event_time) - threshold`. With one record at 2099, the watermark jumped to 2099, and ALL subsequent records were considered "late" and dropped.
+
+**How you debugged it:**
+
+| Step | Action | Finding |
+| --- | --- | --- |
+| 1 | Streaming query progress | `watermark: 2099-03-15T00:00:00` — obviously wrong |
+| 2 | Queried the raw Kafka topic | Found a single record with `event_time = '2099-03-15'` |
+| 3 | Added pre-filter before watermark | `WHERE event_time BETWEEN '2020-01-01' AND current_timestamp() + INTERVAL 1 DAY` |
+| 4 | Restarted from last valid checkpoint after clearing state | Watermark reset to correct time |
+
+**What makes this principal-level:**
+- You implemented **data quality gates at the bronze layer**: timestamp range validation, schema conformance, dead-letter queue for bad records
+- You added watermark monitoring to the streaming dashboard — alert if watermark doesn't advance within 2x the expected interval
+- You designed the pipeline to be **replayable**: Kafka retention + Delta checkpointing means you can always reprocess from a known good state
+
+---
+
+### PART B: Architecture & Optimization Examples
+
+---
+
+#### Problem 7: Redesigning a Monolithic ETL into Medallion Architecture
+
+**Scenario you describe:**
+> "Inherited a 4,000-line SQL script that ran as a single job for 6 hours. It read from 15 source systems, applied 200+ business rules, and wrote to 8 reporting tables. Any failure meant re-running the entire 6-hour job. The business wanted 1-hour SLA."
+
+**Solution — Medallion with Dependency DAG:**
+
+```
+Bronze (raw ingestion)        Silver (cleaned/conformed)       Gold (business-ready)
+┌─────────────────┐          ┌────────────────────┐          ┌──────────────────┐
+│ 15 source tables │ ──CDC──▶ │ Deduplicated       │ ──JOIN──▶│ Revenue summary  │
+│ (append-only,    │          │ Type-cast          │          │ Customer 360     │
+│  schema-on-read) │          │ Null-handled       │          │ Product metrics  │
+│                  │          │ Partitioned by date│          │ (pre-aggregated) │
+└─────────────────┘          └────────────────────┘          └──────────────────┘
+     5 min each                   10 min each                    15 min each
+     Independent                  Depends on bronze              Depends on silver
+     Parallel                     Parallel within layer          Parallel within layer
+```
+
+| Design Decision | Why |
+| --- | --- |
+| **Bronze = append-only, raw** | Source of truth. Never loses data. Can replay from here. |
+| **Silver = cleaned, conformed** | Business rules applied once. Shared across gold tables. Failures here don't require re-ingestion. |
+| **Gold = pre-aggregated, denormalized** | Optimized for query speed. Materialized views where possible. |
+| **Each layer is a separate job task** | Failure in gold doesn't re-run bronze/silver. Retry is minutes, not hours. |
+| **Dependency DAG** | Bronze tasks run in parallel → silver waits for its bronze → gold waits for its silver |
+
+**Result:** 6-hour monolith → 45-minute DAG with per-task retry. SLA met.
+
+**What makes this principal-level:**
+- You didn't just split the SQL — you redesigned the **data model** so each layer is independently testable and replayable
+- You introduced **data contracts** between layers: silver guarantees non-null keys, valid dates, deduplication
+- You added **circuit breakers**: if bronze row count deviates >20% from yesterday, silver doesn't run — prevents bad data propagation
+
+---
+
+#### Problem 8: Migrating from Hive Partitioning to Liquid Clustering
+
+**Scenario you describe:**
+> "Our 10 TB events table was partitioned by `(year, month, day, hour)`. It had 850,000 partitions and 4.2 million files. Queries that didn't filter on date were extremely slow (full scan). OPTIMIZE took 12 hours. The metastore was buckling under partition metadata."
+
+**Solution:**
+
+| Phase | Action | Detail |
+| --- | --- | --- |
+| 1. Analysis | Profiled 90 days of query patterns | 60% filtered by date, 25% by `event_type`, 15% by `user_id` |
+| 2. New table | `CREATE TABLE events_v2 CLUSTER BY (event_date, event_type, user_id)` | Liquid clustering on the top 3 filter columns |
+| 3. Migration | `INSERT INTO events_v2 SELECT * FROM events_v1` | Ran in batches by month to avoid timeout |
+| 4. OPTIMIZE | `OPTIMIZE events_v2` | Compacted into \~1 GB files with Hilbert-curve layout |
+| 5. Cutover | Renamed tables: `ALTER TABLE events_v1 RENAME TO events_v1_archive` then `ALTER TABLE events_v2 RENAME TO events` |
+| 6. Validation | Compared query performance on 20 representative queries | Avg 3.2x faster, worst case (date-only filter) same, best case (multi-column filter) 8x faster |
+
+**Before vs After:**
+
+| Metric | Hive Partitioned | Liquid Clustered |
+| --- | --- | --- |
+| Partitions | 850,000 | 0 (no physical partitions) |
+| Files | 4,200,000 | 12,500 |
+| Avg file size | 2.5 MB | 850 MB |
+| OPTIMIZE time | 12 hours | 25 minutes |
+| Date-only query | 8 sec | 9 sec (comparable) |
+| Multi-column query | 180 sec (full scan) | 22 sec (clustering prunes files) |
+| Metastore overhead | High (850K partitions to list) | Minimal |
+
+**What makes this principal-level:**
+- You ran a **query pattern analysis** before choosing clustering columns — data-driven, not guesswork
+- You designed a **zero-downtime migration** with table rename + archive
+- You set up **ongoing OPTIMIZE scheduling** — liquid clustering improves with each OPTIMIZE as new data arrives
+
+---
+
+#### Problem 9: Cost Optimization — $180K/Month Cloud Bill to $45K
+
+**Scenario you describe:**
+> "The team was running everything on Large All-Purpose clusters that stayed up 24/7. 8 analysts sharing 3 clusters. Monthly DBU cost: $180K. CTO asked me to cut it by 60% without impacting productivity."
+
+**Solution — Compute Right-Sizing:**
+
+| Change | Before | After | Savings |
+| --- | --- | --- | --- |
+| **SQL workloads → Serverless SQL Warehouse** | Large all-purpose cluster 24/7 | Small serverless WH, auto-stops in 10 min | 70% (pay only when querying) |
+| **Nightly ETL → Job Clusters** | Ran on always-on cluster | Dedicated job cluster, terminates after completion | 60% (runs 2 hours, not 24) |
+| **Dev/test → X-Small clusters with auto-stop** | Large cluster for development | X-Small with 15-min auto-stop | 80% |
+| **Caching layer** | Every dashboard query hit raw tables | Materialized views for top 10 dashboards | 40% fewer queries |
+| **Spot instances for non-critical** | All on-demand | Job clusters use spot/preemptible workers | 30% per cluster |
+
+**Architecture:**
+
+| Workload Type | Compute | Size | Auto-Stop | Who |
+| --- | --- | --- | --- | --- |
+| Ad-hoc SQL | Serverless SQL WH | Small (auto-scales) | 10 min | Analysts |
+| Dashboard serving | Serverless SQL WH | Medium (shared) | 20 min | BI consumers |
+| ETL pipelines | Job Clusters | Medium + spot workers | On completion | Scheduled |
+| ML training | All-Purpose (ML Runtime) | GPU-enabled | 30 min | Data scientists |
+| Dev notebooks | Serverless SQL WH | Small | 10 min | Engineers |
+
+**What makes this principal-level:**
+- You didn't just downsize — you **re-architected compute allocation** by workload type
+- You built a **cost attribution dashboard** by team/user using `system.billing.usage` — made costs visible
+- You introduced **tagging policies**: every cluster must have `team`, `project`, `environment` tags for chargeback
+- You negotiated **reserved capacity** for the base workload (further 20% discount on predictable portion)
+
+---
+
+#### Problem 10: Implementing Incremental Processing with MERGE
+
+**Scenario you describe:**
+> "The team was doing `INSERT OVERWRITE` of the entire 500 GB table every night — recomputing all history. It took 4 hours and cost $800/run. Only 0.1% of rows changed daily."
+
+**Solution:**
+
+```sql
+-- Before: Full rewrite (4 hours, $800)
+INSERT OVERWRITE TABLE gold.customers
+SELECT * FROM silver.customers;
+
+-- After: Incremental MERGE (8 minutes, $12)
+MERGE INTO gold.customers AS target
+USING (
+  SELECT * FROM silver.customers
+  WHERE _commit_timestamp > (SELECT max(last_updated) FROM gold.customers_watermark)
+) AS source
+ON target.customer_id = source.customer_id
+WHEN MATCHED AND source.updated_at > target.updated_at
+  THEN UPDATE SET *
+WHEN NOT MATCHED
+  THEN INSERT *;
+```
+
+| Aspect | INSERT OVERWRITE | MERGE (Incremental) |
+| --- | --- | --- |
+| Rows processed | 500M (all) | 500K (changed only) |
+| Duration | 4 hours | 8 minutes |
+| Cost per run | $800 | $12 |
+| Monthly cost | $24,000 | $360 |
+| Deletion vectors | Not applicable | Enabled — avoids full file rewrite for updates |
+
+**Additional optimizations applied:**
+
+| Technique | Detail |
+| --- | --- |
+| **Deletion Vectors** | `ALTER TABLE gold.customers SET TBLPROPERTIES ('delta.enableDeletionVectors' = true)` — MERGE updates mark rows as deleted instead of rewriting entire files |
+| **Change Data Feed (CDF)** | Enabled on silver table — `ALTER TABLE silver.customers SET TBLPROPERTIES ('delta.enableChangeDataFeed' = true)` — so MERGE source reads only changed rows |
+| **Watermark table** | Tracks last processed `_commit_version` per table — enables exactly-once incremental processing |
+| **OPTIMIZE post-MERGE** | Scheduled weekly OPTIMIZE to compact the small files created by incremental MERGEs |
+
+**What makes this principal-level:**
+- You designed an **incremental processing framework** reusable across 40+ tables, not a one-off fix
+- You combined CDF + MERGE + deletion vectors — three Delta features working together
+- You handled edge cases: late-arriving data, schema evolution, idempotent reruns
+
+---
+
+#### Problem 11: External Tables for Multi-Cloud Compliance
+
+**Scenario you describe:**
+> "Regulatory requirement: raw PII data must remain in the EU region (Azure West Europe). But our analytics platform is in Azure Australia East. The compliance team mandated data sovereignty — PII cannot be copied to the AU region."
+
+**Solution — External Tables + Views:**
+
+| Layer | Location | Table Type | Detail |
+| --- | --- | --- | --- |
+| **Raw PII** | Azure West Europe (ADLS Gen2) | External Table | `CREATE TABLE eu_raw.customers LOCATION 'abfss://eu-container@eustorage.dfs.core.windows.net/customers'` |
+| **Anonymized/aggregated** | Azure Australia East | Managed Table | PII stripped or hashed — safe to copy |
+| **Cross-region view** | AU workspace | View over external table | `CREATE VIEW analytics.customers_safe AS SELECT hash(email) as email_hash, city, age_band FROM eu_raw.customers` |
+| **Governance** | Unity Catalog | Column masks + row filters | `ALTER TABLE eu_raw.customers ALTER COLUMN email SET MASK mask_pii` |
+
+**Tradeoffs communicated to stakeholders:**
+
+| Aspect | External Table | Managed Table |
+| --- | --- | --- |
+| Query latency | Higher (cross-region network) | Lower (co-located) |
+| Data sovereignty | Full control — data stays in EU | Data in Databricks-managed storage |
+| DROP TABLE risk | Safe — only metadata deleted | Data deleted |
+| Optimization | Must manually run OPTIMIZE on the external path | Auto-optimize built in |
+
+**What makes this principal-level:**
+- You designed a **hybrid architecture** that satisfies compliance without sacrificing analytics capability
+- You used Unity Catalog **column masking and row-level security** to enforce PII protection at the platform level, not application level
+- You documented the **latency tradeoff** (cross-region reads are 2-5x slower) and mitigated it with aggressive caching and pre-aggregation
+
+---
+
+#### Problem 12: Implementing a Self-Healing Pipeline
+
+**Scenario you describe:**
+> "We had 120 ETL jobs. On average, 5-8 failed every night due to transient issues (network blips, spot instance preemption, source system timeouts). An on-call engineer spent 2 hours every morning manually retrying them. I eliminated the on-call toil entirely."
+
+**Solution — Multi-Layer Resilience:**
+
+| Layer | Mechanism | Handles |
+| --- | --- | --- |
+| **Task-level retry** | Job config: `max_retries: 3` with exponential backoff | Transient network errors, spot preemption |
+| **Checkpoint recovery** | Delta + Structured Streaming checkpoints | Job restarts from last committed micro-batch, not from scratch |
+| **Idempotent writes** | All writes use MERGE or `CREATE OR REPLACE` — never raw INSERT | Safe to retry without duplicates |
+| **Circuit breaker** | Pre-flight check: if source row count < 50% of yesterday's, SKIP and alert | Prevents loading bad/partial source data |
+| **Dead letter queue** | Bad records written to `_quarantine` table, not dropped | No silent data loss |
+| **Dependency-aware retry** | If bronze fails, silver and gold for that entity don't attempt — retry bronze first | Prevents cascading failures |
+| **Automated alerting** | After 3 retries fail, PagerDuty alert with error context + runbook link | Human intervention only when automation can't fix it |
+
+**Result:**
+
+| Metric | Before | After |
+| --- | --- | --- |
+| Daily manual interventions | 5-8 | 0-1 |
+| On-call morning time | 2 hours | 10 minutes (review dashboard) |
+| Data freshness SLA misses | 3-4/month | 0-1/month |
+| Mean time to recovery | 45 min (human) | 3 min (automatic retry) |
+
+**What makes this principal-level:**
+- You designed a **framework**, not a one-off fix — every new pipeline inherits resilience patterns
+- You quantified the impact in **engineering hours saved** and **SLA improvement** — speaks to leadership
+- You used Databricks features together: Lakeflow Jobs retries + Delta checkpointing + MERGE idempotency + Unity Catalog lineage for dependency tracking
+
+---
+
+### PART C: New Features You Should Mention in Interviews
+
+| Feature | What It Is | Interview-Ready Example |
+| --- | --- | --- |
+| **Liquid Clustering** | Replaces partitioning + Z-ORDER with adaptive file layout | "Migrated a 10 TB table from 850K Hive partitions to Liquid Clustering — 3x faster queries, 90% fewer files" |
+| **Deletion Vectors** | Soft-delete rows without rewriting entire Parquet files | "Reduced MERGE operation time by 4x on a 2 TB table — updates mark rows as deleted instead of rewriting 1 GB files" |
+| **Predictive I/O** | ML model predicts which files to read based on query patterns | "Enabled on our largest fact table — scan time dropped 40% because Spark learned our common filter patterns" |
+| **Serverless SQL Warehouses** | Instant-start, auto-scaling SQL compute | "Migrated 8 analysts from always-on clusters to serverless — $135K/month savings with sub-second startup" |
+| **Unity Catalog** | Unified governance: access control, lineage, data sharing | "Implemented UC across 3 business units — single permission model, full column-level lineage, cross-workspace sharing" |
+| **Delta Sharing** | Open protocol for sharing data across organizations | "Shared anonymized datasets with 5 partner companies without copying data — they query our Delta tables directly" |
+| **Change Data Feed (CDF)** | Captures row-level changes (insert/update/delete) from Delta tables | "Replaced full-table reprocessing with CDF-powered incremental MERGE — processing time from 4 hours to 8 minutes" |
+| **Materialized Views** | Auto-refreshing pre-computed query results | "Created MVs for top 10 dashboard queries — dashboard load time from 30s to 2s, warehouse load reduced 40%" |
+| **Genie / AI Assistant** | Natural language to SQL, code generation | "Used Genie to create a self-service analytics room for business users — reduced ad-hoc SQL request tickets by 60%" |
+| **Row/Column Level Security** | Fine-grained access in Unity Catalog | "Implemented column masking on PII fields — analysts see hashed emails, data engineers see raw values, same table" |
+| **VACUUM** | Removes old Delta files no longer referenced | "Automated VACUUM RETAIN 168 HOURS on all tables — reclaimed 15 TB of orphaned Parquet files, saved $2K/month storage" |
+| **Photon** | C++ vectorized execution engine | "Migrated our heaviest SQL workloads to Photon-enabled warehouses — 3x average speedup with zero code changes" |
+
+---
+
+### PART D: Interview Answer Framework (STAR+)
+
+Use this structure for every answer:
+
+| Element | What to Say | Time |
+| --- | --- | --- |
+| **S - Situation** | Set the scene: team size, data volume, business impact | 15 sec |
+| **T - Task** | What was your specific responsibility | 10 sec |
+| **A - Action** | Technical details: what you did, tools used, tradeoffs evaluated | 45 sec |
+| **R - Result** | Quantified impact: time saved, cost reduced, SLA met | 15 sec |
+| **+ Scale** | How you made it reusable: framework, monitoring, documentation, team enablement | 15 sec |
+
+> **Principal-level differentiator**: Junior engineers fix the bug. Senior engineers fix the class of bugs. **Principal engineers design systems where that class of bugs cannot occur.**
