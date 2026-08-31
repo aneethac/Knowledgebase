@@ -1,0 +1,502 @@
+%md
+## End-to-End Pipeline — Auto Loader to Delta Lake (Production Blueprint)
+
+---
+
+### 1. Full Architecture Overview
+
+```
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│                         SOURCE SYSTEMS                                       │
+│  ┌───────────┐  ┌────────────┐  ┌───────────┐  ┌─────────┐  ┌───────────┐  │
+│  │ Flat Files│  │ Databases  │  │ APIs / SaaS│  │  Kafka  │  │ IoT / CDC │  │
+│  │ CSV/JSON/ │  │ MySQL/PG/  │  │ Salesforce │  │ Events │  │ Debezium  │  │
+│  │ Parquet   │  │ SQL Server │  │ HubSpot    │  │        │  │ Binlog    │  │
+│  └─────┬─────┘  └──────┬─────┘  └─────┬─────┘  └────┬────┘  └─────┬─────┘  │
+└───────────│────────────│───────────│─────────│───────────│────────┘
+            │             │            │          │            │
+     ┌──────▼─────────▼──────────▼────────▼──────────▼───────────┐
+     │                      INGESTION LAYER                          │
+     │  Auto Loader (cloudFiles) │ Kafka Source │ Lakeflow Connect     │
+     │  File notification mode   │ Structured   │ Managed connectors   │
+     │  Schema inference/evolve  │ Streaming    │ (Salesforce, MySQL)  │
+     └───────────────────────────┬──────────────────────────────┘
+                                │
+     ┌───────────────────────────▼──────────────────────────────┐
+     │                ┌──────────────────────────────────┐       │
+     │                │ BRONZE (Raw / Landing)              │       │
+     │                │ Streaming Tables (append-only)      │       │
+     │                │ Raw schema, _rescued_data column    │       │
+     │                │ Partition: ingestion_date            │       │
+     │                │ Expectations: schema only            │       │
+     │  UNITY         └────────────────┬─────────────────┘       │
+     │  CATALOG                       │                          │
+     │  (governance)  ┌────────────────▼─────────────────┐       │
+     │                │ SILVER (Cleaned / Conformed)        │       │
+     │                │ Streaming Tables + apply_changes    │       │
+     │                │ Deduplicated, typed, null-handled   │       │
+     │                │ Liquid Clustering: business keys    │       │
+     │                │ CDF enabled for downstream          │       │
+     │                │ Expectations: NOT NULL, ranges       │       │
+     │                └────────────────┬─────────────────┘       │
+     │                                │                          │
+     │                ┌────────────────▼─────────────────┐       │
+     │                │ GOLD (Business-Ready)               │       │
+     │                │ Materialized Views (aggregations)   │       │
+     │                │ Managed Tables (denormalized)       │       │
+     │                │ Liquid Clustering: query columns    │       │
+     │                │ Expectations: business rules         │       │
+     │                └────────────────┬─────────────────┘       │
+     └───────────────────────────┬──────────────────────────────┘
+                                │
+     ┌───────────────────────────▼──────────────────────────────┐
+     │                    CONSUMERS                                  │
+     │  SQL Warehouse     │ Dashboards      │ ML/Feature Store        │
+     │  (Lakeview)        │ (Genie Rooms)   │ (Model Serving)         │
+     │  Ad-hoc SQL        │ Business users  │ Training + inference    │
+     └───────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 2. Layer-by-Layer Blueprint
+
+---
+
+#### LAYER 1: INGESTION (Source → Landing Zone)
+
+**Choose your ingestion method:**
+
+| Source Type | Best Ingestion | Why |
+| --- | --- | --- |
+| Files landing in cloud storage (CSV, JSON, Parquet) | **Auto Loader** (`cloudFiles`) | Incremental, exactly-once, schema evolution |
+| Relational database (MySQL, Postgres, SQL Server) | **Lakeflow Connect** | Managed connector, no code, handles CDC |
+| Kafka / Event Hub | **Structured Streaming** (Kafka source) | Native Spark, low latency |
+| REST API / SaaS (Salesforce, HubSpot) | **Lakeflow Connect** | Pre-built connectors, scheduled |
+| One-time bulk load | **COPY INTO** | SQL-only, idempotent, simple |
+
+**Auto Loader — Production Pattern (File Notification Mode):**
+
+```python
+# Auto Loader reads new files incrementally from cloud storage
+raw_df = (spark.readStream
+    .format('cloudFiles')
+    .option('cloudFiles.format', 'json')                  # Source format
+    .option('cloudFiles.inferColumnTypes', 'true')         # Auto-detect types
+    .option('cloudFiles.schemaLocation', '/mnt/schema/orders')  # Persist inferred schema
+    .option('cloudFiles.useNotifications', 'true')         # Event-based (Azure Event Grid)
+    .option('cloudFiles.schemaEvolutionMode', 'addNewColumns')  # Auto-add new columns
+    .option('cloudFiles.rescuedDataColumn', '_rescued_data')    # Capture non-conforming data
+    .load('abfss://raw@storage.dfs.core.windows.net/orders/')
+)
+
+# Add metadata columns for lineage
+from pyspark.sql.functions import current_timestamp, input_file_name
+
+bronze_df = (raw_df
+    .withColumn('_ingestion_timestamp', current_timestamp())
+    .withColumn('_source_file', input_file_name())
+)
+
+# Write to bronze streaming table
+(bronze_df.writeStream
+    .format('delta')
+    .option('checkpointLocation', '/mnt/checkpoints/orders_bronze')
+    .option('mergeSchema', 'true')         # Allow schema evolution on write
+    .trigger(availableNow=True)            # Process all pending, then stop
+    .table('bronze.orders_raw')
+)
+```
+
+**Auto Loader — SQL-Only Alternative (inside SDP):**
+
+```sql
+-- Bronze streaming table with Auto Loader in SQL
+CREATE OR REFRESH STREAMING TABLE bronze.orders_raw
+AS SELECT
+    *,
+    current_timestamp() AS _ingestion_timestamp,
+    _metadata.file_name AS _source_file,
+    _metadata.file_modification_time AS _file_modified
+FROM STREAM read_files(
+    'abfss://raw@storage.dfs.core.windows.net/orders/',
+    format => 'json',
+    inferColumnTypes => 'true',
+    rescuedDataColumn => '_rescued_data'
+);
+```
+
+**Auto Loader mode decision:**
+
+| Aspect | Directory Listing | File Notification |
+| --- | --- | --- |
+| **How it finds new files** | Lists the directory each micro-batch | Cloud event triggers (Azure Event Grid / AWS SQS) |
+| **Setup** | Zero config | Requires event subscription (Auto Loader can create it automatically) |
+| **Latency** | Higher (depends on listing interval) | Lower (event-driven) |
+| **Scale** | Good to \~10K new files/day | Millions of files/day |
+| **Cost** | Higher at scale (listing is expensive) | Lower at scale (events are cheap) |
+| **Best for** | Dev/test, small volumes | Production, high volume |
+
+---
+
+#### LAYER 2: BRONZE (Raw / Landing)
+
+**Purpose:** Exact copy of source data. Append-only. Source of truth for replay.
+
+| Decision | Choice | Why |
+| --- | --- | --- |
+| **Table type** | Streaming Table | Append-only, incremental processing |
+| **Format** | Delta (always) | ACID, time travel, schema enforcement |
+| **Table location** | Managed | Databricks manages storage, lifecycle |
+| **Schema** | Match source exactly + metadata columns | `_ingestion_timestamp`, `_source_file`, `_rescued_data` |
+| **Clustering** | `CLUSTER BY (_ingestion_timestamp)` or none | Bronze is rarely queried directly; if needed, cluster by ingestion time |
+| **Expectations** | Minimal — schema enforcement only | `CONSTRAINT valid_json EXPECT (_rescued_data IS NULL) ON VIOLATION WARN` |
+| **Retention** | 90 days data file retention | Long enough to replay if silver needs rebuild |
+| **CDF** | Not needed | Bronze is append-only — CDF adds no value |
+
+**Bronze table DDL:**
+```sql
+CREATE OR REFRESH STREAMING TABLE bronze.orders_raw (
+    CONSTRAINT valid_schema EXPECT (_rescued_data IS NULL) ON VIOLATION WARN
+)
+COMMENT 'Raw orders from source system - append only'
+AS SELECT * FROM STREAM read_files(
+    'abfss://raw@storage.dfs.core.windows.net/orders/',
+    format => 'json',
+    inferColumnTypes => 'true',
+    rescuedDataColumn => '_rescued_data'
+);
+```
+
+---
+
+#### LAYER 3: SILVER (Cleaned / Conformed / Enriched)
+
+**Purpose:** Deduplicated, typed, null-handled, joined with reference data. The "enterprise data model."
+
+| Decision | Choice | Why |
+| --- | --- | --- |
+| **Table type** | Streaming Table (with `apply_changes` for CDC) OR Materialized View (for reference data) | Streaming for facts; MV for slowly changing dimensions |
+| **Format** | Delta | Always Delta on Databricks |
+| **Table location** | Managed | Simpler lifecycle, full UC governance |
+| **Schema** | Curated: proper types, column names, no raw junk | `CAST(order_date AS DATE)`, rename to snake_case |
+| **Clustering** | `CLUSTER BY (order_date, customer_id)` | Cluster by most-queried filter columns |
+| **CDF** | **Enabled** | Gold layer reads only changes: `delta.enableChangeDataFeed = true` |
+| **Expectations** | Strong — data quality gates | NOT NULL on keys, range checks on dates, referential integrity |
+| **Deduplication** | `ROW_NUMBER()` or `apply_changes` `sequence_by` | Handles late-arriving and duplicate events |
+
+**Silver — Streaming with CDC (SDP):**
+```python
+import dlt
+from pyspark.sql.functions import col, expr
+
+# Silver: Apply CDC changes from bronze
+dlt.create_streaming_table(
+    name = 'orders_clean',
+    comment = 'Cleaned orders - deduplicated, typed, validated',
+    table_properties = {
+        'delta.enableChangeDataFeed': 'true',
+        'quality': 'silver'
+    }
+)
+
+dlt.apply_changes(
+    target = 'orders_clean',
+    source = 'orders_raw',
+    keys = ['order_id'],
+    sequence_by = col('event_timestamp'),
+    stored_as_scd_type = 1,
+    apply_as_deletes = expr("operation = 'DELETE'"),
+)
+```
+
+**Silver — SQL-Only (DBSQL Streaming Table):**
+```sql
+-- Silver: Cleaned, typed, deduplicated
+CREATE OR REFRESH STREAMING TABLE silver.orders_clean (
+    CONSTRAINT valid_order_id EXPECT (order_id IS NOT NULL) ON VIOLATION DROP ROW,
+    CONSTRAINT valid_amount EXPECT (amount > 0) ON VIOLATION WARN,
+    CONSTRAINT valid_date EXPECT (order_date >= '2020-01-01') ON VIOLATION DROP ROW
+)
+TBLPROPERTIES (
+    'delta.enableChangeDataFeed' = 'true'
+)
+CLUSTER BY (order_date, customer_id)
+AS SELECT
+    CAST(order_id AS BIGINT) AS order_id,
+    CAST(customer_id AS BIGINT) AS customer_id,
+    CAST(order_date AS DATE) AS order_date,
+    CAST(amount AS DECIMAL(12,2)) AS amount,
+    LOWER(TRIM(status)) AS status,
+    COALESCE(region, 'UNKNOWN') AS region,
+    current_timestamp() AS _processed_at
+FROM STREAM bronze.orders_raw
+WHERE _rescued_data IS NULL;    -- Only process conforming records
+```
+
+**Silver — Reference/Dimension tables as Materialized Views:**
+```sql
+-- Slowly changing dimension — MV auto-refreshes
+CREATE OR REFRESH MATERIALIZED VIEW silver.customers_current
+AS SELECT
+    customer_id,
+    customer_name,
+    email,
+    segment,
+    region,
+    created_date
+FROM bronze.customers_raw
+QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY customer_id
+    ORDER BY updated_at DESC
+) = 1;
+```
+
+---
+
+#### LAYER 4: GOLD (Business-Ready / Serving)
+
+**Purpose:** Pre-aggregated, denormalized, optimized for consumption.
+
+| Decision | Choice | Why |
+| --- | --- | --- |
+| **Table type — Aggregations** | Materialized View | Auto-refreshes; optimizer can rewrite queries to use MV |
+| **Table type — Denormalized facts** | Managed Table (via MERGE or CTAS) | Full DML support, complex join logic |
+| **Format** | Delta | Always |
+| **Table location** | Managed | Full UC governance |
+| **Clustering** | `CLUSTER BY (date_key, customer_segment)` | Cluster by dashboard filter columns |
+| **Expectations** | Business rules | Revenue > 0, dates in valid range, no orphan keys |
+| **CDF** | Optional | Enable if downstream systems need incremental feeds |
+| **Optimize schedule** | Weekly `OPTIMIZE` | Compact files for fast dashboard queries |
+
+**Gold — Materialized View (auto-refreshing aggregation):**
+```sql
+-- Gold: Daily revenue summary — auto-refreshes when silver changes
+CREATE OR REFRESH MATERIALIZED VIEW gold.daily_revenue_summary
+COMMENT 'Daily revenue by region and segment - refreshes on trigger'
+AS SELECT
+    o.order_date,
+    c.region,
+    c.segment,
+    COUNT(DISTINCT o.order_id) AS order_count,
+    COUNT(DISTINCT o.customer_id) AS customer_count,
+    SUM(o.amount) AS total_revenue,
+    AVG(o.amount) AS avg_order_value
+FROM silver.orders_clean o
+JOIN silver.customers_current c
+    ON o.customer_id = c.customer_id
+GROUP BY o.order_date, c.region, c.segment;
+```
+
+**Gold — Managed Table (complex denormalized fact):**
+```sql
+-- Gold: Customer 360 — built via MERGE for incremental updates
+CREATE TABLE IF NOT EXISTS gold.customer_360 (
+    customer_id BIGINT,
+    customer_name STRING,
+    segment STRING,
+    region STRING,
+    lifetime_orders INT,
+    lifetime_revenue DECIMAL(14,2),
+    first_order_date DATE,
+    last_order_date DATE,
+    avg_order_value DECIMAL(12,2),
+    updated_at TIMESTAMP
+)
+CLUSTER BY (region, segment)
+TBLPROPERTIES ('delta.enableDeletionVectors' = 'true');
+
+-- Incremental MERGE from silver CDF
+MERGE INTO gold.customer_360 AS target
+USING (
+    SELECT
+        customer_id,
+        COUNT(*) AS lifetime_orders,
+        SUM(amount) AS lifetime_revenue,
+        MIN(order_date) AS first_order_date,
+        MAX(order_date) AS last_order_date,
+        AVG(amount) AS avg_order_value
+    FROM silver.orders_clean
+    GROUP BY customer_id
+) AS source
+    ON target.customer_id = source.customer_id
+WHEN MATCHED THEN UPDATE SET
+    target.lifetime_orders = source.lifetime_orders,
+    target.lifetime_revenue = source.lifetime_revenue,
+    target.last_order_date = source.last_order_date,
+    target.avg_order_value = source.avg_order_value,
+    target.updated_at = current_timestamp()
+WHEN NOT MATCHED THEN INSERT *;
+```
+
+---
+
+### 3. Table Type Decision Matrix
+
+| Scenario | Table Type | Why |
+| --- | --- | --- |
+| Raw ingestion from files/streams | **Streaming Table** | Append-only, incremental, checkpointed |
+| CDC from source database | **Streaming Table + apply_changes** | Handles dedup, ordering, SCD automatically |
+| Cleaned/conformed facts | **Streaming Table** (if source is streaming) | Maintains incremental chain |
+| Reference/dimension data (latest state) | **Materialized View** | Auto-refreshes, QUALIFY dedup |
+| Pre-aggregated summaries | **Materialized View** | Auto-refreshes when upstream changes |
+| Complex denormalized table (MERGE logic) | **Managed Table** | Full DML: MERGE, UPDATE, DELETE |
+| Shared with external tools | **External Table** | Data stays at your LOCATION; DROP is safe |
+| Ad-hoc exploration | **Temporary View** | Session-scoped, no storage |
+
+---
+
+### 4. Compute Selection for Each Layer
+
+| Pipeline Stage | Best Compute | Why | Trigger |
+| --- | --- | --- | --- |
+| **Auto Loader ingestion** | Job Cluster (Photon) | Ephemeral, cost-effective, scales with file volume | `trigger(availableNow=True)` for batch-like |
+| **SDP Pipeline (bronze → silver → gold)** | SDP-managed cluster | SDP provisions and manages its own cluster | Triggered (batch) or Continuous (streaming) |
+| **Batch MERGE (gold layer)** | Job Cluster (Photon) | Heavy write operation, benefits from Photon | Scheduled via Lakeflow Jobs |
+| **Dashboard refresh** | Serverless SQL Warehouse | Instant start, auto-scales for concurrent users | On-demand or scheduled |
+| **Ad-hoc SQL analytics** | Serverless SQL Warehouse | Sub-second startup, shared across users | On-demand |
+| **ML feature engineering** | All-Purpose Cluster (ML Runtime) | Needs Python + ML libraries | Interactive |
+| **Streaming (24/7)** | Job Cluster (always-on) | Dedicated, continuous processing | Continuous trigger |
+
+**Cost optimization pattern:**
+```
+Ingestion + ETL:     Job Cluster (runs 30 min/day)      → Low cost
+SDP Pipeline:        SDP cluster (auto-provisioned)     → Medium cost
+Dashboard serving:   Serverless SQL WH (auto-stops)     → Pay per query
+Development:         Serverless Compute (auto-stops)    → Pay per use
+```
+
+---
+
+### 5. Storage & File Format Decision
+
+| Decision | Recommendation | Why |
+| --- | --- | --- |
+| **File format** | Always Delta | ACID, time travel, skipping, Photon-optimized |
+| **Managed vs External** | Managed (default) | UC manages lifecycle; DROP = clean delete |
+| **When to use External** | Data shared with non-Databricks tools, regulatory retention, multi-cloud | You control the path; DROP leaves data |
+| **Source file format for ingestion** | Accept anything → land as Delta | Auto Loader reads JSON/CSV/Parquet/Avro → writes Delta |
+| **Target file size** | 64–256 MB (tables < 1 TB), 256 MB–1 GB (tables > 1 TB) | Balanced read parallelism vs file-open overhead |
+| **Compression** | Snappy (default for Parquet/Delta) | Best balance of speed vs compression ratio |
+
+**File format conversion principle:**
+```
+Source: ANY format (CSV, JSON, Parquet, Avro, XML, ORC)
+    │
+    │  Auto Loader / COPY INTO
+    ▼
+Bronze: Delta (always)
+    │
+    │  Streaming / MERGE / MV
+    ▼
+Silver: Delta (always)
+    │
+    │  Aggregation / MERGE
+    ▼
+Gold: Delta (always)
+
+Rule: Convert to Delta at ingestion. Never store intermediate data as CSV/JSON.
+```
+
+---
+
+### 6. Clustering & Optimization Strategy Per Layer
+
+| Layer | Clustering Strategy | OPTIMIZE Frequency | VACUUM | ANALYZE TABLE |
+| --- | --- | --- | --- | --- |
+| **Bronze** | `CLUSTER BY (ingestion_date)` or none | Monthly (low-priority) | RETAIN 90 days (replay buffer) | Not needed (rarely queried) |
+| **Silver** | `CLUSTER BY (business_date, entity_id)` | Weekly | RETAIN 30 days | After major loads |
+| **Gold** | `CLUSTER BY (dashboard_filter_col_1, filter_col_2)` | After each load | RETAIN 7 days | After each load (critical for join strategy) |
+
+---
+
+### 7. Complete Pipeline as Lakeflow Job DAG
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│                    LAKEFLOW JOB DAG                          │
+│                    (Scheduled: daily 2 AM AEST)               │
+│                                                               │
+│  Task 1: SDP Pipeline (bronze + silver)                       │
+│    │  Compute: SDP-managed cluster                            │
+│    │  Mode: Triggered                                         │
+│    │  Retries: 2                                              │
+│    │                                                          │
+│    ├── Task 2a: Gold MERGE (customer_360)                     │
+│    │    Compute: Job Cluster (Photon, Medium)                 │
+│    │    Depends on: Task 1                                    │
+│    │                                                          │
+│    ├── Task 2b: Gold MV Refresh (daily_revenue)               │
+│    │    Compute: SQL Warehouse (Serverless)                   │
+│    │    Depends on: Task 1                                    │
+│    │                                                          │
+│    └── Task 3: OPTIMIZE + ANALYZE (gold tables)               │
+│         Compute: SQL Warehouse (Serverless)                   │
+│         Depends on: Task 2a + 2b                              │
+│         SQL: OPTIMIZE gold.customer_360;                      │
+│              ANALYZE TABLE gold.customer_360 COMPUTE STATS;   │
+│                                                               │
+│  On Failure: Email alert + PagerDuty webhook                  │
+│  On Success: Dashboard refresh trigger                        │
+└───────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 8. Table Properties Cheat Sheet
+
+```sql
+-- Bronze table
+CREATE TABLE bronze.orders_raw (...)
+  TBLPROPERTIES (
+    'delta.logRetentionDuration' = '90 days',
+    'delta.deletedFileRetentionDuration' = '90 days',
+    'quality' = 'bronze'
+  );
+
+-- Silver table
+CREATE TABLE silver.orders_clean (...)
+  CLUSTER BY (order_date, customer_id)
+  TBLPROPERTIES (
+    'delta.enableChangeDataFeed' = 'true',
+    'delta.enableDeletionVectors' = 'true',
+    'delta.logRetentionDuration' = '30 days',
+    'quality' = 'silver'
+  );
+
+-- Gold table
+CREATE TABLE gold.customer_360 (...)
+  CLUSTER BY (region, segment)
+  TBLPROPERTIES (
+    'delta.enableDeletionVectors' = 'true',
+    'delta.tuneFileSizesForRewrites' = 'true',  -- Better for MERGE-heavy tables
+    'quality' = 'gold'
+  );
+```
+
+---
+
+### 9. Production Checklist
+
+| # | Check | Layer | Detail |
+| --- | --- | --- | --- |
+| 1 | Auto Loader in file notification mode | Ingestion | Scales to millions of files |
+| 2 | `_rescued_data` column on bronze | Bronze | Captures non-conforming records instead of failing |
+| 3 | `_ingestion_timestamp` and `_source_file` on bronze | Bronze | Lineage and debugging |
+| 4 | Expectations with `ON VIOLATION DROP ROW` on silver | Silver | Bad data filtered, not propagated |
+| 5 | CDF enabled on silver | Silver | Gold reads only changes |
+| 6 | Liquid Clustering on silver and gold | Silver/Gold | Adaptive, changeable, no small-file problem |
+| 7 | Deletion Vectors on all tables | All | Faster MERGE/UPDATE/DELETE |
+| 8 | `OPTIMIZE` scheduled weekly on silver, after each load on gold | Silver/Gold | Compact files for query performance |
+| 9 | `VACUUM RETAIN 168 HOURS` scheduled weekly | All | Reclaim storage, don't break concurrent readers |
+| 10 | `ANALYZE TABLE` after large gold loads | Gold | Accurate stats for join strategy selection |
+| 11 | Materialized Views for dashboard aggregations | Gold | Auto-refresh, query rewrite, fast dashboards |
+| 12 | Job retries = 2 with exponential backoff | Orchestration | Handle transient failures automatically |
+| 13 | Failure notifications (email + webhook) | Orchestration | Alert on-call immediately |
+| 14 | Row-level/column-level security on gold | Governance | PII masking, access control |
+| 15 | Unity Catalog tags on all tables | Governance | `quality = bronze/silver/gold`, `owner = team` |
+| 16 | Serverless SQL Warehouse for dashboards | Consumers | Instant start, auto-scale, Photon |
+| 17 | Checkpoints in separate location from data | Streaming | Prevents accidental deletion |
+| 18 | Schema evolution mode = `addNewColumns` on Auto Loader | Ingestion | Handles source schema changes gracefully |
+| 19 | Circuit breaker: row count validation between layers | All | Prevents bad data propagation |
+| 20 | Delta Sharing for cross-team/external access | Governance | Share without copying data |
