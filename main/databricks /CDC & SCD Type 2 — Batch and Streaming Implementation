@@ -1,0 +1,350 @@
+%md
+## CDC & SCD Type 2 — Batch and Streaming Implementation
+
+---
+
+### 1. Core Concepts
+
+| Term | What It Means | Example |
+| --- | --- | --- |
+| **CDC (Change Data Capture)** | Capturing row-level changes (INSERT, UPDATE, DELETE) from a source system | Database binlog, Kafka events, Delta CDF |
+| **SCD Type 1** | Overwrite the old value — no history kept | Customer address updated → old address gone |
+| **SCD Type 2** | Keep full history with effective dates — old row marked closed, new row inserted | Customer address changed → old row gets `end_date = today`, new row gets `start_date = today` |
+| **SCD Type 3** | Add columns for old/new values (rarely used) | `current_address` + `previous_address` columns |
+| **Change Data Feed (CDF)** | Delta Lake feature that records changes as they happen to a Delta table | `SELECT * FROM table_changes('my_table', 2)` |
+| **Sequence key** | Column that orders events chronologically | Timestamp, version number, Kafka offset |
+
+### 2. SCD Type 1 vs Type 2 Decision
+
+| Question | Type 1 (Overwrite) | Type 2 (History) |
+| --- | --- | --- |
+| Do you need historical values? | No | Yes |
+| "What was the customer's address last January?" | Cannot answer | Can answer |
+| Storage cost | Lower (1 row per entity) | Higher (N rows per entity over time) |
+| Query complexity | Simple | Needs `WHERE is_current = true` or date range filter |
+| MERGE pattern | `WHEN MATCHED THEN UPDATE` | Close old row + INSERT new row (2 operations) |
+| Use case | Reference/dimension data where only latest matters | Audit, compliance, temporal reporting |
+
+---
+
+### 3. SCD Type 1 — Batch (MERGE)
+
+The simplest CDC pattern. Source provides the latest state; you upsert into target.
+
+```sql
+-- SCD Type 1: Overwrite existing, insert new
+MERGE INTO gold.customers AS target
+USING staging.customers_daily AS source
+  ON target.customer_id = source.customer_id
+WHEN MATCHED AND (
+  target.name != source.name OR
+  target.email != source.email OR
+  target.address != source.address
+) THEN UPDATE SET
+  target.name = source.name,
+  target.email = source.email,
+  target.address = source.address,
+  target.updated_at = current_timestamp()
+WHEN NOT MATCHED THEN INSERT (
+  customer_id, name, email, address, updated_at
+) VALUES (
+  source.customer_id, source.name, source.email, source.address, current_timestamp()
+);
+```
+
+**Key points:**
+- One row per customer in target (always latest)
+- The `AND (target.name != source.name OR ...)` avoids unnecessary updates when nothing changed
+- Idempotent — running twice with same data has no effect
+
+---
+
+### 4. SCD Type 2 — Batch (MERGE)
+
+This is the complex pattern. Two operations in one MERGE: close the old row + insert the new row.
+
+**Target table schema:**
+```sql
+CREATE TABLE gold.customers_history (
+  customer_id INT,
+  name STRING,
+  email STRING,
+  address STRING,
+  effective_from TIMESTAMP,    -- When this version became active
+  effective_to TIMESTAMP,      -- When this version was superseded (NULL = current)
+  is_current BOOLEAN,          -- TRUE = latest version
+  _merge_key INT               -- Used in MERGE trick (see below)
+);
+```
+
+**The SCD Type 2 MERGE pattern (exam favourite):**
+
+```sql
+-- Step 1: Identify changed records
+WITH changes AS (
+  SELECT
+    source.*,
+    target.customer_id AS existing_id
+  FROM staging.customers_daily source
+  LEFT JOIN gold.customers_history target
+    ON source.customer_id = target.customer_id
+    AND target.is_current = TRUE
+  WHERE
+    target.customer_id IS NULL  -- New customers
+    OR target.name != source.name
+    OR target.email != source.email
+    OR target.address != source.address  -- Changed customers
+)
+
+-- Step 2: MERGE with union trick to handle both close + insert
+MERGE INTO gold.customers_history AS target
+USING (
+  -- Row 1: Match existing row (to close it)
+  SELECT customer_id AS merge_key, customer_id, name, email, address
+  FROM changes WHERE existing_id IS NOT NULL
+  UNION ALL
+  -- Row 2: NULL merge_key (will NOT match, so triggers INSERT)
+  SELECT NULL AS merge_key, customer_id, name, email, address
+  FROM changes
+) AS source
+  ON target.customer_id = source.merge_key AND target.is_current = TRUE
+
+WHEN MATCHED THEN UPDATE SET
+  target.is_current = FALSE,
+  target.effective_to = current_timestamp()
+
+WHEN NOT MATCHED THEN INSERT (
+  customer_id, name, email, address,
+  effective_from, effective_to, is_current, _merge_key
+) VALUES (
+  source.customer_id, source.name, source.email, source.address,
+  current_timestamp(), NULL, TRUE, source.customer_id
+);
+```
+
+**How the MERGE trick works:**
+
+| Row in UNION ALL | merge_key | Matches target? | Action |
+| --- | --- | --- | --- |
+| Row 1 (existing customer) | `customer_id` (real value) | YES — matches current row | UPDATE: sets `is_current = FALSE`, `effective_to = now()` |
+| Row 2 (all changes) | `NULL` | NO — NULL never matches | INSERT: new row with `is_current = TRUE`, `effective_from = now()` |
+
+**Result: the old row is closed, and a new current row is inserted — all in one atomic MERGE.**
+
+---
+
+### 5. SCD Type 2 — Streaming with APPLY CHANGES INTO (SDP)
+
+Spark Declarative Pipelines has a built-in SCD Type 2 operator — no manual MERGE needed.
+
+```python
+import dlt
+from pyspark.sql.functions import col
+
+# Bronze: raw CDC events from Kafka / Auto Loader
+@dlt.table
+def customers_bronze():
+    return (
+        spark.readStream
+        .format('cloudFiles')
+        .option('cloudFiles.format', 'json')
+        .load('/raw/customers_cdc/')
+    )
+
+# Silver: Apply CDC changes as SCD Type 2
+dlt.create_streaming_table('customers_silver')
+
+dlt.apply_changes(
+    target = 'customers_silver',
+    source = 'customers_bronze',
+    keys = ['customer_id'],                     # Business key
+    sequence_by = col('event_timestamp'),        # Order events
+    stored_as_scd_type = 2,                      # Type 2 history!
+    columns_to_track = ['name', 'email', 'address'],  # Only track changes in these
+)
+```
+
+**What `apply_changes` does automatically:**
+
+| Feature | Detail |
+| --- | --- |
+| **Deduplication** | Handles duplicate events using `sequence_by` |
+| **Out-of-order events** | Orders by sequence column, applies in correct order |
+| **SCD Type 2 columns** | Auto-adds `__START_AT`, `__END_AT` (effective dates) |
+| **Current flag** | `__END_AT IS NULL` = current row |
+| **Deletes** | Set `apply_as_deletes = expr("operation = 'DELETE'")` |
+| **Truncate & reload** | Set `apply_as_truncates = expr("operation = 'TRUNCATE'")` |
+| **Schema** | Auto-evolves with source |
+
+**SCD Type 1 in SDP** — just change one parameter:
+```python
+dlt.apply_changes(
+    target = 'customers_silver',
+    source = 'customers_bronze',
+    keys = ['customer_id'],
+    sequence_by = col('event_timestamp'),
+    stored_as_scd_type = 1,   # Overwrite, no history
+)
+```
+
+---
+
+### 6. Streaming CDC with DBSQL (FLOW AUTO CDC)
+
+For SQL-only streaming CDC without SDP Python decorators:
+
+```sql
+-- SCD Type 1 (latest state only)
+CREATE OR REFRESH STREAMING TABLE silver.customers;
+
+CREATE FLOW silver_customers_cdc AS
+  INSERT INTO silver.customers
+  BY AUTO CDC FROM STREAM bronze.customers_raw
+  KEYS (customer_id)
+  SEQUENCE BY event_timestamp
+  STORED AS SCD TYPE 1;
+
+-- SCD Type 2 (full history)
+CREATE OR REFRESH STREAMING TABLE silver.customers_history;
+
+CREATE FLOW silver_customers_history AS
+  INSERT INTO silver.customers_history
+  BY AUTO CDC FROM STREAM bronze.customers_raw
+  KEYS (customer_id)
+  SEQUENCE BY event_timestamp
+  STORED AS SCD TYPE 2;
+```
+
+**Handling deletes:**
+```sql
+CREATE FLOW silver_customers_cdc AS
+  INSERT INTO silver.customers
+  BY AUTO CDC FROM STREAM bronze.customers_raw
+  KEYS (customer_id)
+  SEQUENCE BY event_timestamp
+  DELETE WHEN operation = 'DELETE'
+  STORED AS SCD TYPE 2;
+```
+
+---
+
+### 7. Delta Change Data Feed (CDF) — For Downstream CDC
+
+CDF captures changes from a Delta table itself (not an external source). Use it to feed downstream tables incrementally.
+
+```sql
+-- Enable CDF on a table
+ALTER TABLE silver.customers
+  SET TBLPROPERTIES ('delta.enableChangeDataFeed' = true);
+
+-- Query changes since version 5
+SELECT * FROM table_changes('silver.customers', 5);
+
+-- Query changes between timestamps
+SELECT * FROM table_changes('silver.customers', '2026-08-01', '2026-08-31');
+```
+
+**CDF output columns:**
+
+| Column | Values | Meaning |
+| --- | --- | --- |
+| `_change_type` | `insert` | New row added |
+| `_change_type` | `update_preimage` | Row BEFORE the update |
+| `_change_type` | `update_postimage` | Row AFTER the update |
+| `_change_type` | `delete` | Row was deleted |
+| `_commit_version` | Integer | Delta version that made this change |
+| `_commit_timestamp` | Timestamp | When the change was committed |
+
+**Streaming from CDF (downstream incremental):**
+```python
+# Read only new changes from silver, process into gold
+df = (spark.readStream
+    .format('delta')
+    .option('readChangeFeed', 'true')
+    .option('startingVersion', 0)
+    .table('silver.customers')
+)
+# Filter to only inserts and update_postimage (new values)
+df_changes = df.filter(
+    col('_change_type').isin('insert', 'update_postimage')
+)
+```
+
+---
+
+### 8. Full Architecture — CDC Pipeline
+
+```
+Source Database (MySQL/Postgres/Kafka)
+    │
+    │  Debezium / Kafka Connect / Lakeflow Connect
+    ▼
+┌───────────────────────────────────────────────────────┐
+│ BRONZE: Raw CDC Events (append-only)             │
+│ Auto Loader / Kafka source                        │
+│ Columns: key, value, operation, timestamp          │
+│ Table type: Streaming Table                        │
+├───────────────────────────────────────────────────────┤
+│ SILVER: apply_changes / FLOW AUTO CDC              │
+│ SCD Type 1 or Type 2                               │
+│ Deduped, ordered, clean                             │
+│ CDF enabled for downstream                          │
+├───────────────────────────────────────────────────────┤
+│ GOLD: Materialized Views / Aggregations             │
+│ Reads from silver CDF — processes only changes      │
+│ Pre-aggregated for dashboards                        │
+└───────────────────────────────────────────────────────┘
+```
+
+---
+
+### 9. Batch vs Streaming CDC — When to Use Which
+
+| Aspect | Batch CDC (MERGE) | Streaming CDC (apply_changes / FLOW AUTO CDC) |
+| --- | --- | --- |
+| **Latency** | Minutes to hours (scheduled) | Seconds to minutes (continuous or triggered) |
+| **Source** | Daily/hourly extract files, staging tables | Kafka, Auto Loader, Event Hub, Delta CDF |
+| **Complexity** | You write the MERGE SQL manually | Framework handles dedup, ordering, SCD logic |
+| **Out-of-order events** | You must handle (window + dedup) | Handled automatically by `sequence_by` |
+| **Deletes** | Explicit in MERGE `WHEN MATCHED ... DELETE` | `apply_as_deletes` expression |
+| **SCD Type 2** | Complex MERGE with UNION trick (see section 4) | One parameter: `stored_as_scd_type = 2` |
+| **Exactly-once** | MERGE is idempotent if designed correctly | Checkpointing guarantees exactly-once |
+| **Best for** | Simple upserts, legacy sources, small tables | High-volume CDC, real-time requirements, complex history |
+| **Cost** | Lower (runs only when scheduled) | Higher (cluster running continuously) |
+| **Exam tip** | Know the MERGE syntax by heart | Know `apply_changes` parameters and FLOW AUTO CDC syntax |
+
+---
+
+### 10. Common CDC Patterns for Exam
+
+| Pattern | SQL/Code | When to Use |
+| --- | --- | --- |
+| **Simple upsert** | `MERGE ... WHEN MATCHED THEN UPDATE WHEN NOT MATCHED THEN INSERT` | SCD Type 1 batch |
+| **Insert-only append** | `INSERT INTO target SELECT * FROM source WHERE NOT EXISTS (...)` | Append new records only |
+| **SCD Type 2 MERGE** | UNION ALL trick with NULL merge_key (see section 4) | Batch history tracking |
+| **Streaming SCD Type 2** | `dlt.apply_changes(stored_as_scd_type=2)` | SDP pipeline with history |
+| **SQL streaming SCD** | `CREATE FLOW ... BY AUTO CDC ... STORED AS SCD TYPE 2` | DBSQL streaming CDC |
+| **Incremental with CDF** | `spark.readStream.option('readChangeFeed', 'true').table(...)` | Downstream from Delta table |
+| **Delete handling** | `WHEN MATCHED AND source.op = 'D' THEN DELETE` or `apply_as_deletes` | Propagate source deletes |
+| **Dedup before merge** | `ROW_NUMBER() OVER (PARTITION BY key ORDER BY ts DESC) = 1` | Multiple changes per key in one batch |
+
+---
+
+### 11. Interview-Ready CDC Scenario
+
+**"How did you implement real-time CDC from MySQL to Databricks?"**
+
+| Step | Technology | Detail |
+| --- | --- | --- |
+| 1. Capture | Debezium + Kafka Connect | Reads MySQL binlog, produces CDC events to Kafka |
+| 2. Ingest | Auto Loader (cloudFiles) or Kafka source | Streams JSON CDC events into bronze streaming table |
+| 3. Apply | `dlt.apply_changes()` in SDP | Deduplicates, orders by sequence, applies SCD Type 2 |
+| 4. Enable downstream | Delta CDF on silver table | Gold layer reads only changes via `readChangeFeed` |
+| 5. Serve | Materialized Views | Dashboards auto-refresh from gold aggregations |
+| 6. Monitor | Expectations + row count reconciliation | `CONSTRAINT valid_key EXPECT (customer_id IS NOT NULL) ON VIOLATION DROP ROW` |
+
+**Key metrics from production:**
+- End-to-end latency: \~2 minutes (MySQL change → gold table)
+- Volume: 500K CDC events/hour
+- SCD Type 2 history table: 2 years, 800M rows
+- Zero data loss: checkpointing + exactly-once semantics
