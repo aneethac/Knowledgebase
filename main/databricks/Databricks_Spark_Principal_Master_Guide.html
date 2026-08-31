@@ -1,0 +1,2898 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Databricks + Spark Master Guide</title>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--text:#17202a;--muted:#667085;--line:#d9dee7;--accent:#5b6472;--code:#111827}
+body.dark{--bg:#11151b;--panel:#191f27;--text:#edf2f7;--muted:#aab4c3;--line:#303947;--accent:#c7d0dc;--code:#0b0f14}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:12px 18px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+header h1{font-size:18px;margin:0 auto 0 0} input{min-width:260px;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text)}
+button{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);cursor:pointer}
+.layout{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:calc(100vh - 60px)}
+nav{position:sticky;top:61px;height:calc(100vh - 61px);overflow:auto;padding:16px;border-right:1px solid var(--line);background:var(--panel)}
+nav a{display:block;padding:8px;color:var(--text);text-decoration:none;border-radius:6px;font-size:14px} nav a:hover{background:var(--bg)}
+main{padding:24px;min-width:0;max-width:none} .hero,.card,.source-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;margin:0 0 18px}
+.hero h2,.card h2,.source-card h2{margin-top:0} .note{border-left:4px solid var(--accent);padding:10px 12px;background:var(--bg)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px} .grid>div{border:1px solid var(--line);padding:12px;border-radius:9px}
+.source-head{display:flex;gap:10px;align-items:center} .source-head h2{flex:1} .badge{display:inline-block;font-size:11px;font-weight:700;padding:5px 8px;border:1px solid var(--line);border-radius:999px;margin-bottom:10px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--code);color:#e5e7eb;padding:18px;border-radius:9px;overflow:auto;line-height:1.45;font-size:13px}
+details{border-top:1px solid var(--line);padding:12px 0} summary{font-weight:700;cursor:pointer}
+.hidden{display:none!important} footer{padding:30px;color:var(--muted);text-align:center}
+@media(max-width:850px){.layout{grid-template-columns:1fr}nav{position:relative;top:0;height:auto;border-right:0;border-bottom:1px solid var(--line)}main{padding:12px}input{min-width:160px;flex:1}}
+@media print{header,nav{display:none}.layout{display:block}.card,.source-card,.hero{break-inside:avoid}}
+</style></head>
+<body>
+<header><h1>Databricks + Spark Master Guide</h1><input id="q" placeholder="Search all guide content…" oninput="searchAll()"><button onclick="document.body.classList.toggle('dark')">Light/Dark</button><button onclick="window.print()">Print</button></header>
+<div class="layout">
+<nav>
+<a href="#overview">Overview</a><a href="#principal">Principal Interview Layer</a><a href="#coles-star">Coles STAR Practice</a>
+<a href="#source-1">Databricks Platform Architecture — C</a><a href="#source-2">spark_internals.txt</a><a href="#source-3">End-to-End Pipeline — Auto Loader to</a><a href="#source-4">CDC &amp; SCD Type 2 — Batch and Streami</a><a href="#source-5">Large-Scale Solution Design (5 TB+ T</a><a href="#source-6">databricks Real-World Problems &amp; Sol</a>
+</nav>
+<main>
+<section class="hero searchable" id="overview">
+<h2>Databricks + Spark — Certification, Engineering & Principal Interview Handbook</h2>
+<p>This master guide combines all six supplied source documents. The complete original source text is retained verbatim below. Added material is explicitly labelled so it cannot be confused with source content.</p>
+<p><b>Coverage:</b> Databricks platform architecture, Delta Lake, Spark internals and optimisation, Auto Loader → Delta production pipelines, CDC/SCD1/SCD2, large-scale 5 TB+ design, production failures/debugging, Principal interview reasoning and STAR practice.</p>
+<p><b>Source files:</b> 6 &nbsp; | &nbsp; <b>Source lines:</b> 2,744</p>
+</section>
+
+<section class="card searchable" id="principal">
+<h2>Principal Interview Layer</h2>
+<div class="grid">
+<div><h3>Answer Pattern</h3><p><b>Context → Constraint → Decision → Why → Trade-off → Operation → Result.</b></p></div>
+<div><h3>System Design</h3><p><b>Requirements → scale → grain → ingestion → storage/model → processing → correctness → failure/replay → security → observability → cost.</b></p></div>
+<div><h3>Performance</h3><p><b>Measure first:</b> scan, shuffle, skew, spill, file layout, statistics, join strategy, concurrency and compute utilisation.</p></div>
+<div><h3>Production</h3><p>Always cover idempotency, late data, backfill, DQ gates, alerting, ownership, RPO/RTO and rollback.</p></div>
+</div>
+<h3>Rapid Principal Challenges</h3>
+<ol>
+<li>Why this design instead of the simplest viable alternative?</li>
+<li>What breaks at 10× volume?</li>
+<li>How is the pipeline safe when rerun?</li>
+<li>How do you process late updates and deletes?</li>
+<li>What is your replay boundary and source of truth?</li>
+<li>How do you prove Bronze → Silver → Gold completeness?</li>
+<li>How do you diagnose skew versus insufficient compute?</li>
+<li>When would you reject streaming?</li>
+<li>When would you use Liquid Clustering rather than partitions or Z-Order?</li>
+<li>How do security and Unity Catalog affect the physical design?</li>
+<li>What does the design cost, and what is the dominant cost driver?</li>
+<li>Which decision would you record as an ADR?</li>
+</ol>
+</section>
+
+
+<section class="card searchable" id="coles-star">
+<h2>Coles Experience → Principal STAR Practice</h2>
+<p class="note">ADDED INTERVIEW LAYER — keep only metrics and claims you can personally defend.</p>
+
+<details open><summary>STAR 1 — Enterprise Feature Store / Forecasting</summary>
+<p><b>Situation:</b> Advanced Analytics required reusable, governed features for forecasting and optimisation workloads rather than repeated feature logic across models.</p>
+<p><b>Task:</b> Design and operationalise a scalable feature engineering framework across historical and future features.</p>
+<p><b>Action:</b> Explain your AAFS/Databricks design, configuration-driven feature definitions, reusable intermediate grains, validation, runtime/catch-up handling, and how feature outputs were consumed by forecasting and optimisation use cases.</p>
+<p><b>Result:</b> Use only your verified outcomes. A strong Principal ending connects reuse, consistency, operational ownership and forecast/business impact.</p>
+<p><b>Principal follow-up:</b> How would you redesign the same platform today using Unity Catalog Feature Engineering, Lakeflow, stronger point-in-time correctness and automated observability?</p>
+</details>
+
+<details><summary>STAR 2 — Range Optimiser Performance</summary>
+<p><b>Situation:</b> A large retail feature workload combined multi-year item-location-day data with layout, supplier, stock, markdown, waste and margin transformations.</p>
+<p><b>Task:</b> Reduce runtime/cost while preserving business correctness.</p>
+<p><b>Action:</b> Explain the SQL rewrite, intermediate-grain strategy, null/Inf handling, time-zone correctness and SQL Warehouse/serverless optimisation. Then describe how you validated equivalence before production rollout.</p>
+<p><b>Result:</b> Your known example is runtime improvement from roughly 27 minutes to 16.5 minutes; verify the exact figure before using it externally.</p>
+<p><b>Principal follow-up:</b> At 10× volume, what would you change in data layout, incremental processing, clustering and compute strategy?</p>
+</details>
+
+<details><summary>STAR 3 — First Analytics Workloads to Cloud</summary>
+<p><b>Situation:</b> Analytics workloads needed to move from on-premises processing toward Azure Databricks/Delta-based engineering.</p>
+<p><b>Task:</b> Help establish the cloud engineering pattern while keeping existing analytical consumers reliable.</p>
+<p><b>Action:</b> Explain migration sequencing, data validation, orchestration, environment separation, replay/backfill, stakeholder alignment and production support.</p>
+<p><b>Principal follow-up:</b> What did you deliberately not migrate or redesign in the first wave, and why?</p>
+</details>
+
+<details><summary>STAR 4 — Production Reliability / Replay</summary>
+<p><b>Use your real framework:</b> last-successful-date tracking, retry/catch-up, validation gates and deterministic reruns.</p>
+<p><b>Principal framing:</b> Don't say only “we retried the job.” Explain how the design prevented duplicate or inconsistent feature output, how you determined the recovery boundary, and how downstream publication was protected.</p>
+</details>
+
+<details><summary>STAR 5 — Cost & Performance Leadership</summary>
+<p>Structure: <b>Baseline → evidence → bottleneck → options → decision → trade-off → measured result → prevention/standardisation.</b></p>
+<p>Use your personally verified examples such as compute/runtime optimisation and platform cost reduction. Be ready to explain exactly how the baseline and savings were calculated.</p>
+</details>
+</section>
+
+
+<section class="source-card searchable" id="source-1">
+  <div class="source-head">
+    <h2>Databricks Platform Architecture — Complete Component Map.txt</h2>
+    <button onclick="copySource('src-1')">Copy source</button>
+  </div>
+  <div class="badge">ORIGINAL SOURCE — VERBATIM</div>
+  <pre id="src-1">%md
+## Databricks Platform Architecture — Complete Component Map
+
+---
+
+### 1. Platform Layers
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        UNITY CATALOG (Governance Layer)                 │
+│   Access Control │ Lineage │ Data Discovery │ Audit │ Data Sharing     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌────────────┐  │
+│  │   Databricks │  │  Databricks  │  │  Lakeflow    │  │   Model    │  │
+│  │     SQL      │  │  Notebooks   │  │  Jobs        │  │  Serving   │  │
+│  │  (Warehouses)│  │  (IDE)       │  │  (Orchestr.) │  │  (ML Ops)  │  │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └─────┬──────┘  │
+│         │                 │                 │                │          │
+│  ┌──────▼─────────────────▼─────────────────▼────────────────▼──────┐  │
+│  │              COMPUTE LAYER                                       │  │
+│  │  SQL Warehouses │ All-Purpose │ Job Clusters │ Serverless │ GPU  │  │
+│  │  (Photon)       │ Clusters    │ (ephemeral)  │ Compute    │      │  │
+│  └──────────────────────────┬───────────────────────────────────────┘  │
+│                             │                                          │
+│  ┌──────────────────────────▼───────────────────────────────────────┐  │
+│  │              STORAGE LAYER (Delta Lake on Cloud Storage)         │  │
+│  │  ADLS Gen2 (Azure) │ S3 (AWS) │ GCS (Google)                    │  │
+│  │  Delta Format: Parquet files + _delta_log/ (transaction log)    │  │
+│  └─────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2. Control Plane vs Data Plane
+
+| Component | Control Plane (Databricks-managed) | Data Plane (Your Cloud Account) |
+| --- | --- | --- |
+| **What lives here** | Web UI, REST APIs, Notebooks, Job configs, Unity Catalog metadata | Compute (clusters/warehouses), Data files, DBFS |
+| **Who manages** | Databricks | You (your Azure/AWS/GCP subscription) |
+| **Network** | Databricks cloud account | Your VNet/VPC |
+| **Key implication** | Metadata never leaves Databricks | Data never leaves your cloud account |
+| **Exam tip** | Credentials are stored in the control plane (encrypted) | Results and data are processed in the data plane |
+
+### 3. Workspace Hierarchy
+
+```
+Databricks Account
+ ├── Workspace 1 (Dev)
+ │    ├── Users / Groups / Service Principals
+ │    ├── Notebooks, Repos, Files
+ │    ├── Jobs, Pipelines
+ │    └── Compute (Clusters, Warehouses)
+ ├── Workspace 2 (Prod)
+ └── Unity Catalog Metastore (shared across workspaces)
+      ├── Catalog 1
+      │    ├── Schema A
+      │    │    ├── Tables, Views, Volumes, Functions
+      │    │    └── Models (ML)
+      │    └── Schema B
+      └── Catalog 2
+```
+
+### 4. Key Services at a Glance
+
+| Service | What It Does | Exam Weight | Key Commands |
+| --- | --- | --- | --- |
+| **Delta Lake** | ACID storage layer on Parquet + transaction log | HIGH | `DESCRIBE DETAIL`, `DESCRIBE HISTORY`, `OPTIMIZE`, `VACUUM`, `RESTORE` |
+| **Unity Catalog** | Centralized governance: access, lineage, sharing | HIGH | `GRANT`, `REVOKE`, `SHOW GRANTS`, `CREATE CATALOG/SCHEMA` |
+| **Lakeflow Jobs** | Orchestration: schedule notebooks, pipelines, SQL | HIGH | Job UI, REST API, task dependencies |
+| **Spark Declarative Pipelines (SDP)** | Declarative ETL with quality expectations | MEDIUM | `CREATE STREAMING TABLE`, `CREATE MATERIALIZED VIEW`, expectations |
+| **Databricks SQL** | SQL analytics with warehouses | HIGH | SQL Warehouse config, query profile, dashboards |
+| **MLflow** | ML experiment tracking, model registry, serving | MEDIUM | `mlflow.log_param`, `mlflow.log_metric`, model stages |
+| **Auto Loader** | Incremental file ingestion (cloud_files) | HIGH | `cloud_files`, `cloudFiles.format`, schema inference/evolution |
+| **Repos / Git** | Version control integration | LOW | Git integration, CI/CD |
+| **Secrets** | Credential management | LOW | `dbutils.secrets.get()`, secret scopes |
+| **Delta Sharing** | Cross-org data sharing (open protocol) | MEDIUM | `CREATE SHARE`, `CREATE RECIPIENT`, `GRANT SELECT ON SHARE` |
+
+
+ 
+## Delta Lake — Complete Feature Reference
+
+---
+
+### 1. What Makes Delta Lake Different from Plain Parquet
+
+| Feature | Parquet | Delta Lake |
+| --- | --- | --- |
+| ACID Transactions | No | Yes — via `_delta_log/` |
+| Time Travel | No | Yes — `VERSION AS OF`, `TIMESTAMP AS OF` |
+| Schema Enforcement | No (schema-on-read) | Yes — rejects bad writes |
+| Schema Evolution | Manual | `ALTER TABLE ADD COLUMNS` or `mergeSchema` option |
+| UPDATE/DELETE/MERGE | No | Yes — full DML support |
+| Data Skipping | No | Yes — min/max stats per file per column |
+| Streaming Source/Sink | Limited | Yes — exactly-once with checkpointing |
+| Audit History | No | Yes — `DESCRIBE HISTORY` |
+
+### 2. Delta Transaction Log (`_delta_log/`)
+
+| Concept | Detail | Exam Tip |
+| --- | --- | --- |
+| **Location** | `_delta_log/` directory inside table directory | Every table has one |
+| **Format** | JSON files (one per commit) + Parquet checkpoints every 10 commits | Checkpoint = snapshot for fast reads |
+| **What it records** | Add file, remove file, metadata changes, protocol changes | Each commit is atomic |
+| **Optimistic concurrency** | Writers check if conflicts exist at commit time | `ConcurrentAppendException` if conflict |
+| **Conflict resolution** | File-level (not row-level) — two writers to different files = no conflict | This is why partitioning helps concurrency |
+
+### 3. Time Travel
+
+| Method | Syntax | Use Case |
+| --- | --- | --- |
+| **By version** | `SELECT * FROM table VERSION AS OF 42` | Audit, debug, reproduce |
+| **By timestamp** | `SELECT * FROM table TIMESTAMP AS OF '2026-08-01'` | Point-in-time reporting |
+| **Restore** | `RESTORE TABLE table TO VERSION AS OF 42` | Undo bad writes |
+| **History** | `DESCRIBE HISTORY table` | See all commits with timestamps, operations, users |
+| **Retention** | Default 30 days for data files | Controlled by `delta.logRetentionDuration` (log) and `delta.deletedFileRetentionDuration` (data) |
+
+### 4. Table Maintenance Commands
+
+| Command | What It Does | When to Run | Exam Tip |
+| --- | --- | --- | --- |
+| **OPTIMIZE** | Compacts small files into larger ones (\~1 GB target) | After many small writes (streaming, frequent appends) | Does NOT delete old files — just adds new compacted ones |
+| **OPTIMIZE ... ZORDER BY** | Compacts + co-locates data by specified columns | When queries filter on specific non-partition columns | Max 4 columns recommended; diminishing returns after |
+| **VACUUM** | Deletes files older than retention period that are no longer referenced | Weekly or after OPTIMIZE | Default retention = 7 days. **Cannot undo VACUUM** — breaks time travel for vacuumed versions |
+| **ANALYZE TABLE** | Computes column-level statistics for the optimizer | After large data changes; before expensive queries | Critical for correct join strategy selection |
+| **DESCRIBE DETAIL** | Shows file count, size, partition columns, table properties | Diagnostic — check table health | Key fields: `numFiles`, `sizeInBytes`, `partitionColumns` |
+| **DESCRIBE HISTORY** | Shows commit log with timestamps, operations, metrics | Debugging, auditing | Shows `operationMetrics` (rows written, files added) |
+
+### 5. Deletion Vectors
+
+| Aspect | Detail |
+| --- | --- |
+| **What** | A bitmap that marks rows as "deleted" within a Parquet file without rewriting the file |
+| **Why** | DELETE/UPDATE/MERGE no longer need to rewrite entire files — just append a deletion vector |
+| **Performance** | 2-10x faster DELETE/UPDATE/MERGE on large tables |
+| **Enable** | `ALTER TABLE t SET TBLPROPERTIES ('delta.enableDeletionVectors' = true)` |
+| **Default** | Enabled by default on new tables (DBR 14.0+) |
+| **Read impact** | Readers apply the deletion vector as a filter — slight overhead, but much less than rewriting |
+| **Exam tip** | Deletion vectors make MERGE cheaper because only the deletion bitmap is written, not new Parquet files |
+
+### 6. Change Data Feed (CDF)
+
+| Aspect | Detail |
+| --- | --- |
+| **What** | Records row-level changes (insert, update_preimage, update_postimage, delete) for downstream consumers |
+| **Enable** | `ALTER TABLE t SET TBLPROPERTIES ('delta.enableChangeDataFeed' = true)` |
+| **Query** | `SELECT * FROM table_changes('my_table', 2)` — changes since version 2 |
+| **Use case** | Incremental ETL: downstream tables read only changed rows instead of full table |
+| **Storage** | Changes stored in `_change_data/` directory inside the table |
+| **Exam tip** | CDF is the foundation for incremental MERGE patterns — enables "process only what changed" |
+
+### 7. Liquid Clustering vs Partitioning vs Z-Order
+
+| Aspect | PARTITION BY | Z-ORDER BY | CLUSTER BY (Liquid) |
+| --- | --- | --- | --- |
+| **Set at** | CREATE TABLE time only | On-demand with OPTIMIZE | CREATE TABLE or ALTER TABLE anytime |
+| **Change columns** | Cannot change — rebuild required | Can change anytime | Can change with ALTER TABLE |
+| **How it works** | Physical directories per value | Interleaved sort within files | Hilbert-curve layout within files |
+| **Best for** | Low-cardinality (date, region) | Ad-hoc optimization, 1-4 columns | Any cardinality, up to 4 columns |
+| **Small file problem** | Yes — high cardinality = millions of tiny files | No | No |
+| **Incremental** | N/A | Must re-run OPTIMIZE on all data | OPTIMIZE processes only new/changed files |
+| **Exam tip** | Legacy — use Liquid Clustering for new tables | Being replaced by Liquid Clustering | **Recommended approach** for all new Delta tables |
+
+ 
+## Unity Catalog — Governance &amp; Security
+
+---
+
+### 1. Hierarchy
+
+```
+Metastore (1 per region — shared across workspaces)
+ └── Catalog (top-level namespace — like a database in traditional RDBMS)
+      └── Schema (like a schema/database — groups related objects)
+           ├── Tables (managed or external)
+           ├── Views (standard, materialized, dynamic)
+           ├── Volumes (managed or external file storage)
+           ├── Functions (SQL UDFs, Python UDFs)
+           └── Models (ML models registered via MLflow)
+```
+
+### 2. Object Types
+
+| Object | Managed | External | Key Difference |
+| --- | --- | --- | --- |
+| **Table** | Data in UC-managed storage; DROP deletes data | Data at your LOCATION; DROP removes metadata only | Managed = simpler; External = portable |
+| **Volume** | Files in UC-managed storage | Files at your LOCATION | Use for non-tabular files (images, CSVs, JARs) |
+| **View** | Always virtual (no storage) | N/A | `CREATE VIEW` — query alias with access control |
+| **Dynamic View** | Row/column filtering based on user | N/A | `CASE WHEN is_member('group') THEN col ELSE 'REDACTED' END` |
+| **Materialized View** | Pre-computed + auto-refreshed | N/A | Speeds up dashboards and repeated queries |
+
+### 3. Access Control (Privileges)
+
+| Privilege | Applies To | What It Allows |
+| --- | --- | --- |
+| `ALL PRIVILEGES` | Any securable | Full access (owner-level) |
+| `SELECT` | Table, View | Read data |
+| `MODIFY` | Table | INSERT, UPDATE, DELETE, MERGE |
+| `CREATE TABLE` | Schema | Create new tables |
+| `CREATE SCHEMA` | Catalog | Create new schemas |
+| `CREATE CATALOG` | Metastore | Create new catalogs |
+| `USE CATALOG` | Catalog | Access the catalog (required to see schemas) |
+| `USE SCHEMA` | Schema | Access the schema (required to see tables) |
+| `EXECUTE` | Function | Run a UDF |
+| `READ VOLUME` | Volume | Read files from a volume |
+| `WRITE VOLUME` | Volume | Write files to a volume |
+
+**Exam-critical syntax:**
+```sql
+GRANT SELECT ON TABLE catalog.schema.table TO `user@example.com`;
+GRANT USE CATALOG ON CATALOG my_catalog TO `group_name`;
+GRANT USE SCHEMA ON SCHEMA my_catalog.my_schema TO `group_name`;
+GRANT CREATE TABLE ON SCHEMA my_catalog.my_schema TO `group_name`;
+REVOKE SELECT ON TABLE catalog.schema.table FROM `user@example.com`;
+SHOW GRANTS ON TABLE catalog.schema.table;
+SHOW GRANTS `user@example.com`;
+```
+
+### 4. Row-Level &amp; Column-Level Security
+
+| Type | How | Syntax |
+| --- | --- | --- |
+| **Row Filter** | Function that returns TRUE/FALSE per row | `ALTER TABLE t SET ROW FILTER func ON (col1, col2)` |
+| **Column Mask** | Function that transforms a column value per user/group | `ALTER TABLE t ALTER COLUMN ssn SET MASK mask_ssn` |
+| **Dynamic View** | CASE WHEN inside a VIEW definition | `CREATE VIEW v AS SELECT CASE WHEN is_member('hr') THEN salary ELSE NULL END ...` |
+
+### 5. Data Lineage
+
+| Feature | Detail |
+| --- | --- |
+| **What** | Automatic tracking of data flow: which tables/columns are read/written by which notebooks/jobs |
+| **Granularity** | Table-level and column-level |
+| **Where to see** | Catalog Explorer → Table → Lineage tab |
+| **Use case** | Impact analysis ("if I change this column, what downstream tables break?") |
+| **Exam tip** | Lineage is automatic — no configuration needed. Works for SQL, Python, Scala, R |
+
+### 6. Delta Sharing
+
+| Concept | Detail |
+| --- | --- |
+| **What** | Open protocol for secure cross-organization data sharing |
+| **Types** | Open sharing (any client, token-based) and Databricks-to-Databricks (UC-level) |
+| **Share** | A named container of tables you want to share: `CREATE SHARE my_share` |
+| **Recipient** | Who you share with: `CREATE RECIPIENT partner_corp` |
+| **Grant** | `GRANT SELECT ON SHARE my_share TO RECIPIENT partner_corp` |
+| **Add tables** | `ALTER SHARE my_share ADD TABLE catalog.schema.table` |
+| **Consumer** | Creates a catalog from the share: `CREATE CATALOG partner_data USING SHARE provider.share_name` |
+| **Exam tip** | Data is NOT copied — consumers query it in place. Provider controls access |
+
+ 
+## Data Engineering — ETL, Pipelines, Auto Loader &amp; SDP
+
+---
+
+### 1. Auto Loader (cloudFiles)
+
+| Aspect | Detail |
+| --- | --- |
+| **What** | Incrementally and efficiently processes new files as they arrive in cloud storage |
+| **How** | Uses file notification (event-based) or directory listing to detect new files |
+| **Format** | `spark.readStream.format('cloudFiles')` |
+| **Key option** | `.option('cloudFiles.format', 'json')` — supports JSON, CSV, Parquet, Avro, ORC, text, binary |
+| **Schema inference** | Automatic with `cloudFiles.inferColumnTypes = true` |
+| **Schema evolution** | `cloudFiles.schemaEvolutionMode = addNewColumns` — auto-adds new columns |
+| **Rescue column** | `_rescued_data` — captures data that doesn't match the schema instead of failing |
+| **Checkpoint** | Tracks which files have been processed — exactly-once semantics |
+
+**Two modes:**
+
+| Mode | How | When to Use |
+| --- | --- | --- |
+| **Directory Listing** | Lists the directory periodically | &lt; 10K files/day, simpler setup |
+| **File Notification** | Cloud events (Azure Event Grid, AWS SNS/SQS) | &gt; 10K files/day, lower latency |
+
+**Exam-critical pattern:**
+```python
+df = (spark.readStream
+  .format('cloudFiles')
+  .option('cloudFiles.format', 'json')
+  .option('cloudFiles.inferColumnTypes', 'true')
+  .option('cloudFiles.schemaLocation', '/path/to/schema')
+  .load('/path/to/source/')
+)
+df.writeStream.option('checkpointLocation', '/path/to/checkpoint').table('bronze.events')
+```
+
+### 2. Spark Declarative Pipelines (SDP, formerly DLT)
+
+| Concept | Detail | Exam Tip |
+| --- | --- | --- |
+| **What** | Declarative ETL framework — you define WHAT, Spark handles HOW | You write `CREATE STREAMING TABLE` or `CREATE MATERIALIZED VIEW` |
+| **Streaming Table** | Append-only table fed by a streaming source | Use for raw/bronze data, CDC |
+| **Materialized View** | Auto-refreshed query result | Use for aggregations, gold layer |
+| **Expectations** | Data quality constraints with actions | `CONSTRAINT valid_id EXPECT (id IS NOT NULL) ON VIOLATION DROP ROW` |
+| **Pipeline modes** | Triggered (batch) or Continuous (streaming) | Triggered for cost savings; Continuous for low latency |
+| **Development vs Production** | Dev mode = reuses cluster, fast iteration; Prod mode = new cluster per run | Always use Production for scheduled jobs |
+
+**Expectations actions:**
+
+| Action | Behavior | When to Use |
+| --- | --- | --- |
+| `ON VIOLATION WARN` | Logs the violation, keeps the row | Monitoring — see how many bad records |
+| `ON VIOLATION DROP ROW` | Silently drops the row | Filter out bad data |
+| `ON VIOLATION FAIL UPDATE` | Fails the entire pipeline | Critical data — no bad records allowed |
+
+### 3. Structured Streaming Concepts
+
+| Concept | Detail | Exam Tip |
+| --- | --- | --- |
+| **Trigger** | How often to process: `availableNow` (all pending, then stop), `processingTime` (interval), continuous | `availableNow` = batch-like but incremental |
+| **Checkpoint** | Stores progress (which files/offsets processed) | Required for exactly-once; cannot change query between restarts without resetting |
+| **Watermark** | Threshold for late data: `withWatermark('event_time', '10 minutes')` | Data arriving after watermark is dropped |
+| **Output modes** | Append (new rows only), Complete (full result), Update (changed rows) | Append is most common; Complete for aggregations |
+
+### 4. Medallion Architecture Exam Reference
+
+| Layer | Purpose | Table Type | Data Quality | Consumers |
+| --- | --- | --- | --- | --- |
+| **Bronze** | Raw ingestion, append-only | Streaming Table | Minimal — schema enforcement only | Silver layer |
+| **Silver** | Cleaned, conformed, deduplicated | Streaming Table or MV | High — expectations, null handling, type casting | Gold layer, data science |
+| **Gold** | Business-ready aggregations | Materialized View | Highest — pre-aggregated, validated | Dashboards, reports, APIs |
+
+### 5. COPY INTO vs Auto Loader
+
+| Aspect | COPY INTO | Auto Loader |
+| --- | --- | --- |
+| **Type** | SQL command (batch) | Streaming source |
+| **Idempotent** | Yes — tracks loaded files | Yes — via checkpoint |
+| **Scale** | Millions of files (slower at very high volume) | Billions of files (file notification scales better) |
+| **Schema evolution** | Manual | Automatic with rescue column |
+| **Use case** | One-time loads, simple ETL | Production incremental ingestion |
+| **Exam tip** | Good for ad-hoc; Auto Loader for production pipelines |
+
+ 
+## Databricks SQL &amp; Warehouses
+
+---
+
+### 1. SQL Warehouse Types
+
+| Type | Startup | Scaling | Best For | Exam Tip |
+| --- | --- | --- | --- | --- |
+| **Serverless** | Seconds | Instant auto-scale | Most SQL workloads | Recommended default — no infra to manage |
+| **Pro** | Minutes | Auto-scale (slower) | Advanced SQL features needed | Has Photon, serverless-like features |
+| **Classic** | Minutes | Auto-scale (slower) | Legacy/cost-sensitive | Being deprecated in favor of Serverless |
+
+### 2. Warehouse Sizing
+
+| Size | Clusters (min) | Concurrent Queries | Monthly Cost (approx) |
+| --- | --- | --- | --- |
+| 2X-Small | 1 | Low | Lowest |
+| X-Small | 1 | Low-Medium | Low |
+| Small | 1 | Medium | Medium |
+| Medium | 1 | Medium-High | High |
+| Large | 1 | High | Higher |
+| X-Large+ | 1+ | Very High | Highest |
+
+**Scaling = adding more clusters** (not bigger clusters). Each cluster handles a set of concurrent queries. `Max clusters = 2` means up to 2 identical clusters for double throughput.
+
+### 3. Query Execution Features
+
+| Feature | What It Does | Exam Tip |
+| --- | --- | --- |
+| **Photon** | C++ vectorized engine — 2-8x faster for SQL | Enabled by default on SQL Warehouses |
+| **Result Caching** | Identical queries return cached results instantly | Cache invalidated when underlying data changes |
+| **Adaptive Query Execution (AQE)** | Optimizes plan at runtime based on actual data | Auto-coalesces partitions, handles skew |
+| **Predictive I/O** | ML model predicts which files to read | Reduces unnecessary file scans |
+| **Query Profile** | Visual DAG showing operators, time, rows, spill | Primary debugging tool for slow queries |
+
+### 4. SQL Objects You Can Create
+
+| Object | Syntax | Persisted? | Exam Tip |
+| --- | --- | --- | --- |
+| **Table** | `CREATE TABLE t (...)` | Yes — data + metadata | Default: managed Delta table |
+| **External Table** | `CREATE TABLE t (...) LOCATION 'path'` | Metadata only — data at location | DROP removes metadata only |
+| **View** | `CREATE VIEW v AS SELECT ...` | Metadata only — no data | Re-executes query each time |
+| **Materialized View** | `CREATE MATERIALIZED VIEW mv AS SELECT ...` | Yes — pre-computed result | Auto-refreshes; faster than views |
+| **Streaming Table** | `CREATE OR REFRESH STREAMING TABLE st AS SELECT ...` | Yes — incrementally updated | Append-only from streaming sources |
+| **Temporary View** | `CREATE TEMP VIEW tv AS SELECT ...` | Session only — gone after disconnect | Use for intermediate results |
+| **Function (SQL UDF)** | `CREATE FUNCTION f(x INT) RETURNS INT RETURN x * 2` | Yes — stored in UC | Reusable across queries |
+| **Volume** | `CREATE VOLUME v` | Yes — file container | Non-tabular file storage in UC |
+
+### 5. Key SQL Patterns for Exam
+
+| Pattern | Syntax | When |
+| --- | --- | --- |
+| **MERGE (Upsert)** | `MERGE INTO target USING source ON ... WHEN MATCHED THEN UPDATE WHEN NOT MATCHED THEN INSERT` | Incremental loads, SCD Type 1 |
+| **COPY INTO** | `COPY INTO table FROM 'path' FILEFORMAT = CSV` | One-time or periodic file ingestion |
+| **INSERT OVERWRITE** | `INSERT OVERWRITE table SELECT ...` | Replace all data (or partition) |
+| **CREATE OR REPLACE TABLE** | `CREATE OR REPLACE TABLE t AS SELECT ...` | Atomic table replacement |
+| **CTAS** | `CREATE TABLE t AS SELECT ...` | Create + populate in one step |
+| **DEEP CLONE** | `CREATE TABLE t DEEP CLONE source` | Full copy (data + metadata) |
+| **SHALLOW CLONE** | `CREATE TABLE t SHALLOW CLONE source` | Metadata-only copy (references same files) |
+
+### 6. Dashboards (Lakeview)
+
+| Feature | Detail |
+| --- | --- |
+| **What** | Native BI dashboards built from SQL queries |
+| **Types** | Bar, line, area, pie, scatter, heatmap, histogram, table, counter |
+| **Parameters** | Dynamic filters that apply across widgets: `:param_name` syntax |
+| **Refresh** | Manual or scheduled (e.g., every 1 hour) |
+| **Sharing** | Viewer/Editor/Owner permissions via workspace |
+| **Exam tip** | Dashboards run on SQL Warehouses — no cluster needed |
+ 
+## Lakeflow Jobs &amp; Compute Types
+
+---
+
+### 1. Lakeflow Jobs (formerly Workflows)
+
+| Concept | Detail | Exam Tip |
+| --- | --- | --- |
+| **Job** | A scheduled execution of one or more tasks | Top-level orchestration unit |
+| **Task** | A single unit of work: notebook, SQL, Python script, SDP pipeline, JAR, dbt | Building block of a job |
+| **Task Dependencies** | Tasks can depend on other tasks — creates a DAG | Downstream tasks wait for upstream to succeed |
+| **Trigger types** | Manual, Scheduled (cron), File arrival, Continuous, Table update | Table update = run when a Delta table changes |
+| **Retry policy** | Per-task: max retries + retry on timeout | Use for transient failures (network, spot preemption) |
+| **Parameters** | Pass values from job to task or between tasks | `{{job.parameter_name}}` syntax |
+| **Notifications** | Email/webhook on start, success, failure | Best practice: always set failure notifications |
+
+### 2. Task Types
+
+| Task Type | What It Runs | Use Case |
+| --- | --- | --- |
+| **Notebook** | Databricks notebook (Python/SQL/Scala/R) | Most common — ETL, ML, analysis |
+| **SQL** | SQL query or dashboard refresh | Scheduled queries, report refresh |
+| **Python Script** | .py file from workspace or Git | Lightweight Python jobs |
+| **SDP Pipeline** | Spark Declarative Pipeline | Managed ETL with quality expectations |
+| **JAR** | Java/Scala JAR file | Legacy Spark jobs |
+| **dbt** | dbt project | dbt SQL transformations |
+| **If/else condition** | Conditional branching based on task results | "Run task B only if task A output &gt; 100" |
+| **For each** | Loop over a list, running subtasks per item | Process multiple files/tables in parallel |
+
+### 3. Compute Types — Complete Comparison
+
+| Aspect | SQL Warehouse (Serverless) | All-Purpose Cluster | Job Cluster | Serverless Compute |
+| --- | --- | --- | --- | --- |
+| **Languages** | SQL only | Python, SQL, Scala, R | Python, SQL, Scala, R | Python, SQL |
+| **Startup** | Seconds | 5-10 minutes | 5-10 minutes | Seconds |
+| **Lifecycle** | Auto-stop (configurable) | Manual or auto-stop | Created per job run, terminated after | Auto-managed |
+| **Shared by** | Multiple users/queries | Multiple users (interactive) | Single job run only | Single notebook/job |
+| **Photon** | Always on | Optional (enable at cluster creation) | Optional | Always on |
+| **Cost model** | DBU/hr while running | DBU/hr while cluster is up | DBU/hr while job runs | DBU/hr while running |
+| **Scaling** | Auto (add warehouse clusters) | Auto (add worker nodes) | Fixed or auto | Auto |
+| **Best for** | SQL analytics, dashboards, BI | Interactive development, ML experimentation | Production ETL, scheduled jobs | Notebooks (Python/SQL) |
+| **Exam tip** | Default choice for SQL workloads | Most expensive (stays up) | Most cost-effective for batch | Newest option — no cluster management |
+
+### 4. Cluster Configuration Exam Points
+
+| Setting | What It Does | Exam Tip |
+| --- | --- | --- |
+| **Spot/Preemptible instances** | Use discounted cloud VMs (can be reclaimed) | Use for workers (not driver) — saves 30-70% |
+| **Auto-scaling** | Add/remove workers based on load | Set min/max workers; good for variable workloads |
+| **Auto-termination** | Shut down after idle period | Always enable — prevents forgotten clusters |
+| **Cluster policies** | Admin-defined rules limiting cluster configs | Enforce cost controls: max workers, instance types, auto-stop |
+| **Init scripts** | Shell scripts that run on cluster startup | Install custom libraries, configure environments |
+| **Spark config** | Key-value Spark settings | `spark.sql.shuffle.partitions`, `spark.sql.autoBroadcastJoinThreshold` |
+| **Instance pools** | Pre-warmed VMs ready to attach | Reduces cluster startup time to \~2 minutes |
+
+### 5. When to Use Which Compute
+
+| Scenario | Best Compute | Why |
+| --- | --- | --- |
+| Analyst running ad-hoc SQL | Serverless SQL Warehouse | Instant start, pay-per-query, SQL-optimized |
+| Dashboard serving 100 users | Serverless SQL Warehouse (Medium+) | Auto-scales with concurrent users |
+| Data engineer developing in notebook | Serverless Compute or All-Purpose | Interactive, supports Python |
+| Nightly ETL pipeline | Job Cluster | Ephemeral — created and destroyed per run |
+| ML model training (GPU) | All-Purpose with ML Runtime | Needs GPU + ML libraries |
+| Streaming pipeline (24/7) | Job Cluster (always-on) | Continuous, dedicated resources |
+| Quick one-off query | Serverless SQL Warehouse | Starts in seconds |
+
+ 
+## MLflow &amp; Machine Learning on Databricks
+
+---
+
+### 1. MLflow Components
+
+| Component | What It Does | Key APIs |
+| --- | --- | --- |
+| **Tracking** | Logs parameters, metrics, artifacts per experiment run | `mlflow.log_param()`, `mlflow.log_metric()`, `mlflow.log_artifact()` |
+| **Models** | Packages models in a standard format with dependencies | `mlflow.sklearn.log_model()`, `mlflow.pyfunc.log_model()` |
+| **Model Registry (UC)** | Version control for models in Unity Catalog | `mlflow.register_model()`, model stages (None → Staging → Production) |
+| **Model Serving** | Deploy models as REST API endpoints | Real-time inference, auto-scaling |
+| **Evaluate** | Automated evaluation for GenAI and ML models | `mlflow.evaluate()` with built-in scorers |
+
+### 2. Experiment Tracking Pattern
+
+```python
+import mlflow
+
+mlflow.set_experiment('/Users/user@example.com/my-experiment')
+
+with mlflow.start_run():
+    mlflow.log_param('learning_rate', 0.01)
+    mlflow.log_param('max_depth', 5)
+    # ... train model ...
+    mlflow.log_metric('rmse', 0.85)
+    mlflow.log_metric('r2', 0.92)
+    mlflow.sklearn.log_model(model, 'model')
+```
+
+### 3. Model Registry in Unity Catalog
+
+| Concept | Detail | Exam Tip |
+| --- | --- | --- |
+| **Register** | `mlflow.register_model('runs:/run_id/model', 'catalog.schema.model_name')` | Model stored in UC with governance |
+| **Versions** | Each registration creates a new version (v1, v2, v3...) | Immutable — can't modify, only add new versions |
+| **Aliases** | Named pointers to versions: "Champion", "Challenger" | Use aliases instead of version numbers in production |
+| **Lineage** | Automatic — which table trained which model version | Visible in UC lineage graph |
+| **Access Control** | UC permissions: GRANT EXECUTE on model | Same governance as tables |
+
+### 4. Feature Store
+
+| Concept | Detail |
+| --- | --- |
+| **What** | Centralized repository of reusable ML features (stored as Delta tables) |
+| **Why** | Consistency between training and serving; feature reuse across models |
+| **Create** | `fe.create_table()` with primary key + timestamp key |
+| **Lookup** | `FeatureLookup` — joins features by key at training and serving time |
+| **Point-in-time** | Prevents data leakage by joining on the correct historical value |
+| **Serving** | Features automatically looked up at inference time |
+
+ 
+## New Features (2024–2026) — Exam Hot Topics
+
+---
+
+### 1. Feature Reference Table
+
+| Feature | Year | Category | What / Why | Key Detail |
+| --- | --- | --- | --- | --- |
+| **Liquid Clustering** | 2024 | Storage | Replaces partitioning + Z-ORDER with adaptive Hilbert-curve file layout | `CREATE TABLE t CLUSTER BY (col1, col2)` — can be changed with ALTER TABLE |
+| **Deletion Vectors** | 2024 | Storage | Soft-delete rows without rewriting Parquet files | 2-10x faster MERGE/DELETE/UPDATE |
+| **Predictive I/O** | 2024 | Query | ML model predicts which files to skip during scans | Automatic on Photon — no configuration |
+| **Serverless Compute** | 2024 | Compute | No-cluster Python/SQL notebooks — starts in seconds | Replaces all-purpose clusters for notebooks |
+| **AI Functions** | 2024 | AI/SQL | Call LLMs from SQL: `ai_query()`, `ai_generate_text()`, `ai_classify()`, `ai_extract()` | `SELECT ai_classify(review, ARRAY('positive','negative')) FROM reviews` |
+| **Genie Data Rooms** | 2024 | AI/BI | Natural language to SQL — self-service analytics for business users | Define tables + instructions → users ask questions in English |
+| **Lakeflow Connect** | 2025 | Ingestion | Managed connectors for SaaS sources (Salesforce, HubSpot, ServiceNow, etc.) | No-code ingestion setup in UI |
+| **Materialized Views in DBSQL** | 2024 | SQL | Pre-computed, auto-refreshed query results | `CREATE MATERIALIZED VIEW mv AS SELECT ...` — refresh on schedule or trigger |
+| **Row/Column Security** | 2024 | Governance | Row filters and column masks in Unity Catalog | Applied at the table level — all queries automatically filtered/masked |
+| **Volumes** | 2024 | Storage | UC-governed file storage (images, CSVs, JARs, model artifacts) | `CREATE VOLUME v` — files accessed via `/Volumes/catalog/schema/volume/` |
+| **Model Serving v2** | 2025 | ML | Serverless model endpoints with auto-scaling and GPU | Pay-per-request, Foundation Model APIs |
+| **Delta Sharing (Open)** | 2024 | Sharing | Share Delta tables with any client (Pandas, Spark, Tableau) outside Databricks | Open protocol — recipients don't need Databricks |
+| **Vector Search** | 2025 | AI | Managed vector database for RAG and similarity search | Create index → query with natural language |
+| **Compound AI Systems** | 2025 | AI | Build multi-step AI agents using tools, retrieval, functions | Agent framework with MLflow tracing |
+| **Lakebase** | 2026 | Database | Managed Postgres on Databricks — operational/transactional workloads | Auto-scaling, integrated with UC |
+| **ABAC Policies** | 2025 | Governance | Attribute-based access control — tag-driven row/column filtering | Tag columns with sensitivity levels → policies auto-apply |
+
+### 2. AI Functions in SQL — Quick Reference
+
+| Function | What It Does | Example |
+| --- | --- | --- |
+| `ai_query()` | Send any prompt to an LLM | `SELECT ai_query('databricks-meta-llama-3-1-70b', 'Summarize: ' \|\| text)` |
+| `ai_classify()` | Classify text into categories | `SELECT ai_classify(review, ARRAY('positive','negative','neutral'))` |
+| `ai_extract()` | Extract structured fields from text | `SELECT ai_extract(email, ARRAY('name','company','phone'))` |
+| `ai_fix_grammar()` | Fix grammar in text | `SELECT ai_fix_grammar(comment)` |
+| `ai_gen()` | Generate text from prompt | `SELECT ai_gen('Write a product description for ' \|\| product_name)` |
+| `ai_similarity()` | Semantic similarity score between texts | `SELECT ai_similarity(query, document)` |
+| `ai_translate()` | Translate text | `SELECT ai_translate(text, 'French')` |
+| `ai_forecast()` | Time series forecasting | `SELECT * FROM ai_forecast(TABLE sales, horizon =&gt; 30)` |
+| `ai_parse_document()` | Extract text from PDFs/images | `SELECT ai_parse_document(content, 'pdf')` |
+
+### 3. Databricks Assistant / Genie
+
+| Feature | Detail |
+| --- | --- |
+| **Databricks Assistant** | AI coding assistant in notebooks — generates code, explains errors, writes SQL |
+| **Genie Data Rooms** | Self-service BI — business users ask questions in natural language, get SQL results |
+| **Setup** | Define tables, add instructions/guardrails, invite users |
+| **How it works** | Genie generates SQL from the question, runs it on a SQL warehouse, returns results |
+| **Governance** | Respects Unity Catalog permissions — users only see data they're allowed to |
+
+ 
+## Databricks Professional Certification — Quick Reference &amp; Exam Tips
+
+---
+
+### 1. Exam Structure
+
+| Aspect | Data Engineer Associate | Data Engineer Professional |
+| --- | --- | --- |
+| **Questions** | 45 | 60 |
+| **Duration** | 90 minutes | 120 minutes |
+| **Passing** | 70% | 70% |
+| **Format** | Multiple choice, multiple select | Multiple choice, multiple select |
+| **Focus** | Breadth — all Databricks components | Depth — production patterns, optimization, troubleshooting |
+
+### 2. High-Weight Exam Topics
+
+| Topic | Weight | Must-Know Concepts |
+| --- | --- | --- |
+| **Delta Lake** | 20-25% | Time Travel, MERGE, OPTIMIZE, VACUUM, Deletion Vectors, CDF, Liquid Clustering |
+| **ELT with Spark SQL** | 20-25% | CTEs, CTAS, COPY INTO, MERGE patterns, higher-order functions, JSON handling |
+| **Incremental Processing** | 15-20% | Auto Loader, Structured Streaming, `trigger(availableNow=True)`, checkpoints, watermarks |
+| **Pipeline Design** | 15% | Medallion architecture, SDP expectations, streaming vs batch |
+| **Unity Catalog** | 10-15% | GRANT/REVOKE, 3-level namespace, managed vs external, row/column security |
+| **Orchestration** | 10% | Lakeflow Jobs, task dependencies, retry policies, notifications |
+| **Production Patterns** | 10% | Monitoring, error handling, idempotent writes, CI/CD |
+
+### 3. Must-Know SQL Commands (Top 30)
+
+| # | Command | What &amp; When |
+| --- | --- | --- |
+| 1 | `CREATE TABLE t USING DELTA` | Create managed Delta table |
+| 2 | `CREATE TABLE t LOCATION 'path'` | Create external table |
+| 3 | `CREATE OR REPLACE TABLE t AS SELECT ...` | Atomic table replacement (CRAS) |
+| 4 | `CREATE TABLE t CLUSTER BY (col)` | Liquid Clustering |
+| 5 | `ALTER TABLE t CLUSTER BY (new_col)` | Change clustering columns (liquid only) |
+| 6 | `MERGE INTO target USING source ON ...` | Upsert — exam favourite |
+| 7 | `COPY INTO table FROM 'path'` | Idempotent file ingestion |
+| 8 | `INSERT OVERWRITE table SELECT ...` | Replace data (or partition) |
+| 9 | `OPTIMIZE table` | Compact small files |
+| 10 | `OPTIMIZE table ZORDER BY (col)` | Compact + co-locate by column |
+| 11 | `VACUUM table RETAIN 168 HOURS` | Delete unreferenced old files |
+| 12 | `DESCRIBE DETAIL table` | File count, size, properties |
+| 13 | `DESCRIBE HISTORY table` | Commit log with operations |
+| 14 | `RESTORE TABLE t TO VERSION AS OF n` | Undo bad writes |
+| 15 | `SELECT * FROM t VERSION AS OF n` | Time travel query |
+| 16 | `SELECT * FROM t TIMESTAMP AS OF '...'` | Time travel by timestamp |
+| 17 | `SELECT * FROM table_changes('t', 2)` | Read Change Data Feed |
+| 18 | `ALTER TABLE t SET TBLPROPERTIES (...)` | Enable CDF, deletion vectors, etc. |
+| 19 | `SHOW TBLPROPERTIES table` | View all table properties |
+| 20 | `GRANT SELECT ON TABLE t TO user` | Unity Catalog permission |
+| 21 | `REVOKE SELECT ON TABLE t FROM user` | Remove permission |
+| 22 | `SHOW GRANTS ON TABLE t` | List permissions |
+| 23 | `CREATE SCHEMA catalog.schema` | Create a schema in UC |
+| 24 | `CREATE VIEW v AS SELECT ...` | Virtual view |
+| 25 | `CREATE MATERIALIZED VIEW mv AS ...` | Pre-computed view |
+| 26 | `CREATE STREAMING TABLE st AS ...` | Incremental streaming table |
+| 27 | `CREATE SHARE s` | Delta Sharing — create share |
+| 28 | `CREATE VOLUME v` | Unity Catalog volume |
+| 29 | `ANALYZE TABLE t COMPUTE STATISTICS` | Update optimizer stats |
+| 30 | `EXPLAIN EXTENDED query` | Show full query plan |
+
+### 4. Common Exam Traps
+
+| Trap | Correct Answer |
+| --- | --- |
+| "VACUUM deletes the transaction log" | NO — VACUUM only deletes unreferenced DATA files. The log is separate. |
+| "OPTIMIZE deletes old files" | NO — OPTIMIZE creates new compacted files. Old files remain until VACUUM. |
+| "Shallow clone copies data" | NO — Shallow clone only copies metadata. Data files are referenced, not duplicated. |
+| "DROP external table deletes data" | NO — DROP external table removes metadata only. Data files remain at the LOCATION. |
+| "Streaming tables support UPDATE/DELETE" | NO — Streaming tables are append-only. Use materialized views for full DML. |
+| "VACUUM with 0 hours is safe" | NO — VACUUM RETAIN 0 HOURS breaks concurrent readers. Minimum safe retention = 7 days (168 hours). |
+| "Auto Loader is a SQL command" | NO — Auto Loader uses `spark.readStream.format('cloudFiles')`. COPY INTO is the SQL alternative. |
+| "Materialized Views store a query, not data" | NO — MVs store pre-computed data (unlike standard views). They are refreshed, not re-executed. |
+| "Time Travel works forever" | NO — Limited by VACUUM retention (default 7 days for data files). After VACUUM, old versions are gone. |
+| "All clusters have Photon" | NO — Photon is on SQL Warehouses (always) and Photon-enabled clusters (opt-in). |
+
+### 5. Study Priority Matrix
+
+| Priority | Topic | Study Method |
+| --- | --- | --- |
+| **Critical** | MERGE syntax and patterns | Write 10 MERGE queries by hand |
+| **Critical** | Auto Loader vs COPY INTO | Know when to use each, exact syntax |
+| **Critical** | OPTIMIZE + VACUUM lifecycle | Understand what each does and doesn't do |
+| **Critical** | Unity Catalog GRANT/REVOKE | Practice 3-level namespace + permissions |
+| **High** | Structured Streaming triggers | Know `availableNow`, `processingTime`, `continuous` |
+| **High** | SDP expectations syntax | Know all 3 violation actions |
+| **High** | Time Travel (VERSION/TIMESTAMP) | Write queries + RESTORE |
+| **High** | Delta table properties | CDF, deletion vectors, retention settings |
+| **Medium** | Medallion architecture design | Know bronze/silver/gold purpose + table types |
+| **Medium** | Job orchestration | Task dependencies, retries, triggers |
+| **Medium** | Delta Sharing | CREATE SHARE/RECIPIENT, GRANT |
+| **Lower** | MLflow basics | log_param, log_metric, register_model |
+| **Lower** | Cluster configuration | Spot instances, auto-scaling, pools |
+</pre>
+</section>
+<section class="source-card searchable" id="source-2">
+  <div class="source-head">
+    <h2>spark_internals.txt</h2>
+    <button onclick="copySource('src-2')">Copy source</button>
+  </div>
+  <div class="badge">ORIGINAL SOURCE — VERBATIM</div>
+  <pre id="src-2">%md
+## Spark Internals &amp; Databricks Optimization — Complete Cheat Sheet
+
+---
+
+### 1. Query Lifecycle: What Happens When You Run a Query
+
+| Step | What Happens | Key Detail |
+| --- | --- | --- |
+| **1. Parsing** | SQL text → Abstract Syntax Tree (AST) | Syntax errors caught here |
+| **2. Analysis** | Resolves table/column names against Unity Catalog | "Table not found" errors here |
+| **3. Logical Plan** | AST → logical operators (Scan, Filter, Join, Aggregate) | Describes WHAT to do, not HOW |
+| **4. Catalyst Optimizer** | Rewrites logical plan (predicate pushdown, constant folding, join reorder) | This is Spark's "brain" — automatically makes your query smarter |
+| **5. Physical Plan** | Chooses algorithms: which join type, scan method, shuffle strategy | You can see this with `EXPLAIN EXTENDED &lt;query&gt;` |
+| **6. Code Generation (Photon/Tungsten)** | Compiles plan into executable bytecode | Photon (C++ engine on Databricks) replaces Tungsten for supported ops |
+| **7. Execution** | Distributes tasks across executors in stages | Stages run in parallel where possible |
+| **8. Write** | Results written to Delta files (Parquet + transaction log) | Commit recorded in `_delta_log/` |
+
+---
+
+### 2. How Work Maps: Query → Jobs → Stages → Tasks → Partitions
+
+```
+Query (1 SQL statement)
+ └── Job (1 per action: INSERT, SELECT, etc.)
+      └── Stage (separated by SHUFFLES — each shuffle = new stage)
+           └── Tasks (1 task per data partition within that stage)
+                └── Each task processes 1 partition of data on 1 CPU core
+```
+
+| Concept | What It Is | How Size Is Decided |
+| --- | --- | --- |
+| **Job** | One complete execution triggered by an action (write, collect, display) | 1 query = usually 1 job (can be more for subqueries) |
+| **Stage** | A chunk of work that can run without a shuffle | Every shuffle (JOIN, GROUP BY, ORDER BY) creates a stage boundary |
+| **Task** | The smallest unit of work — runs on 1 core, processes 1 partition | Number of tasks = number of partitions in that stage |
+| **Partition** | A chunk of data (default \~128 MB target for reads) | Read partitions come from file layout; shuffle partitions from AQE |
+
+---
+
+### 3. Mapping to Compute Size (SQL Warehouse)
+
+| Warehouse Size | Max Concurrent Tasks (approx) | Best For |
+| --- | --- | --- |
+| 2X-Small | 8 | Quick lookups, small tables |
+| X-Small | 16 | Light dashboards |
+| Small | 32 | Medium queries, dev/test |
+| Medium | 64 | Production workloads |
+| Large | 128 | Heavy ETL, large joins |
+| X-Large+ | 256+ | Massive data processing |
+
+&gt; With 303 tasks on a Small warehouse (\~32 concurrent slots), tasks run in waves: \~32 at a time → 303/32 ≈ 10 waves. A bigger warehouse = more parallelism = fewer waves = faster.
+
+---
+
+### 4. What Triggers Each Operation
+
+#### Scans (Reading Data)
+
+| Trigger | What Happens | How to Optimize |
+| --- | --- | --- |
+| `FROM table` / any table reference | Reads Parquet files from cloud storage | Partition pruning, file pruning via stats |
+| Full table scan (no filters) | Reads ALL files | Always add WHERE clauses on partition columns |
+| Predicate pushdown | Filter pushed INTO the scan — reads less data | Spark does this automatically for supported predicates |
+| Column pruning | Only reads columns you SELECT | Parquet is columnar — unused columns cost almost nothing |
+
+#### Shuffles (Data Movement Across Network)
+
+| Trigger | Why It Shuffles | Cost |
+| --- | --- | --- |
+| `JOIN` (most types) | Both sides must be co-located by join key | HIGH — serializes, writes to disk, sends over network, deserializes |
+| `GROUP BY` / `DISTINCT` | All rows with same key must land on same partition | MEDIUM-HIGH |
+| `ORDER BY` / `SORT BY` | Global ordering requires data movement | HIGH (global sort) |
+| `WINDOW OVER (PARTITION BY ...)` | Rows in same partition-by group must be co-located | MEDIUM-HIGH |
+| `UNION` / `MINUS` / `INTERSECT` | Deduplication requires co-location | MEDIUM |
+| `INSERT INTO partitioned_table` | Data repartitioned by target partition column | MEDIUM |
+
+#### Exchanges
+
+| Type | When | Detail |
+| --- | --- | --- |
+| **HashExchange** | JOIN, GROUP BY | Hashes the key, sends to matching partition |
+| **RangeExchange** | ORDER BY | Samples data, creates range boundaries |
+| **BroadcastExchange** | Small table JOIN | Copies entire small table to every executor — NO shuffle on the big table |
+| **SinglePartition** | Final aggregation | All data → 1 partition |
+
+---
+
+### 5. Join Strategies Spark Chooses (Automatically)
+
+| Strategy | When Chosen | Performance |
+| --- | --- | --- |
+| **Broadcast Hash Join** | One side &lt; 10 MB (default threshold) | FASTEST — no shuffle on big table |
+| **Sort Merge Join** | Both sides large, equi-join | Good for large-large joins, requires sort + shuffle on both sides |
+| **Shuffle Hash Join** | One side much smaller (but &gt; broadcast threshold) | Shuffles both, builds hash table on smaller side |
+| **Broadcast Nested Loop Join** | Non-equi join with small table (`BETWEEN`) | Broadcasts small side, loops through big side |
+| **Cartesian Product** | No join condition | AVOID — explodes row count |
+
+&gt; Spark picks the strategy automatically based on table statistics. Run `ANALYZE TABLE &lt;table&gt; COMPUTE STATISTICS` to give Spark better info.
+
+---
+
+### 6. Spill to Disk — When &amp; Why
+
+| Aspect | Detail |
+| --- | --- |
+| **What is spill** | When a task's in-memory data exceeds its allocation, excess is written to local SSD |
+| **Why it's bad** | Turns an in-memory operation into disk I/O — 10-100x slower |
+| **Common causes** | Skewed joins (one key has millions of rows), huge sorts, insufficient memory |
+| **Where to check** | Query Profile tab → look for "spill" metrics on each operator node |
+| **How to fix** | (1) Reduce data volume with filters, (2) increase warehouse size, (3) fix skew |
+
+---
+
+### 7. Adaptive Query Execution (AQE)
+
+| Feature | What It Does |
+| --- | --- |
+| **Dynamic partition coalescing** | Merges many tiny shuffle partitions into fewer, larger ones at runtime |
+| **Dynamic join strategy switching** | If one side of a join turns out smaller than expected after a filter, switches to broadcast |
+| **Skew join optimization** | Detects partitions with disproportionately many rows, splits them into sub-partitions |
+| **Enabled by default** | YES on Databricks — no config needed |
+
+&gt; AQE is why your planned task count (303) may differ from what static analysis would predict — Spark adjusts at each stage boundary.
+
+---
+
+### 8. Delta Table Automatic Optimizations
+
+| Feature | What It Does | Enabled By Default? |
+| --- | --- | --- |
+| **Auto Optimize (auto-compact)** | Merges small files after writes into \~128 MB files | YES on Databricks |
+| **Optimized Writes** | Repartitions data before writing to avoid small files | YES on Databricks |
+| **Predictive I/O** | Skips unnecessary file reads using file-level statistics | YES with Photon |
+| **Data Skipping** | Uses min/max stats per file to skip irrelevant files | YES — stored in `_delta_log` |
+| **Deletion Vectors** | Marks rows as deleted without rewriting files (faster DELETE/MERGE) | YES on newer tables |
+| **Z-Ordering** | Co-locates related data in same files by specified columns | MANUAL — `OPTIMIZE table ZORDER BY (col)` |
+| **Transaction Log** | ACID guarantees via `_delta_log/` JSON + checkpoint files | Always — this IS Delta |
+| **Schema Evolution** | New columns added automatically with `mergeSchema` option | Must be enabled |
+| **Time Travel** | Query previous versions: `SELECT * FROM table VERSION AS OF 5` | Always available (retention default 30 days) |
+
+---
+
+### 9. Photon Engine (Databricks Proprietary)
+
+| Aspect | Detail |
+| --- | --- |
+| **What** | C++ native vectorized engine replacing Spark's JVM-based Tungsten |
+| **Speed** | 2-8x faster for supported operations (scans, filters, joins, aggregations) |
+| **Best for** | SQL workloads, ETL, large scans, aggregations |
+| **Not used for** | UDFs, some Python operations, unsupported data types |
+| **Cost** | Included with SQL Warehouses and Photon-enabled clusters |
+
+---
+
+### 10. File Formats Comparison
+
+| Format | Read Speed | Write Speed | Compression | Schema Evolution | ACID | Best For |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Delta (Parquet + Log)** | Fastest (stats, skipping, caching) | Fast (optimized writes) | Excellent | Yes | Yes | Everything on Databricks |
+| **Parquet** | Fast (columnar) | Fast | Excellent | Limited | No | External interchange |
+| **ORC** | Fast (columnar) | Fast | Good | Limited | No | Hive ecosystem |
+| **CSV** | Slow (parse every row) | Fast | Poor | No | No | Human-readable exchange only |
+| **JSON** | Slow (parse + nested) | Moderate | Poor | Partial | No | API data, semi-structured |
+| **Avro** | Moderate (row-based) | Fast | Good | Yes | No | Streaming, schema evolution |
+
+&gt; **Rule: Always use Delta on Databricks.** The transaction log, auto-optimize, and data skipping are massive advantages.
+
+---
+
+### 11. External Tables vs Managed Tables
+
+| Aspect | Managed Table | External Table |
+| --- | --- | --- |
+| **Data location** | Controlled by Unity Catalog (cloud storage managed by Databricks) | You control the storage path (`LOCATION 'abfss://...'`) |
+| **DROP TABLE** | Deletes data + metadata | Deletes metadata only — data files remain |
+| **Auto Optimize** | Full support | Full support |
+| **Performance** | Slightly better (optimized storage layout) | Same for reads if well-organized |
+| **Governance** | Full UC lineage + access control | Full UC lineage + access control |
+| **Portability** | Tied to Databricks workspace | Data accessible outside Databricks |
+| **Best for** | All internal analytics tables | Shared data lakes, multi-tool access, regulatory data retention |
+
+&gt; **Recommendation**: Use **managed tables** unless you have a specific reason to control the storage location (multi-cloud, external tool access, regulatory hold).
+
+---
+
+### 12. Liquid Clustering vs Partitioning vs Z-ORDER
+
+| Aspect | PARTITION BY | Liquid Clustering | Z-ORDER |
+| --- | --- | --- | --- |
+| **Syntax** | `PARTITIONED BY (col)` | `CLUSTER BY (col1, col2)` | `OPTIMIZE ... ZORDER BY (col)` |
+| **When set** | At CREATE TABLE time — cannot change | At CREATE TABLE or ALTER — can change anytime | On-demand via OPTIMIZE |
+| **How it works** | Creates physical directories per partition value | Dynamically regroups data within files using Hilbert curves | Interleaves sort order within files |
+| **Best for** | Low-cardinality columns (date, region) | Any cardinality, multi-column filtering | Ad-hoc optimization of existing tables |
+| **Small file problem** | YES — high cardinality = millions of tiny files | NO — files stay \~1 GB | NO — only rewrites existing files |
+| **Filter performance** | Excellent if query filters on partition column | Excellent for clustered columns | Good but degrades with many Z-ORDER columns |
+| **Can change columns** | NO — requires table rebuild | YES — `ALTER TABLE ... CLUSTER BY (new_col)` | YES — just re-run OPTIMIZE |
+| **Maintenance** | None needed | `OPTIMIZE table` periodically | `OPTIMIZE table ZORDER BY (cols)` periodically |
+
+&gt; **Recommendation**: Prefer **Liquid Clustering** for new tables. Use **PARTITION BY** only for low-cardinality date columns that are always in your WHERE clause.
+
+---
+
+### 13. Compute Type Comparison
+
+| Aspect | SQL Warehouse (Serverless) | All-Purpose Cluster | Job Cluster |
+| --- | --- | --- | --- |
+| **Purpose** | SQL queries, BI dashboards, ad-hoc analytics | Interactive dev (Python, Scala, R, SQL) | Scheduled production jobs |
+| **Startup time** | Seconds (Serverless) | 5-10 minutes | 5-10 minutes |
+| **Auto-scaling** | Yes (instant) | Yes (slower) | Yes |
+| **Auto-stop** | Yes (configurable) | Yes (configurable) | Terminates after job completes |
+| **Photon** | Always enabled | Optional | Optional |
+| **Languages** | SQL only | Python, SQL, Scala, R | Python, SQL, Scala, R |
+| **Cost** | Pay per query (DBU/hour while running) | DBU/hour while cluster is up | DBU/hour while job runs |
+| **Cost efficiency** | Best for sporadic SQL | Most expensive (sits idle) | Best for scheduled workloads |
+| **Concurrency** | High (multi-user) | Limited (shared cluster) | Single job |
+| **Best for** | SQL analytics, INSERT queries | Notebook development with Python/ML | Nightly ETL pipelines, scheduled jobs |
+| **Unity Catalog** | Full support | Full support | Full support |
+
+**When to use which:**
+
+| Scenario | Best Choice |
+| --- | --- |
+| Ad-hoc SQL exploration | SQL Warehouse (Serverless) |
+| Dashboard serving for many users | SQL Warehouse (Serverless) |
+| Python ML model training | All-Purpose Cluster with ML Runtime |
+| Nightly ETL pipeline | Job Cluster via Lakeflow Jobs |
+| One-off data investigation | SQL Warehouse |
+| Streaming workload | All-Purpose or Job Cluster |
+
+---
+
+### 14. Complete Optimization Checklist
+
+| # | Check | Why | Impact |
+| --- | --- | --- | --- |
+| 1 | Filter early — WHERE on partition column | Eliminates files before reading | HIGH |
+| 2 | SELECT only needed columns | Parquet reads only requested columns | MEDIUM |
+| 3 | Avoid `SELECT *` in subqueries/CTEs | Carries unnecessary columns through shuffles | MEDIUM |
+| 4 | Use Delta format for all tables | Stats, caching, auto-optimize | HIGH |
+| 5 | Run `ANALYZE TABLE` on large tables | Gives optimizer accurate row counts for join strategy selection | HIGH |
+| 6 | Avoid non-equi joins on large tables | `BETWEEN` joins cannot use hash/sort-merge — use broadcast or pre-filter | HIGH |
+| 7 | Pre-filter before JOIN | Reduce rows entering the join | HIGH |
+| 8 | Check for spill to disk in query profile | Spill = memory pressure = slow | HIGH |
+| 9 | Use `OPTIMIZE` + Z-ORDER or Liquid Clustering | Co-locates data for common filters | MEDIUM |
+| 10 | Right-size your warehouse | Too small = spill + many waves; too big = wasted cost | MEDIUM |
+| 11 | Avoid redundant self-joins | Self-joining a table with no filter returns every row unchanged | CRITICAL |
+| 12 | Use `EXPLAIN EXTENDED` to inspect plan | Verify join types, scan types, predicate pushdown | DIAGNOSTIC |
+| 13 | Check file sizes (`DESCRIBE DETAIL table`) | Ideal: 64-256 MB per file; too small = overhead, too big = poor parallelism | MEDIUM |
+| 14 | Partition by low-cardinality date column | Enables partition pruning | HIGH |
+| 15 | Avoid type casts in JOIN conditions | `INT(col_a) = INT(col_b)` prevents predicate pushdown | MEDIUM |
+| 16 | Use broadcast hints for known small tables | `/*+ BROADCAST(small_table) */` | MEDIUM |
+| 17 | Limit `ROW_NUMBER` scope | Window functions sort + partition all data | MEDIUM |
+| 18 | Run `OPTIMIZE` after large writes | Compacts small files, improves future read performance | MEDIUM |
+| 19 | Enable result caching | Repeated queries hit cache automatically | LOW-MEDIUM |
+| 20 | Monitor query profile after every heavy query | Catch regressions early | ONGOING |
+
+---
+
+### 15. Key Databricks SQL Commands for Diagnostics
+
+| Command | Purpose |
+| --- | --- |
+| `EXPLAIN EXTENDED &lt;query&gt;` | See full logical + physical plan, join strategies, scan types |
+| `DESCRIBE DETAIL &lt;table&gt;` | File count, size, partitioning, Delta version, table properties |
+| `DESCRIBE HISTORY &lt;table&gt;` | All operations (writes, deletes, optimizes) with timestamps |
+| `ANALYZE TABLE &lt;table&gt; COMPUTE STATISTICS` | Compute row counts + column stats for better optimizer decisions |
+| `ANALYZE TABLE &lt;table&gt; COMPUTE STATISTICS FOR COLUMNS col1, col2` | Column-level stats (min, max, distinct count, nulls) |
+| `OPTIMIZE &lt;table&gt;` | Compact small files, apply Z-ORDER or Liquid Clustering |
+| `OPTIMIZE &lt;table&gt; ZORDER BY (col1, col2)` | Co-locate data by columns for faster filtered reads |
+| `SHOW TBLPROPERTIES &lt;table&gt;` | See Delta properties (auto-optimize, liquid clustering config) |
+| `VACUUM &lt;table&gt; RETAIN 168 HOURS` | Remove old files no longer referenced by Delta log (default 7 days) |
+</pre>
+</section>
+<section class="source-card searchable" id="source-3">
+  <div class="source-head">
+    <h2>End-to-End Pipeline — Auto Loader to Delta Lake (Production Blueprint).txt</h2>
+    <button onclick="copySource('src-3')">Copy source</button>
+  </div>
+  <div class="badge">ORIGINAL SOURCE — VERBATIM</div>
+  <pre id="src-3">%md
+## End-to-End Pipeline — Auto Loader to Delta Lake (Production Blueprint)
+
+---
+
+### 1. Full Architecture Overview
+
+```
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│                         SOURCE SYSTEMS                                       │
+│  ┌───────────┐  ┌────────────┐  ┌───────────┐  ┌─────────┐  ┌───────────┐  │
+│  │ Flat Files│  │ Databases  │  │ APIs / SaaS│  │  Kafka  │  │ IoT / CDC │  │
+│  │ CSV/JSON/ │  │ MySQL/PG/  │  │ Salesforce │  │ Events │  │ Debezium  │  │
+│  │ Parquet   │  │ SQL Server │  │ HubSpot    │  │        │  │ Binlog    │  │
+│  └─────┬─────┘  └──────┬─────┘  └─────┬─────┘  └────┬────┘  └─────┬─────┘  │
+└───────────│────────────│───────────│─────────│───────────│────────┘
+            │             │            │          │            │
+     ┌──────▼─────────▼──────────▼────────▼──────────▼───────────┐
+     │                      INGESTION LAYER                          │
+     │  Auto Loader (cloudFiles) │ Kafka Source │ Lakeflow Connect     │
+     │  File notification mode   │ Structured   │ Managed connectors   │
+     │  Schema inference/evolve  │ Streaming    │ (Salesforce, MySQL)  │
+     └───────────────────────────┬──────────────────────────────┘
+                                │
+     ┌───────────────────────────▼──────────────────────────────┐
+     │                ┌──────────────────────────────────┐       │
+     │                │ BRONZE (Raw / Landing)              │       │
+     │                │ Streaming Tables (append-only)      │       │
+     │                │ Raw schema, _rescued_data column    │       │
+     │                │ Partition: ingestion_date            │       │
+     │                │ Expectations: schema only            │       │
+     │  UNITY         └────────────────┬─────────────────┘       │
+     │  CATALOG                       │                          │
+     │  (governance)  ┌────────────────▼─────────────────┐       │
+     │                │ SILVER (Cleaned / Conformed)        │       │
+     │                │ Streaming Tables + apply_changes    │       │
+     │                │ Deduplicated, typed, null-handled   │       │
+     │                │ Liquid Clustering: business keys    │       │
+     │                │ CDF enabled for downstream          │       │
+     │                │ Expectations: NOT NULL, ranges       │       │
+     │                └────────────────┬─────────────────┘       │
+     │                                │                          │
+     │                ┌────────────────▼─────────────────┐       │
+     │                │ GOLD (Business-Ready)               │       │
+     │                │ Materialized Views (aggregations)   │       │
+     │                │ Managed Tables (denormalized)       │       │
+     │                │ Liquid Clustering: query columns    │       │
+     │                │ Expectations: business rules         │       │
+     │                └────────────────┬─────────────────┘       │
+     └───────────────────────────┬──────────────────────────────┘
+                                │
+     ┌───────────────────────────▼──────────────────────────────┐
+     │                    CONSUMERS                                  │
+     │  SQL Warehouse     │ Dashboards      │ ML/Feature Store        │
+     │  (Lakeview)        │ (Genie Rooms)   │ (Model Serving)         │
+     │  Ad-hoc SQL        │ Business users  │ Training + inference    │
+     └───────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 2. Layer-by-Layer Blueprint
+
+---
+
+#### LAYER 1: INGESTION (Source → Landing Zone)
+
+**Choose your ingestion method:**
+
+| Source Type | Best Ingestion | Why |
+| --- | --- | --- |
+| Files landing in cloud storage (CSV, JSON, Parquet) | **Auto Loader** (`cloudFiles`) | Incremental, exactly-once, schema evolution |
+| Relational database (MySQL, Postgres, SQL Server) | **Lakeflow Connect** | Managed connector, no code, handles CDC |
+| Kafka / Event Hub | **Structured Streaming** (Kafka source) | Native Spark, low latency |
+| REST API / SaaS (Salesforce, HubSpot) | **Lakeflow Connect** | Pre-built connectors, scheduled |
+| One-time bulk load | **COPY INTO** | SQL-only, idempotent, simple |
+
+**Auto Loader — Production Pattern (File Notification Mode):**
+
+```python
+# Auto Loader reads new files incrementally from cloud storage
+raw_df = (spark.readStream
+    .format('cloudFiles')
+    .option('cloudFiles.format', 'json')                  # Source format
+    .option('cloudFiles.inferColumnTypes', 'true')         # Auto-detect types
+    .option('cloudFiles.schemaLocation', '/mnt/schema/orders')  # Persist inferred schema
+    .option('cloudFiles.useNotifications', 'true')         # Event-based (Azure Event Grid)
+    .option('cloudFiles.schemaEvolutionMode', 'addNewColumns')  # Auto-add new columns
+    .option('cloudFiles.rescuedDataColumn', '_rescued_data')    # Capture non-conforming data
+    .load('abfss://raw@storage.dfs.core.windows.net/orders/')
+)
+
+# Add metadata columns for lineage
+from pyspark.sql.functions import current_timestamp, input_file_name
+
+bronze_df = (raw_df
+    .withColumn('_ingestion_timestamp', current_timestamp())
+    .withColumn('_source_file', input_file_name())
+)
+
+# Write to bronze streaming table
+(bronze_df.writeStream
+    .format('delta')
+    .option('checkpointLocation', '/mnt/checkpoints/orders_bronze')
+    .option('mergeSchema', 'true')         # Allow schema evolution on write
+    .trigger(availableNow=True)            # Process all pending, then stop
+    .table('bronze.orders_raw')
+)
+```
+
+**Auto Loader — SQL-Only Alternative (inside SDP):**
+
+```sql
+-- Bronze streaming table with Auto Loader in SQL
+CREATE OR REFRESH STREAMING TABLE bronze.orders_raw
+AS SELECT
+    *,
+    current_timestamp() AS _ingestion_timestamp,
+    _metadata.file_name AS _source_file,
+    _metadata.file_modification_time AS _file_modified
+FROM STREAM read_files(
+    'abfss://raw@storage.dfs.core.windows.net/orders/',
+    format =&gt; 'json',
+    inferColumnTypes =&gt; 'true',
+    rescuedDataColumn =&gt; '_rescued_data'
+);
+```
+
+**Auto Loader mode decision:**
+
+| Aspect | Directory Listing | File Notification |
+| --- | --- | --- |
+| **How it finds new files** | Lists the directory each micro-batch | Cloud event triggers (Azure Event Grid / AWS SQS) |
+| **Setup** | Zero config | Requires event subscription (Auto Loader can create it automatically) |
+| **Latency** | Higher (depends on listing interval) | Lower (event-driven) |
+| **Scale** | Good to \~10K new files/day | Millions of files/day |
+| **Cost** | Higher at scale (listing is expensive) | Lower at scale (events are cheap) |
+| **Best for** | Dev/test, small volumes | Production, high volume |
+
+---
+
+#### LAYER 2: BRONZE (Raw / Landing)
+
+**Purpose:** Exact copy of source data. Append-only. Source of truth for replay.
+
+| Decision | Choice | Why |
+| --- | --- | --- |
+| **Table type** | Streaming Table | Append-only, incremental processing |
+| **Format** | Delta (always) | ACID, time travel, schema enforcement |
+| **Table location** | Managed | Databricks manages storage, lifecycle |
+| **Schema** | Match source exactly + metadata columns | `_ingestion_timestamp`, `_source_file`, `_rescued_data` |
+| **Clustering** | `CLUSTER BY (_ingestion_timestamp)` or none | Bronze is rarely queried directly; if needed, cluster by ingestion time |
+| **Expectations** | Minimal — schema enforcement only | `CONSTRAINT valid_json EXPECT (_rescued_data IS NULL) ON VIOLATION WARN` |
+| **Retention** | 90 days data file retention | Long enough to replay if silver needs rebuild |
+| **CDF** | Not needed | Bronze is append-only — CDF adds no value |
+
+**Bronze table DDL:**
+```sql
+CREATE OR REFRESH STREAMING TABLE bronze.orders_raw (
+    CONSTRAINT valid_schema EXPECT (_rescued_data IS NULL) ON VIOLATION WARN
+)
+COMMENT 'Raw orders from source system - append only'
+AS SELECT * FROM STREAM read_files(
+    'abfss://raw@storage.dfs.core.windows.net/orders/',
+    format =&gt; 'json',
+    inferColumnTypes =&gt; 'true',
+    rescuedDataColumn =&gt; '_rescued_data'
+);
+```
+
+---
+
+#### LAYER 3: SILVER (Cleaned / Conformed / Enriched)
+
+**Purpose:** Deduplicated, typed, null-handled, joined with reference data. The "enterprise data model."
+
+| Decision | Choice | Why |
+| --- | --- | --- |
+| **Table type** | Streaming Table (with `apply_changes` for CDC) OR Materialized View (for reference data) | Streaming for facts; MV for slowly changing dimensions |
+| **Format** | Delta | Always Delta on Databricks |
+| **Table location** | Managed | Simpler lifecycle, full UC governance |
+| **Schema** | Curated: proper types, column names, no raw junk | `CAST(order_date AS DATE)`, rename to snake_case |
+| **Clustering** | `CLUSTER BY (order_date, customer_id)` | Cluster by most-queried filter columns |
+| **CDF** | **Enabled** | Gold layer reads only changes: `delta.enableChangeDataFeed = true` |
+| **Expectations** | Strong — data quality gates | NOT NULL on keys, range checks on dates, referential integrity |
+| **Deduplication** | `ROW_NUMBER()` or `apply_changes` `sequence_by` | Handles late-arriving and duplicate events |
+
+**Silver — Streaming with CDC (SDP):**
+```python
+import dlt
+from pyspark.sql.functions import col, expr
+
+# Silver: Apply CDC changes from bronze
+dlt.create_streaming_table(
+    name = 'orders_clean',
+    comment = 'Cleaned orders - deduplicated, typed, validated',
+    table_properties = {
+        'delta.enableChangeDataFeed': 'true',
+        'quality': 'silver'
+    }
+)
+
+dlt.apply_changes(
+    target = 'orders_clean',
+    source = 'orders_raw',
+    keys = ['order_id'],
+    sequence_by = col('event_timestamp'),
+    stored_as_scd_type = 1,
+    apply_as_deletes = expr("operation = 'DELETE'"),
+)
+```
+
+**Silver — SQL-Only (DBSQL Streaming Table):**
+```sql
+-- Silver: Cleaned, typed, deduplicated
+CREATE OR REFRESH STREAMING TABLE silver.orders_clean (
+    CONSTRAINT valid_order_id EXPECT (order_id IS NOT NULL) ON VIOLATION DROP ROW,
+    CONSTRAINT valid_amount EXPECT (amount &gt; 0) ON VIOLATION WARN,
+    CONSTRAINT valid_date EXPECT (order_date &gt;= '2020-01-01') ON VIOLATION DROP ROW
+)
+TBLPROPERTIES (
+    'delta.enableChangeDataFeed' = 'true'
+)
+CLUSTER BY (order_date, customer_id)
+AS SELECT
+    CAST(order_id AS BIGINT) AS order_id,
+    CAST(customer_id AS BIGINT) AS customer_id,
+    CAST(order_date AS DATE) AS order_date,
+    CAST(amount AS DECIMAL(12,2)) AS amount,
+    LOWER(TRIM(status)) AS status,
+    COALESCE(region, 'UNKNOWN') AS region,
+    current_timestamp() AS _processed_at
+FROM STREAM bronze.orders_raw
+WHERE _rescued_data IS NULL;    -- Only process conforming records
+```
+
+**Silver — Reference/Dimension tables as Materialized Views:**
+```sql
+-- Slowly changing dimension — MV auto-refreshes
+CREATE OR REFRESH MATERIALIZED VIEW silver.customers_current
+AS SELECT
+    customer_id,
+    customer_name,
+    email,
+    segment,
+    region,
+    created_date
+FROM bronze.customers_raw
+QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY customer_id
+    ORDER BY updated_at DESC
+) = 1;
+```
+
+---
+
+#### LAYER 4: GOLD (Business-Ready / Serving)
+
+**Purpose:** Pre-aggregated, denormalized, optimized for consumption.
+
+| Decision | Choice | Why |
+| --- | --- | --- |
+| **Table type — Aggregations** | Materialized View | Auto-refreshes; optimizer can rewrite queries to use MV |
+| **Table type — Denormalized facts** | Managed Table (via MERGE or CTAS) | Full DML support, complex join logic |
+| **Format** | Delta | Always |
+| **Table location** | Managed | Full UC governance |
+| **Clustering** | `CLUSTER BY (date_key, customer_segment)` | Cluster by dashboard filter columns |
+| **Expectations** | Business rules | Revenue &gt; 0, dates in valid range, no orphan keys |
+| **CDF** | Optional | Enable if downstream systems need incremental feeds |
+| **Optimize schedule** | Weekly `OPTIMIZE` | Compact files for fast dashboard queries |
+
+**Gold — Materialized View (auto-refreshing aggregation):**
+```sql
+-- Gold: Daily revenue summary — auto-refreshes when silver changes
+CREATE OR REFRESH MATERIALIZED VIEW gold.daily_revenue_summary
+COMMENT 'Daily revenue by region and segment - refreshes on trigger'
+AS SELECT
+    o.order_date,
+    c.region,
+    c.segment,
+    COUNT(DISTINCT o.order_id) AS order_count,
+    COUNT(DISTINCT o.customer_id) AS customer_count,
+    SUM(o.amount) AS total_revenue,
+    AVG(o.amount) AS avg_order_value
+FROM silver.orders_clean o
+JOIN silver.customers_current c
+    ON o.customer_id = c.customer_id
+GROUP BY o.order_date, c.region, c.segment;
+```
+
+**Gold — Managed Table (complex denormalized fact):**
+```sql
+-- Gold: Customer 360 — built via MERGE for incremental updates
+CREATE TABLE IF NOT EXISTS gold.customer_360 (
+    customer_id BIGINT,
+    customer_name STRING,
+    segment STRING,
+    region STRING,
+    lifetime_orders INT,
+    lifetime_revenue DECIMAL(14,2),
+    first_order_date DATE,
+    last_order_date DATE,
+    avg_order_value DECIMAL(12,2),
+    updated_at TIMESTAMP
+)
+CLUSTER BY (region, segment)
+TBLPROPERTIES ('delta.enableDeletionVectors' = 'true');
+
+-- Incremental MERGE from silver CDF
+MERGE INTO gold.customer_360 AS target
+USING (
+    SELECT
+        customer_id,
+        COUNT(*) AS lifetime_orders,
+        SUM(amount) AS lifetime_revenue,
+        MIN(order_date) AS first_order_date,
+        MAX(order_date) AS last_order_date,
+        AVG(amount) AS avg_order_value
+    FROM silver.orders_clean
+    GROUP BY customer_id
+) AS source
+    ON target.customer_id = source.customer_id
+WHEN MATCHED THEN UPDATE SET
+    target.lifetime_orders = source.lifetime_orders,
+    target.lifetime_revenue = source.lifetime_revenue,
+    target.last_order_date = source.last_order_date,
+    target.avg_order_value = source.avg_order_value,
+    target.updated_at = current_timestamp()
+WHEN NOT MATCHED THEN INSERT *;
+```
+
+---
+
+### 3. Table Type Decision Matrix
+
+| Scenario | Table Type | Why |
+| --- | --- | --- |
+| Raw ingestion from files/streams | **Streaming Table** | Append-only, incremental, checkpointed |
+| CDC from source database | **Streaming Table + apply_changes** | Handles dedup, ordering, SCD automatically |
+| Cleaned/conformed facts | **Streaming Table** (if source is streaming) | Maintains incremental chain |
+| Reference/dimension data (latest state) | **Materialized View** | Auto-refreshes, QUALIFY dedup |
+| Pre-aggregated summaries | **Materialized View** | Auto-refreshes when upstream changes |
+| Complex denormalized table (MERGE logic) | **Managed Table** | Full DML: MERGE, UPDATE, DELETE |
+| Shared with external tools | **External Table** | Data stays at your LOCATION; DROP is safe |
+| Ad-hoc exploration | **Temporary View** | Session-scoped, no storage |
+
+---
+
+### 4. Compute Selection for Each Layer
+
+| Pipeline Stage | Best Compute | Why | Trigger |
+| --- | --- | --- | --- |
+| **Auto Loader ingestion** | Job Cluster (Photon) | Ephemeral, cost-effective, scales with file volume | `trigger(availableNow=True)` for batch-like |
+| **SDP Pipeline (bronze → silver → gold)** | SDP-managed cluster | SDP provisions and manages its own cluster | Triggered (batch) or Continuous (streaming) |
+| **Batch MERGE (gold layer)** | Job Cluster (Photon) | Heavy write operation, benefits from Photon | Scheduled via Lakeflow Jobs |
+| **Dashboard refresh** | Serverless SQL Warehouse | Instant start, auto-scales for concurrent users | On-demand or scheduled |
+| **Ad-hoc SQL analytics** | Serverless SQL Warehouse | Sub-second startup, shared across users | On-demand |
+| **ML feature engineering** | All-Purpose Cluster (ML Runtime) | Needs Python + ML libraries | Interactive |
+| **Streaming (24/7)** | Job Cluster (always-on) | Dedicated, continuous processing | Continuous trigger |
+
+**Cost optimization pattern:**
+```
+Ingestion + ETL:     Job Cluster (runs 30 min/day)      → Low cost
+SDP Pipeline:        SDP cluster (auto-provisioned)     → Medium cost
+Dashboard serving:   Serverless SQL WH (auto-stops)     → Pay per query
+Development:         Serverless Compute (auto-stops)    → Pay per use
+```
+
+---
+
+### 5. Storage &amp; File Format Decision
+
+| Decision | Recommendation | Why |
+| --- | --- | --- |
+| **File format** | Always Delta | ACID, time travel, skipping, Photon-optimized |
+| **Managed vs External** | Managed (default) | UC manages lifecycle; DROP = clean delete |
+| **When to use External** | Data shared with non-Databricks tools, regulatory retention, multi-cloud | You control the path; DROP leaves data |
+| **Source file format for ingestion** | Accept anything → land as Delta | Auto Loader reads JSON/CSV/Parquet/Avro → writes Delta |
+| **Target file size** | 64–256 MB (tables &lt; 1 TB), 256 MB–1 GB (tables &gt; 1 TB) | Balanced read parallelism vs file-open overhead |
+| **Compression** | Snappy (default for Parquet/Delta) | Best balance of speed vs compression ratio |
+
+**File format conversion principle:**
+```
+Source: ANY format (CSV, JSON, Parquet, Avro, XML, ORC)
+    │
+    │  Auto Loader / COPY INTO
+    ▼
+Bronze: Delta (always)
+    │
+    │  Streaming / MERGE / MV
+    ▼
+Silver: Delta (always)
+    │
+    │  Aggregation / MERGE
+    ▼
+Gold: Delta (always)
+
+Rule: Convert to Delta at ingestion. Never store intermediate data as CSV/JSON.
+```
+
+---
+
+### 6. Clustering &amp; Optimization Strategy Per Layer
+
+| Layer | Clustering Strategy | OPTIMIZE Frequency | VACUUM | ANALYZE TABLE |
+| --- | --- | --- | --- | --- |
+| **Bronze** | `CLUSTER BY (ingestion_date)` or none | Monthly (low-priority) | RETAIN 90 days (replay buffer) | Not needed (rarely queried) |
+| **Silver** | `CLUSTER BY (business_date, entity_id)` | Weekly | RETAIN 30 days | After major loads |
+| **Gold** | `CLUSTER BY (dashboard_filter_col_1, filter_col_2)` | After each load | RETAIN 7 days | After each load (critical for join strategy) |
+
+---
+
+### 7. Complete Pipeline as Lakeflow Job DAG
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│                    LAKEFLOW JOB DAG                          │
+│                    (Scheduled: daily 2 AM AEST)               │
+│                                                               │
+│  Task 1: SDP Pipeline (bronze + silver)                       │
+│    │  Compute: SDP-managed cluster                            │
+│    │  Mode: Triggered                                         │
+│    │  Retries: 2                                              │
+│    │                                                          │
+│    ├── Task 2a: Gold MERGE (customer_360)                     │
+│    │    Compute: Job Cluster (Photon, Medium)                 │
+│    │    Depends on: Task 1                                    │
+│    │                                                          │
+│    ├── Task 2b: Gold MV Refresh (daily_revenue)               │
+│    │    Compute: SQL Warehouse (Serverless)                   │
+│    │    Depends on: Task 1                                    │
+│    │                                                          │
+│    └── Task 3: OPTIMIZE + ANALYZE (gold tables)               │
+│         Compute: SQL Warehouse (Serverless)                   │
+│         Depends on: Task 2a + 2b                              │
+│         SQL: OPTIMIZE gold.customer_360;                      │
+│              ANALYZE TABLE gold.customer_360 COMPUTE STATS;   │
+│                                                               │
+│  On Failure: Email alert + PagerDuty webhook                  │
+│  On Success: Dashboard refresh trigger                        │
+└───────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 8. Table Properties Cheat Sheet
+
+```sql
+-- Bronze table
+CREATE TABLE bronze.orders_raw (...)
+  TBLPROPERTIES (
+    'delta.logRetentionDuration' = '90 days',
+    'delta.deletedFileRetentionDuration' = '90 days',
+    'quality' = 'bronze'
+  );
+
+-- Silver table
+CREATE TABLE silver.orders_clean (...)
+  CLUSTER BY (order_date, customer_id)
+  TBLPROPERTIES (
+    'delta.enableChangeDataFeed' = 'true',
+    'delta.enableDeletionVectors' = 'true',
+    'delta.logRetentionDuration' = '30 days',
+    'quality' = 'silver'
+  );
+
+-- Gold table
+CREATE TABLE gold.customer_360 (...)
+  CLUSTER BY (region, segment)
+  TBLPROPERTIES (
+    'delta.enableDeletionVectors' = 'true',
+    'delta.tuneFileSizesForRewrites' = 'true',  -- Better for MERGE-heavy tables
+    'quality' = 'gold'
+  );
+```
+
+---
+
+### 9. Production Checklist
+
+| # | Check | Layer | Detail |
+| --- | --- | --- | --- |
+| 1 | Auto Loader in file notification mode | Ingestion | Scales to millions of files |
+| 2 | `_rescued_data` column on bronze | Bronze | Captures non-conforming records instead of failing |
+| 3 | `_ingestion_timestamp` and `_source_file` on bronze | Bronze | Lineage and debugging |
+| 4 | Expectations with `ON VIOLATION DROP ROW` on silver | Silver | Bad data filtered, not propagated |
+| 5 | CDF enabled on silver | Silver | Gold reads only changes |
+| 6 | Liquid Clustering on silver and gold | Silver/Gold | Adaptive, changeable, no small-file problem |
+| 7 | Deletion Vectors on all tables | All | Faster MERGE/UPDATE/DELETE |
+| 8 | `OPTIMIZE` scheduled weekly on silver, after each load on gold | Silver/Gold | Compact files for query performance |
+| 9 | `VACUUM RETAIN 168 HOURS` scheduled weekly | All | Reclaim storage, don't break concurrent readers |
+| 10 | `ANALYZE TABLE` after large gold loads | Gold | Accurate stats for join strategy selection |
+| 11 | Materialized Views for dashboard aggregations | Gold | Auto-refresh, query rewrite, fast dashboards |
+| 12 | Job retries = 2 with exponential backoff | Orchestration | Handle transient failures automatically |
+| 13 | Failure notifications (email + webhook) | Orchestration | Alert on-call immediately |
+| 14 | Row-level/column-level security on gold | Governance | PII masking, access control |
+| 15 | Unity Catalog tags on all tables | Governance | `quality = bronze/silver/gold`, `owner = team` |
+| 16 | Serverless SQL Warehouse for dashboards | Consumers | Instant start, auto-scale, Photon |
+| 17 | Checkpoints in separate location from data | Streaming | Prevents accidental deletion |
+| 18 | Schema evolution mode = `addNewColumns` on Auto Loader | Ingestion | Handles source schema changes gracefully |
+| 19 | Circuit breaker: row count validation between layers | All | Prevents bad data propagation |
+| 20 | Delta Sharing for cross-team/external access | Governance | Share without copying data |
+</pre>
+</section>
+<section class="source-card searchable" id="source-4">
+  <div class="source-head">
+    <h2>CDC &amp; SCD Type 2 — Batch and Streaming Implementation.txt</h2>
+    <button onclick="copySource('src-4')">Copy source</button>
+  </div>
+  <div class="badge">ORIGINAL SOURCE — VERBATIM</div>
+  <pre id="src-4">%md
+## CDC &amp; SCD Type 2 — Batch and Streaming Implementation
+
+---
+
+### 1. Core Concepts
+
+| Term | What It Means | Example |
+| --- | --- | --- |
+| **CDC (Change Data Capture)** | Capturing row-level changes (INSERT, UPDATE, DELETE) from a source system | Database binlog, Kafka events, Delta CDF |
+| **SCD Type 1** | Overwrite the old value — no history kept | Customer address updated → old address gone |
+| **SCD Type 2** | Keep full history with effective dates — old row marked closed, new row inserted | Customer address changed → old row gets `end_date = today`, new row gets `start_date = today` |
+| **SCD Type 3** | Add columns for old/new values (rarely used) | `current_address` + `previous_address` columns |
+| **Change Data Feed (CDF)** | Delta Lake feature that records changes as they happen to a Delta table | `SELECT * FROM table_changes('my_table', 2)` |
+| **Sequence key** | Column that orders events chronologically | Timestamp, version number, Kafka offset |
+
+### 2. SCD Type 1 vs Type 2 Decision
+
+| Question | Type 1 (Overwrite) | Type 2 (History) |
+| --- | --- | --- |
+| Do you need historical values? | No | Yes |
+| "What was the customer's address last January?" | Cannot answer | Can answer |
+| Storage cost | Lower (1 row per entity) | Higher (N rows per entity over time) |
+| Query complexity | Simple | Needs `WHERE is_current = true` or date range filter |
+| MERGE pattern | `WHEN MATCHED THEN UPDATE` | Close old row + INSERT new row (2 operations) |
+| Use case | Reference/dimension data where only latest matters | Audit, compliance, temporal reporting |
+
+---
+
+### 3. SCD Type 1 — Batch (MERGE)
+
+The simplest CDC pattern. Source provides the latest state; you upsert into target.
+
+```sql
+-- SCD Type 1: Overwrite existing, insert new
+MERGE INTO gold.customers AS target
+USING staging.customers_daily AS source
+  ON target.customer_id = source.customer_id
+WHEN MATCHED AND (
+  target.name != source.name OR
+  target.email != source.email OR
+  target.address != source.address
+) THEN UPDATE SET
+  target.name = source.name,
+  target.email = source.email,
+  target.address = source.address,
+  target.updated_at = current_timestamp()
+WHEN NOT MATCHED THEN INSERT (
+  customer_id, name, email, address, updated_at
+) VALUES (
+  source.customer_id, source.name, source.email, source.address, current_timestamp()
+);
+```
+
+**Key points:**
+- One row per customer in target (always latest)
+- The `AND (target.name != source.name OR ...)` avoids unnecessary updates when nothing changed
+- Idempotent — running twice with same data has no effect
+
+---
+
+### 4. SCD Type 2 — Batch (MERGE)
+
+This is the complex pattern. Two operations in one MERGE: close the old row + insert the new row.
+
+**Target table schema:**
+```sql
+CREATE TABLE gold.customers_history (
+  customer_id INT,
+  name STRING,
+  email STRING,
+  address STRING,
+  effective_from TIMESTAMP,    -- When this version became active
+  effective_to TIMESTAMP,      -- When this version was superseded (NULL = current)
+  is_current BOOLEAN,          -- TRUE = latest version
+  _merge_key INT               -- Used in MERGE trick (see below)
+);
+```
+
+**The SCD Type 2 MERGE pattern (exam favourite):**
+
+```sql
+-- Step 1: Identify changed records
+WITH changes AS (
+  SELECT
+    source.*,
+    target.customer_id AS existing_id
+  FROM staging.customers_daily source
+  LEFT JOIN gold.customers_history target
+    ON source.customer_id = target.customer_id
+    AND target.is_current = TRUE
+  WHERE
+    target.customer_id IS NULL  -- New customers
+    OR target.name != source.name
+    OR target.email != source.email
+    OR target.address != source.address  -- Changed customers
+)
+
+-- Step 2: MERGE with union trick to handle both close + insert
+MERGE INTO gold.customers_history AS target
+USING (
+  -- Row 1: Match existing row (to close it)
+  SELECT customer_id AS merge_key, customer_id, name, email, address
+  FROM changes WHERE existing_id IS NOT NULL
+  UNION ALL
+  -- Row 2: NULL merge_key (will NOT match, so triggers INSERT)
+  SELECT NULL AS merge_key, customer_id, name, email, address
+  FROM changes
+) AS source
+  ON target.customer_id = source.merge_key AND target.is_current = TRUE
+
+WHEN MATCHED THEN UPDATE SET
+  target.is_current = FALSE,
+  target.effective_to = current_timestamp()
+
+WHEN NOT MATCHED THEN INSERT (
+  customer_id, name, email, address,
+  effective_from, effective_to, is_current, _merge_key
+) VALUES (
+  source.customer_id, source.name, source.email, source.address,
+  current_timestamp(), NULL, TRUE, source.customer_id
+);
+```
+
+**How the MERGE trick works:**
+
+| Row in UNION ALL | merge_key | Matches target? | Action |
+| --- | --- | --- | --- |
+| Row 1 (existing customer) | `customer_id` (real value) | YES — matches current row | UPDATE: sets `is_current = FALSE`, `effective_to = now()` |
+| Row 2 (all changes) | `NULL` | NO — NULL never matches | INSERT: new row with `is_current = TRUE`, `effective_from = now()` |
+
+**Result: the old row is closed, and a new current row is inserted — all in one atomic MERGE.**
+
+---
+
+### 5. SCD Type 2 — Streaming with APPLY CHANGES INTO (SDP)
+
+Spark Declarative Pipelines has a built-in SCD Type 2 operator — no manual MERGE needed.
+
+```python
+import dlt
+from pyspark.sql.functions import col
+
+# Bronze: raw CDC events from Kafka / Auto Loader
+@dlt.table
+def customers_bronze():
+    return (
+        spark.readStream
+        .format('cloudFiles')
+        .option('cloudFiles.format', 'json')
+        .load('/raw/customers_cdc/')
+    )
+
+# Silver: Apply CDC changes as SCD Type 2
+dlt.create_streaming_table('customers_silver')
+
+dlt.apply_changes(
+    target = 'customers_silver',
+    source = 'customers_bronze',
+    keys = ['customer_id'],                     # Business key
+    sequence_by = col('event_timestamp'),        # Order events
+    stored_as_scd_type = 2,                      # Type 2 history!
+    columns_to_track = ['name', 'email', 'address'],  # Only track changes in these
+)
+```
+
+**What `apply_changes` does automatically:**
+
+| Feature | Detail |
+| --- | --- |
+| **Deduplication** | Handles duplicate events using `sequence_by` |
+| **Out-of-order events** | Orders by sequence column, applies in correct order |
+| **SCD Type 2 columns** | Auto-adds `__START_AT`, `__END_AT` (effective dates) |
+| **Current flag** | `__END_AT IS NULL` = current row |
+| **Deletes** | Set `apply_as_deletes = expr("operation = 'DELETE'")` |
+| **Truncate &amp; reload** | Set `apply_as_truncates = expr("operation = 'TRUNCATE'")` |
+| **Schema** | Auto-evolves with source |
+
+**SCD Type 1 in SDP** — just change one parameter:
+```python
+dlt.apply_changes(
+    target = 'customers_silver',
+    source = 'customers_bronze',
+    keys = ['customer_id'],
+    sequence_by = col('event_timestamp'),
+    stored_as_scd_type = 1,   # Overwrite, no history
+)
+```
+
+---
+
+### 6. Streaming CDC with DBSQL (FLOW AUTO CDC)
+
+For SQL-only streaming CDC without SDP Python decorators:
+
+```sql
+-- SCD Type 1 (latest state only)
+CREATE OR REFRESH STREAMING TABLE silver.customers;
+
+CREATE FLOW silver_customers_cdc AS
+  INSERT INTO silver.customers
+  BY AUTO CDC FROM STREAM bronze.customers_raw
+  KEYS (customer_id)
+  SEQUENCE BY event_timestamp
+  STORED AS SCD TYPE 1;
+
+-- SCD Type 2 (full history)
+CREATE OR REFRESH STREAMING TABLE silver.customers_history;
+
+CREATE FLOW silver_customers_history AS
+  INSERT INTO silver.customers_history
+  BY AUTO CDC FROM STREAM bronze.customers_raw
+  KEYS (customer_id)
+  SEQUENCE BY event_timestamp
+  STORED AS SCD TYPE 2;
+```
+
+**Handling deletes:**
+```sql
+CREATE FLOW silver_customers_cdc AS
+  INSERT INTO silver.customers
+  BY AUTO CDC FROM STREAM bronze.customers_raw
+  KEYS (customer_id)
+  SEQUENCE BY event_timestamp
+  DELETE WHEN operation = 'DELETE'
+  STORED AS SCD TYPE 2;
+```
+
+---
+
+### 7. Delta Change Data Feed (CDF) — For Downstream CDC
+
+CDF captures changes from a Delta table itself (not an external source). Use it to feed downstream tables incrementally.
+
+```sql
+-- Enable CDF on a table
+ALTER TABLE silver.customers
+  SET TBLPROPERTIES ('delta.enableChangeDataFeed' = true);
+
+-- Query changes since version 5
+SELECT * FROM table_changes('silver.customers', 5);
+
+-- Query changes between timestamps
+SELECT * FROM table_changes('silver.customers', '2026-08-01', '2026-08-31');
+```
+
+**CDF output columns:**
+
+| Column | Values | Meaning |
+| --- | --- | --- |
+| `_change_type` | `insert` | New row added |
+| `_change_type` | `update_preimage` | Row BEFORE the update |
+| `_change_type` | `update_postimage` | Row AFTER the update |
+| `_change_type` | `delete` | Row was deleted |
+| `_commit_version` | Integer | Delta version that made this change |
+| `_commit_timestamp` | Timestamp | When the change was committed |
+
+**Streaming from CDF (downstream incremental):**
+```python
+# Read only new changes from silver, process into gold
+df = (spark.readStream
+    .format('delta')
+    .option('readChangeFeed', 'true')
+    .option('startingVersion', 0)
+    .table('silver.customers')
+)
+# Filter to only inserts and update_postimage (new values)
+df_changes = df.filter(
+    col('_change_type').isin('insert', 'update_postimage')
+)
+```
+
+---
+
+### 8. Full Architecture — CDC Pipeline
+
+```
+Source Database (MySQL/Postgres/Kafka)
+    │
+    │  Debezium / Kafka Connect / Lakeflow Connect
+    ▼
+┌───────────────────────────────────────────────────────┐
+│ BRONZE: Raw CDC Events (append-only)             │
+│ Auto Loader / Kafka source                        │
+│ Columns: key, value, operation, timestamp          │
+│ Table type: Streaming Table                        │
+├───────────────────────────────────────────────────────┤
+│ SILVER: apply_changes / FLOW AUTO CDC              │
+│ SCD Type 1 or Type 2                               │
+│ Deduped, ordered, clean                             │
+│ CDF enabled for downstream                          │
+├───────────────────────────────────────────────────────┤
+│ GOLD: Materialized Views / Aggregations             │
+│ Reads from silver CDF — processes only changes      │
+│ Pre-aggregated for dashboards                        │
+└───────────────────────────────────────────────────────┘
+```
+
+---
+
+### 9. Batch vs Streaming CDC — When to Use Which
+
+| Aspect | Batch CDC (MERGE) | Streaming CDC (apply_changes / FLOW AUTO CDC) |
+| --- | --- | --- |
+| **Latency** | Minutes to hours (scheduled) | Seconds to minutes (continuous or triggered) |
+| **Source** | Daily/hourly extract files, staging tables | Kafka, Auto Loader, Event Hub, Delta CDF |
+| **Complexity** | You write the MERGE SQL manually | Framework handles dedup, ordering, SCD logic |
+| **Out-of-order events** | You must handle (window + dedup) | Handled automatically by `sequence_by` |
+| **Deletes** | Explicit in MERGE `WHEN MATCHED ... DELETE` | `apply_as_deletes` expression |
+| **SCD Type 2** | Complex MERGE with UNION trick (see section 4) | One parameter: `stored_as_scd_type = 2` |
+| **Exactly-once** | MERGE is idempotent if designed correctly | Checkpointing guarantees exactly-once |
+| **Best for** | Simple upserts, legacy sources, small tables | High-volume CDC, real-time requirements, complex history |
+| **Cost** | Lower (runs only when scheduled) | Higher (cluster running continuously) |
+| **Exam tip** | Know the MERGE syntax by heart | Know `apply_changes` parameters and FLOW AUTO CDC syntax |
+
+---
+
+### 10. Common CDC Patterns for Exam
+
+| Pattern | SQL/Code | When to Use |
+| --- | --- | --- |
+| **Simple upsert** | `MERGE ... WHEN MATCHED THEN UPDATE WHEN NOT MATCHED THEN INSERT` | SCD Type 1 batch |
+| **Insert-only append** | `INSERT INTO target SELECT * FROM source WHERE NOT EXISTS (...)` | Append new records only |
+| **SCD Type 2 MERGE** | UNION ALL trick with NULL merge_key (see section 4) | Batch history tracking |
+| **Streaming SCD Type 2** | `dlt.apply_changes(stored_as_scd_type=2)` | SDP pipeline with history |
+| **SQL streaming SCD** | `CREATE FLOW ... BY AUTO CDC ... STORED AS SCD TYPE 2` | DBSQL streaming CDC |
+| **Incremental with CDF** | `spark.readStream.option('readChangeFeed', 'true').table(...)` | Downstream from Delta table |
+| **Delete handling** | `WHEN MATCHED AND source.op = 'D' THEN DELETE` or `apply_as_deletes` | Propagate source deletes |
+| **Dedup before merge** | `ROW_NUMBER() OVER (PARTITION BY key ORDER BY ts DESC) = 1` | Multiple changes per key in one batch |
+
+---
+
+### 11. Interview-Ready CDC Scenario
+
+**"How did you implement real-time CDC from MySQL to Databricks?"**
+
+| Step | Technology | Detail |
+| --- | --- | --- |
+| 1. Capture | Debezium + Kafka Connect | Reads MySQL binlog, produces CDC events to Kafka |
+| 2. Ingest | Auto Loader (cloudFiles) or Kafka source | Streams JSON CDC events into bronze streaming table |
+| 3. Apply | `dlt.apply_changes()` in SDP | Deduplicates, orders by sequence, applies SCD Type 2 |
+| 4. Enable downstream | Delta CDF on silver table | Gold layer reads only changes via `readChangeFeed` |
+| 5. Serve | Materialized Views | Dashboards auto-refresh from gold aggregations |
+| 6. Monitor | Expectations + row count reconciliation | `CONSTRAINT valid_key EXPECT (customer_id IS NOT NULL) ON VIOLATION DROP ROW` |
+
+**Key metrics from production:**
+- End-to-end latency: \~2 minutes (MySQL change → gold table)
+- Volume: 500K CDC events/hour
+- SCD Type 2 history table: 2 years, 800M rows
+- Zero data loss: checkpointing + exactly-once semantics
+</pre>
+</section>
+<section class="source-card searchable" id="source-5">
+  <div class="source-head">
+    <h2>Large-Scale Solution Design (5 TB+ Tables, Complex Transformations).txt</h2>
+    <button onclick="copySource('src-5')">Copy source</button>
+  </div>
+  <div class="badge">ORIGINAL SOURCE — VERBATIM</div>
+  <pre id="src-5">%md
+## Large-Scale Solution Design (5 TB+ Tables, Complex Transformations)
+
+---
+
+### 1. The Core Problem at Scale
+
+When tables exceed 5 TB with heavy joins, aggregations, and window functions, you hit problems that don't exist at smaller scale:
+
+| Problem | Why It Happens at 5 TB+ | Impact |
+| --- | --- | --- |
+| **Shuffle explosion** | JOIN of 5 TB x 2 TB = up to 10 TB shuffled across network | Hours of runtime, potential OOM |
+| **Spill to disk** | Single executor can't hold a skewed partition in memory | 10-100x slower than in-memory |
+| **Small file problem** | Daily appends over years = millions of tiny files | File listing alone takes minutes |
+| **Skewed partitions** | One join key (e.g., a B2B mega-customer) has 100M rows while median has 50 | One task runs 1000x longer than others |
+| **Stale statistics** | Optimizer thinks table is 100 MB, picks broadcast join on a 5 TB table | Wrong join strategy = catastrophic |
+| **Checkpoint bloat** | Streaming checkpoint metadata grows with table size | Restart takes 30+ minutes |
+| **Concurrent writes** | Multiple pipelines writing to same 5 TB table | `ConcurrentAppendException`, file conflicts |
+
+---
+
+### 2. Architecture Blueprint for 5 TB+ Systems
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    LARGE-SCALE LAKEHOUSE ARCHITECTURE                   │
+│                                                                         │
+│  ┌─── INGEST ─────────────────────────────────────────────────────┐    │
+│  │  Auto Loader (file notification)                                │    │
+│  │  Partitioned landing: /year=YYYY/month=MM/day=DD/               │    │
+│  │  Trigger: availableNow (batch-like, cost-effective)             │    │
+│  └───────────────────────────┬─────────────────────────────────────┘    │
+│                               │                                         │
+│  ┌─── BRONZE ─────────────────▼─────────────────────────────────────┐  │
+│  │  Streaming Table (append-only)                                    │  │
+│  │  CLUSTER BY (ingestion_date)                                      │  │
+│  │  Retention: 90 days                                               │  │
+│  │  NO joins, NO transforms — raw landing only                       │  │
+│  │  Size: 5-10 TB (raw, compressed)                                  │  │
+│  └───────────────────────────┬─────────────────────────────────────┘  │
+│                               │                                         │
+│  ┌─── SILVER ─────────────────▼─────────────────────────────────────┐  │
+│  │                                                                    │  │
+│  │  ┌── Fact Tables ──────────────────────────────────────────┐      │  │
+│  │  │  silver.transactions (5 TB)                              │      │  │
+│  │  │  CLUSTER BY (transaction_date, store_id)                 │      │  │
+│  │  │  Incremental: process only new partitions                │      │  │
+│  │  │  CDF enabled                                             │      │  │
+│  │  └──────────────────────────────────────────────────────────┘      │  │
+│  │                                                                    │  │
+│  │  ┌── Dimension Tables ─────────────────────────────────────┐      │  │
+│  │  │  silver.products (50 MB)  ← Materialized View            │      │  │
+│  │  │  silver.stores (5 MB)     ← Materialized View            │      │  │
+│  │  │  silver.customers (2 GB)  ← Streaming Table + SCD        │      │  │
+│  │  └──────────────────────────────────────────────────────────┘      │  │
+│  │                                                                    │  │
+│  │  ┌── Pre-Joined Intermediate ──────────────────────────────┐      │  │
+│  │  │  silver.transactions_enriched (6 TB)                     │      │  │
+│  │  │  = transactions + product + store (pre-joined daily)     │      │  │
+│  │  │  CLUSTER BY (transaction_date, category, region)         │      │  │
+│  │  │  This avoids re-joining 5 TB at gold layer               │      │  │
+│  │  └──────────────────────────────────────────────────────────┘      │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+│                               │                                         │
+│  ┌─── GOLD ───────────────────▼─────────────────────────────────────┐  │
+│  │                                                                    │  │
+│  │  ┌── Aggregation MVs (fast dashboards) ────────────────────┐      │  │
+│  │  │  gold.daily_sales_summary        (Materialized View)     │      │  │
+│  │  │  gold.weekly_category_performance (Materialized View)    │      │  │
+│  │  │  gold.monthly_store_kpis          (Materialized View)    │      │  │
+│  │  └──────────────────────────────────────────────────────────┘      │  │
+│  │                                                                    │  │
+│  │  ┌── Denormalized Facts (MERGE) ───────────────────────────┐      │  │
+│  │  │  gold.customer_360   (Managed Table, MERGE daily)        │      │  │
+│  │  │  gold.product_metrics (Managed Table, MERGE daily)       │      │  │
+│  │  └──────────────────────────────────────────────────────────┘      │  │
+│  │                                                                    │  │
+│  │  ┌── Window Function Results (pre-computed) ───────────────┐      │  │
+│  │  │  gold.customer_rfm_scores  (recency/frequency/monetary)  │      │  │
+│  │  │  gold.product_ranking      (ROW_NUMBER per category)     │      │  │
+│  │  │  gold.rolling_averages     (7d/30d/90d moving averages)  │      │  │
+│  │  └──────────────────────────────────────────────────────────┘      │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key design principle:** Push expensive operations (joins, windows) to the silver intermediate layer where you control the partitioning. Gold layer reads the pre-joined result — never re-joins 5 TB tables.
+
+---
+
+### 3. Data Modeling Strategies for 5 TB+ Tables
+
+#### Strategy 1: Pre-Join at Silver (Eliminate Gold-Layer Shuffles)
+
+The #1 mistake with large tables is joining them at the gold layer every run.
+
+```
+❌ BAD: Join 5 TB fact + dimensions every time gold refreshes
+   gold.summary = JOIN(silver.transactions[5TB], silver.products, silver.stores)
+   → 5 TB shuffle every single run
+
+✅ GOOD: Pre-join once at silver, gold reads pre-joined table
+   silver.transactions_enriched = JOIN(silver.transactions[5TB], products, stores)
+   → Only new/changed data joined (incremental)
+   gold.summary = AGGREGATE(silver.transactions_enriched)
+   → Gold reads pre-joined data, no shuffle on 5 TB
+```
+
+**Implementation:**
+```sql
+-- Silver intermediate: pre-join fact + dimensions (run daily, incremental)
+CREATE OR REFRESH STREAMING TABLE silver.transactions_enriched
+CLUSTER BY (transaction_date, category_id, region)
+AS SELECT
+    t.*,
+    p.product_name, p.category, p.subcategory, p.brand,
+    s.store_name, s.region, s.state, s.format
+FROM STREAM silver.transactions t
+JOIN silver.products_current p ON t.product_id = p.product_id
+JOIN silver.stores_current s ON t.store_id = s.store_id;
+```
+
+Now gold aggregations are simple scans with no joins:
+```sql
+CREATE OR REFRESH MATERIALIZED VIEW gold.daily_category_sales
+AS SELECT
+    transaction_date,
+    region,
+    category,
+    SUM(amount) AS revenue,
+    COUNT(*) AS transaction_count
+FROM silver.transactions_enriched
+GROUP BY transaction_date, region, category;
+```
+
+#### Strategy 2: Star Schema with Satellite Tables
+
+For very wide fact tables (100+ columns), split into core fact + satellite tables:
+
+```
+┌───────────────────────┐
+│  CORE FACT TABLE      │     ┌── SATELLITE: Payment Details ──┐
+│  (transaction_id PK)  │     │  transaction_id (FK)           │
+│  transaction_date     ├────►│  payment_method                │
+│  store_id (FK)        │     │  card_type, auth_code          │
+│  product_id (FK)      │     └────────────────────────────────┘
+│  customer_id (FK)     │
+│  amount               │     ┌── SATELLITE: Loyalty Details ──┐
+│  quantity             ├────►│  transaction_id (FK)           │
+│  5 TB, 20 columns     │     │  points_earned, tier           │
+│                       │     │  coupon_code, discount          │
+└───────┬───────────────┘     └────────────────────────────────┘
+        │
+        │ FK joins
+  ┌─────▼─────┐  ┌──────────┐  ┌───────────┐
+  │ Products  │  │  Stores  │  │ Customers │
+  │ 50 MB     │  │  5 MB    │  │  2 GB     │
+  └───────────┘  └──────────┘  └───────────┘
+```
+
+**Why:** Queries that only need amount + product_name scan 5 TB x 20 columns = much less I/O than 5 TB x 100 columns. Satellite tables are joined only when those specific columns are needed.
+
+#### Strategy 3: Aggregate Tables at Multiple Granularities
+
+Don't make dashboards scan 5 TB. Pre-aggregate at the granularity each consumer needs:
+
+| Aggregate Table | Granularity | Size | Refreshed | Consumers |
+| --- | --- | --- | --- | --- |
+| `gold.hourly_store_sales` | Hour x Store x Category | \~50 GB | Hourly | Operational dashboards |
+| `gold.daily_region_sales` | Day x Region x Category | \~5 GB | Daily | Management dashboards |
+| `gold.weekly_brand_perf` | Week x Brand x Region | \~500 MB | Weekly | Strategic reports |
+| `gold.monthly_kpis` | Month x Business Unit | \~50 MB | Monthly | Executive summary |
+
+```sql
+-- Hourly aggregate (operational)
+CREATE OR REFRESH MATERIALIZED VIEW gold.hourly_store_sales
+AS SELECT
+    date_trunc('HOUR', transaction_timestamp) AS hour,
+    store_id, category,
+    SUM(amount) AS revenue,
+    COUNT(*) AS txn_count,
+    COUNT(DISTINCT customer_id) AS unique_customers
+FROM silver.transactions_enriched
+WHERE transaction_date &gt;= current_date() - 7  -- Rolling 7 days only
+GROUP BY 1, 2, 3;
+```
+
+---
+
+### 4. Handling Expensive Transformations at Scale
+
+#### 4a. Large JOINs (5 TB x 2 TB)
+
+| Technique | When | How | Impact |
+| --- | --- | --- | --- |
+| **Broadcast small side** | Dimension &lt; 1 GB after filter | `/*+ BROADCAST(dim) */` or Auto Loader infers | Eliminates shuffle on large side entirely |
+| **Pre-filter before join** | Many rows in fact don't match dimension | `WHERE transaction_date &gt;= current_date - 30` before join | Reduces data entering shuffle by 90%+ |
+| **Bucket/cluster on join key** | Same two tables joined repeatedly | Both tables `CLUSTER BY (join_key)` | Data pre-sorted on same key = local join, no shuffle |
+| **Pre-join at silver** | Fact + dimension joined by every downstream query | Materialize the joined result (see Strategy 1) | Gold queries become scan-only |
+| **Salted join for skew** | One join key has 100M rows, median has 50 | Append random salt (0-9) to skewed key, join in two stages | Splits hot partition into 10 equal ones |
+| **Incremental join** | Only 1% of data changes daily | Join only new/changed partitions, MERGE into target | Process 50 GB/day instead of 5 TB |
+
+**Broadcast hint (exam-critical):**
+```sql
+-- Force broadcast on small dimension (&lt; 1 GB)
+SELECT /*+ BROADCAST(p) */
+    t.transaction_date,
+    p.category,
+    SUM(t.amount) AS revenue
+FROM silver.transactions t        -- 5 TB
+JOIN silver.products_current p    -- 50 MB → broadcast to all executors
+    ON t.product_id = p.product_id
+GROUP BY 1, 2;
+```
+
+**Salted join for skew:**
+```sql
+-- Problem: customer_id = 'WHOLESALE_CORP' has 100M rows, causes 1 task to run 100x longer
+-- Solution: Salt the skewed key
+
+-- Step 1: Add salt to large table
+WITH salted_transactions AS (
+    SELECT *, FLOOR(RAND() * 10) AS salt
+    FROM silver.transactions
+    WHERE transaction_date &gt;= current_date() - 30
+),
+-- Step 2: Explode small table to match all salts
+exploded_customers AS (
+    SELECT c.*, s.salt
+    FROM silver.customers_current c
+    CROSS JOIN (SELECT EXPLODE(SEQUENCE(0, 9)) AS salt) s
+)
+-- Step 3: Join on key + salt (distributes 100M rows across 10 partitions)
+SELECT
+    t.customer_id,
+    c.segment,
+    SUM(t.amount) AS total_spend
+FROM salted_transactions t
+JOIN exploded_customers c
+    ON t.customer_id = c.customer_id
+    AND t.salt = c.salt
+GROUP BY 1, 2;
+```
+
+#### 4b. Large Aggregations (GROUP BY on 5 TB)
+
+| Technique | When | How |
+| --- | --- | --- |
+| **Two-stage aggregation** | High-cardinality GROUP BY | Aggregate per partition first, then merge |
+| **Pre-filter aggressively** | Only need last 30 days of 3 years | `WHERE date &gt;= current_date - 30` before GROUP BY |
+| **Partial aggregation at silver** | Same aggregation used by multiple gold tables | Create an intermediate aggregate table |
+| **Approximate functions** | Exact count isn't needed | `APPROX_COUNT_DISTINCT()` is 10x faster than `COUNT(DISTINCT)` |
+| **Cluster by GROUP BY columns** | Same GROUP BY query runs daily | `CLUSTER BY (group_col_1, group_col_2)` = data pre-sorted |
+
+```sql
+-- APPROX_COUNT_DISTINCT: 10x faster, ~2% error margin
+SELECT
+    transaction_date,
+    region,
+    SUM(amount) AS revenue,
+    APPROX_COUNT_DISTINCT(customer_id) AS approx_unique_customers  -- 10x faster
+FROM silver.transactions_enriched
+WHERE transaction_date &gt;= current_date() - 90
+GROUP BY 1, 2;
+```
+
+#### 4c. Window Functions on 5 TB
+
+Window functions are expensive because `PARTITION BY` requires a shuffle, then `ORDER BY` requires a sort within each partition.
+
+| Technique | When | How |
+| --- | --- | --- |
+| **Narrow the window scope** | Only need recent data | `WHERE date &gt;= current_date - 90` before window |
+| **Pre-compute and store** | Same window used by multiple consumers | Materialize the window result as a gold table |
+| **Cluster on PARTITION BY key** | Same partition key used repeatedly | `CLUSTER BY (partition_key)` = no shuffle needed |
+| **Replace with aggregate** | `ROW_NUMBER() ... = 1` is just a dedup | Use `QUALIFY` or `GROUP BY` + `MAX()` instead |
+| **Incremental windows** | Rolling 7-day average updated daily | Maintain state: subtract day 8, add day 1 |
+
+**Pre-compute expensive window at silver:**
+```sql
+-- Pre-compute RFM scores at silver (run daily, store result)
+CREATE OR REPLACE TABLE silver.customer_rfm AS
+SELECT
+    customer_id,
+    -- Recency: days since last purchase
+    DATEDIFF(current_date(), MAX(transaction_date)) AS recency_days,
+    -- Frequency: number of purchases in 90 days
+    COUNT(*) AS frequency_90d,
+    -- Monetary: total spend in 90 days
+    SUM(amount) AS monetary_90d,
+    -- Ranking
+    NTILE(5) OVER (ORDER BY SUM(amount) DESC) AS monetary_quintile,
+    NTILE(5) OVER (ORDER BY COUNT(*) DESC) AS frequency_quintile,
+    NTILE(5) OVER (ORDER BY DATEDIFF(current_date(), MAX(transaction_date))) AS recency_quintile
+FROM silver.transactions_enriched
+WHERE transaction_date &gt;= current_date() - 90
+GROUP BY customer_id;
+```
+
+Now gold dashboards query `silver.customer_rfm` (small table) instead of windowing 5 TB every time.
+
+**Replace ROW_NUMBER with QUALIFY:**
+```sql
+-- Instead of subquery + ROW_NUMBER = 1
+-- ❌ Slower:
+SELECT * FROM (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY updated_at DESC) AS rn
+    FROM silver.customers
+) WHERE rn = 1;
+
+-- ✅ Faster (QUALIFY, Databricks-native):
+SELECT *
+FROM silver.customers
+QUALIFY ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY updated_at DESC) = 1;
+```
+
+---
+
+### 5. Incremental Processing Strategy (The Key to 5 TB+)
+
+The #1 rule: **Never reprocess the full 5 TB table when only 0.5% changed.**
+
+| Pattern | Full Reprocess | Incremental | Savings |
+| --- | --- | --- | --- |
+| Daily append (50 GB/day into 5 TB) | Read 5 TB, write 5 TB | Read 50 GB new, append | 100x less I/O |
+| Daily MERGE (upsert) | Scan 5 TB target + source | CDF from silver (only changes) → MERGE | 50x less I/O |
+| Dashboard refresh | Aggregate 5 TB | MV auto-refresh (only changed partitions) | 20x less compute |
+| Window function update | Recompute window over 5 TB | Recompute only last 90 days, replace partition | 10x less compute |
+
+**Incremental MERGE with CDF (the production pattern):**
+```sql
+-- Gold table reads ONLY changed rows from silver via CDF
+MERGE INTO gold.customer_360 AS target
+USING (
+    -- Only rows changed since last run (CDF)
+    SELECT
+        customer_id,
+        SUM(amount) AS total_spend,
+        MAX(transaction_date) AS last_purchase
+    FROM table_changes('silver.transactions_enriched', 
+        (SELECT MAX(last_processed_version) FROM gold._watermarks WHERE table_name = 'customer_360')
+    )
+    WHERE _change_type IN ('insert', 'update_postimage')
+    GROUP BY customer_id
+) AS source
+    ON target.customer_id = source.customer_id
+WHEN MATCHED THEN UPDATE SET
+    target.total_spend = target.total_spend + source.total_spend,
+    target.last_purchase = source.last_purchase
+WHEN NOT MATCHED THEN INSERT *;
+
+-- Update watermark
+UPDATE gold._watermarks
+SET last_processed_version = (SELECT MAX(version) FROM (DESCRIBE HISTORY silver.transactions_enriched))
+WHERE table_name = 'customer_360';
+```
+
+**Partition-scoped window refresh (REPLACE WHERE):**
+```sql
+-- Instead of recomputing window over entire 5 TB:
+-- Only recompute last 90 days and REPLACE those partitions
+INSERT OVERWRITE silver.customer_rfm
+SELECT
+    customer_id,
+    DATEDIFF(current_date(), MAX(transaction_date)) AS recency_days,
+    COUNT(*) AS frequency_90d,
+    SUM(amount) AS monetary_90d,
+    NTILE(5) OVER (ORDER BY SUM(amount) DESC) AS monetary_quintile
+FROM silver.transactions_enriched
+WHERE transaction_date &gt;= current_date() - 90
+GROUP BY customer_id;
+```
+
+---
+
+### 6. Compute Sizing for 5 TB+ Workloads
+
+| Workload | Compute Type | Size | Why |
+| --- | --- | --- | --- |
+| Incremental bronze ingestion (50 GB/day) | Job Cluster (Photon) | Medium | Short-lived, moderate data volume |
+| Silver pre-join (5 TB initial, 50 GB/day incremental) | Job Cluster (Photon) | Large | Heavy join on first run; Medium after |
+| Gold MERGE (CDF-based, \~500 MB changes) | SQL Warehouse (Serverless) | Small | Small data volume, instant start |
+| Gold MV refresh | SQL Warehouse (Serverless) | Medium | Auto-scales for multiple MVs |
+| Window function recompute (90 days = \~500 GB) | Job Cluster (Photon) | Large | Heavy sort + shuffle |
+| Dashboard serving (100 concurrent users) | SQL Warehouse (Serverless) | Medium, max clusters = 5 | Auto-scales horizontally |
+| Monthly full recompute (backfill) | Job Cluster (Photon) | X-Large + spot workers | One-off, cost-optimize with spot |
+| OPTIMIZE + VACUUM (5 TB table) | SQL Warehouse (Serverless) | Medium | I/O intensive, benefits from Photon |
+
+**Spot instance strategy for batch:**
+```
+Driver:   On-demand (never lose the driver)
+Workers:  80% spot / 20% on-demand
+Fallback: If spot preempted, on-demand workers keep the job alive
+Savings:  ~60% on worker costs
+```
+
+---
+
+### 7. Orchestration DAG for 5 TB+ Pipeline
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                LAKEFLOW JOB: Daily Pipeline (2 AM AEST)                    │
+│                                                                            │
+│  ┌─ Stage 1: Ingestion (parallel) ──────────────────────────────────┐     │
+│  │                                                                    │     │
+│  │  Task 1a: Auto Loader → bronze.transactions                       │     │
+│  │           Compute: Job Cluster Medium                              │     │
+│  │           Trigger: availableNow                                    │     │
+│  │           Retries: 3                                               │     │
+│  │                                                                    │     │
+│  │  Task 1b: Auto Loader → bronze.products   (parallel with 1a)      │     │
+│  │  Task 1c: Auto Loader → bronze.stores     (parallel with 1a)      │     │
+│  │  Task 1d: Auto Loader → bronze.customers  (parallel with 1a)      │     │
+│  └────────────────────────────┬───────────────────────────────────────┘     │
+│                               │                                             │
+│  ┌─ Stage 2: Silver (depends on Stage 1) ────────────────────────────┐    │
+│  │                                                                    │    │
+│  │  Task 2a: SDP Pipeline (bronze → silver clean + enriched)          │    │
+│  │           Compute: SDP-managed Large                               │    │
+│  │           Mode: Triggered                                          │    │
+│  │           Includes: apply_changes, pre-join, expectations          │    │
+│  │           Retries: 2                                               │    │
+│  │                                                                    │    │
+│  │  Task 2b: Data Quality Check (depends on 2a)                       │    │
+│  │           SQL: SELECT count(*), count_if(amount IS NULL) ...       │    │
+│  │           IF fail_rate &gt; 5% → FAIL (circuit breaker)               │    │
+│  └────────────────────────────┬───────────────────────────────────────┘    │
+│                               │                                             │
+│  ┌─ Stage 3: Gold (depends on Stage 2, parallel tasks) ──────────────┐   │
+│  │                                                                    │   │
+│  │  Task 3a: MERGE gold.customer_360                                  │   │
+│  │           Compute: SQL Warehouse Small                             │   │
+│  │           Source: silver CDF (only changes)                        │   │
+│  │                                                                    │   │
+│  │  Task 3b: Refresh gold.daily_sales_summary (MV)    (parallel)      │   │
+│  │  Task 3c: Refresh gold.weekly_category_perf (MV)   (parallel)      │   │
+│  │                                                                    │   │
+│  │  Task 3d: Recompute silver.customer_rfm (window)                   │   │
+│  │           Compute: Job Cluster Large (90 days scope)               │   │
+│  └────────────────────────────┬───────────────────────────────────────┘   │
+│                               │                                             │
+│  ┌─ Stage 4: Maintenance (depends on Stage 3) ───────────────────────┐   │
+│  │                                                                    │   │
+│  │  Task 4a: OPTIMIZE silver.transactions_enriched                    │   │
+│  │  Task 4b: OPTIMIZE gold.customer_360                               │   │
+│  │  Task 4c: ANALYZE TABLE gold.customer_360 COMPUTE STATISTICS       │   │
+│  │  Task 4d: VACUUM silver.transactions RETAIN 720 HOURS (30 days)    │   │
+│  │           Compute: SQL Warehouse Small                             │   │
+│  └────────────────────────────────────────────────────────────────────┘   │
+│                                                                            │
+│  Alerts: Email on failure │ PagerDuty if Stage 1 or 2 fails              │
+│  SLA:    Stage 1-3 complete by 4 AM AEST (2 hour budget)                  │
+│  Cost:   ~$25-40/day (Job Clusters + SQL WH + SDP cluster)               │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 8. Clustering Strategy for 5 TB+ Tables
+
+| Table | Size | Clustering Columns | Why These Columns |
+| --- | --- | --- | --- |
+| `silver.transactions` | 5 TB | `transaction_date, store_id` | 90% of queries filter by date; store_id is the second most common filter |
+| `silver.transactions_enriched` | 6 TB | `transaction_date, category, region` | Gold aggregations GROUP BY these columns |
+| `silver.customers` | 2 GB | `customer_id` | Point lookups and joins on customer_id |
+| `gold.customer_360` | 50 GB | `region, segment` | Dashboard filters on region and segment |
+| `gold.daily_sales_summary` | 5 GB | `order_date, region` | Time-series dashboards filter by date + region |
+
+**How to choose clustering columns (decision process):**
+
+```
+Step 1: Look at your top 10 queries (query history)
+Step 2: Extract all WHERE and JOIN ON columns
+Step 3: Rank by frequency of use
+Step 4: Pick top 2-4 (diminishing returns after 4)
+Step 5: Put highest-cardinality column LAST
+
+Example:
+  WHERE transaction_date = ...        → used in 95% of queries  → Column 1
+  WHERE region = ...                  → used in 60% of queries  → Column 2
+  WHERE category = ...                → used in 40% of queries  → Column 3
+  JOIN ON customer_id = ...           → used in 30% of queries  → Column 4 (highest cardinality)
+
+  Result: CLUSTER BY (transaction_date, region, category, customer_id)
+```
+
+---
+
+### 9. Anti-Patterns to Avoid at 5 TB+
+
+| # | Anti-Pattern | Why It's Bad | Correct Pattern |
+| --- | --- | --- | --- |
+| 1 | JOIN 5 TB x 2 TB at gold layer every run | 7 TB shuffled daily | Pre-join at silver, gold reads pre-joined table |
+| 2 | `SELECT *` on 5 TB table | Reads all 100+ columns even if you need 5 | Always `SELECT` only needed columns |
+| 3 | Full table reprocess daily | Re-reading 5 TB when 50 GB changed | Incremental with CDF + watermarks |
+| 4 | `COUNT(DISTINCT x)` on 5 TB | Requires global shuffle of entire column | `APPROX_COUNT_DISTINCT(x)` for dashboards |
+| 5 | Window function on unbounded data | `OVER (PARTITION BY ... ORDER BY ...)` on 5 TB | Scope to rolling window: `WHERE date &gt;= current_date - 90` |
+| 6 | No `ANALYZE TABLE` on gold | Optimizer guesses join strategy wrong | `ANALYZE TABLE ... COMPUTE STATISTICS` after every major load |
+| 7 | Skipped `OPTIMIZE` for months | 500K small files, scans take 10 min | Weekly OPTIMIZE, monitor with `DESCRIBE DETAIL` |
+| 8 | `ORDER BY` in intermediate CTE | Sorts 5 TB for no reason (downstream ignores order) | Only `ORDER BY` in final output or `LIMIT` queries |
+| 9 | Storing aggregates as views (not MVs) | 5 TB scanned every dashboard refresh | Use Materialized Views for repeated aggregations |
+| 10 | Single monolithic job | 6-hour job fails at hour 5, restart from zero | DAG with stages: retry per task, not per pipeline |
+| 11 | Same cluster for ingest + serve | ETL hogs all resources, dashboards timeout | Separate compute: Job Cluster for ETL, SQL WH for serving |
+| 12 | Joining on CAST/function | `INT(a.col) = INT(b.col)` prevents pushdown | Store join keys in the correct type at silver layer |
+
+---
+
+### 10. Monitoring Checklist for 5 TB+ Production
+
+| # | What to Monitor | How | Alert Threshold |
+| --- | --- | --- | --- |
+| 1 | **Row count reconciliation** (bronze vs silver vs gold) | SQL: `count(*)` per layer per day | &gt;1% drift |
+| 2 | **File count per table** | `DESCRIBE DETAIL table` → `numFiles` | &gt;50K files |
+| 3 | **Avg file size** | `DESCRIBE DETAIL` → `sizeInBytes / numFiles` | &lt;32 MB or &gt;2 GB |
+| 4 | **Spill to disk** | Query Profile → spill metrics | Any spill &gt; 1 GB |
+| 5 | **Stage duration trend** | Job run history → task durations over time | &gt;20% regression week-over-week |
+| 6 | **Streaming lag** | Structured Streaming metrics → `inputRowsPerSecond` vs `processedRowsPerSecond` | processedRate &lt; inputRate for &gt;30 min |
+| 7 | **CDF backlog** | Watermark version vs latest table version | Lag &gt; 24 hours |
+| 8 | **OPTIMIZE status** | `DESCRIBE HISTORY` → last OPTIMIZE timestamp | &gt;14 days since last OPTIMIZE |
+| 9 | **VACUUM status** | `DESCRIBE HISTORY` → last VACUUM | &gt;30 days since last VACUUM |
+| 10 | **Data freshness** | `MAX(ingestion_timestamp)` per table | Stale &gt; SLA window |
+
+---
+
+### 11. Interview-Ready Summary
+
+&gt; **"How would you design a pipeline for 5 TB+ tables with complex joins and aggregations?"**
+
+**Answer framework (90 seconds):**
+
+1. **Ingest incrementally** — Auto Loader with file notification, never bulk-reload
+2. **Pre-join at silver** — Fact + dimension joined once at silver layer, never repeated at gold
+3. **Incremental gold** — CDF-driven MERGE + Materialized Views; only process changes
+4. **Pre-compute windows** — Expensive `ROW_NUMBER` / `NTILE` stored as tables, not recalculated per query
+5. **Right-size compute** — Job Clusters for ETL (ephemeral), SQL Warehouse for serving (auto-scale)
+6. **Cluster intelligently** — Liquid Clustering on top 2-4 query filter columns per table
+7. **DAG orchestration** — Parallel stages with per-task retry, circuit breakers between layers
+8. **Monitor everything** — Row counts, file health, spill, freshness, OPTIMIZE cadence
+</pre>
+</section>
+<section class="source-card searchable" id="source-6">
+  <div class="source-head">
+    <h2>databricks Real-World Problems &amp; Solutions.txt</h2>
+    <button onclick="copySource('src-6')">Copy source</button>
+  </div>
+  <div class="badge">ORIGINAL SOURCE — VERBATIM</div>
+  <pre id="src-6">%md
+## Principal Data Engineer Interview — Real-World Problems &amp; Solutions
+
+---
+
+### PART A: Production Failures &amp; Debugging
+
+---
+
+#### Problem 1: Silent Data Loss in a Medallion Pipeline
+
+**Scenario you describe:**
+&gt; "Our silver layer table was showing 15% fewer records than bronze for the same day. No errors in the job logs — the pipeline reported SUCCESS every night. The business noticed revenue numbers were off after 3 weeks."
+
+**Root Cause:**
+A schema change upstream added a new `currency_code` column with `NULL` values for the first 2 weeks. The bronze-to-silver transformation had an `INNER JOIN` to a currency reference table on `currency_code`. NULLs don't match in inner joins — so 15% of rows silently dropped.
+
+**How you debugged it:**
+
+| Step | Action | Tool/Technique |
+| --- | --- | --- |
+| 1 | Compared bronze vs silver row counts by day using Delta Time Travel | `SELECT count(*) FROM bronze.orders VERSION AS OF 42` |
+| 2 | Found the drop started on a specific date — checked `DESCRIBE HISTORY bronze.orders` | Delta transaction log showed a schema evolution merge on that date |
+| 3 | Profiled NULL rates per column on bronze | `SELECT count_if(currency_code IS NULL) / count(*) FROM bronze.orders` |
+| 4 | Identified the INNER JOIN as the filter | Changed to `LEFT JOIN` + COALESCE for default currency |
+| 5 | Backfilled silver from bronze using Time Travel | Delta kept all bronze versions — no data was actually lost |
+
+**What makes this principal-level:**
+- You built a **data quality monitoring framework** after this: row count reconciliation between layers with automated alerts
+- You introduced **schema evolution policies**: any new nullable column triggers a review before silver transformation changes
+- You added **expectations/assertions** at the silver layer: `CONSTRAINT valid_currency EXPECT (currency_code IS NOT NULL) ON VIOLATION DROP ROW` with logging
+
+---
+
+#### Problem 2: Job Succeeds But Takes 8 Hours Instead of 40 Minutes
+
+**Scenario you describe:**
+&gt; "Our daily MERGE into a 2 TB fact table gradually degraded from 40 minutes to 8 hours over 6 months. The query plan and data volume hadn't changed. No errors — just slow."
+
+**Root Cause:**
+The table had accumulated 180,000 small files (avg 2 MB each). The MERGE operation was opening every file to check for matches. The `OPTIMIZE` job had been accidentally disabled 6 months earlier when someone reconfigured the workflow.
+
+**How you debugged it:**
+
+| Step | Action | Finding |
+| --- | --- | --- |
+| 1 | `DESCRIBE DETAIL fact_table` | numFiles: 180,247 — avgFileSize: 2.1 MB (should be 128-256 MB) |
+| 2 | `DESCRIBE HISTORY fact_table` | No OPTIMIZE operations for 6 months |
+| 3 | Query Profile showed 95% time in scan | 180K file listing + opening overhead dominated |
+| 4 | Checked `SHOW TBLPROPERTIES fact_table` | `delta.autoOptimize.optimizeWrite = false` — someone had disabled it |
+| 5 | Ran `OPTIMIZE fact_table ZORDER BY (date_key, customer_id)` | Compacted to 8,200 files (~256 MB each) |
+| 6 | Next MERGE: 35 minutes | File listing went from 180K to 8.2K files |
+
+**What makes this principal-level:**
+- You implemented a **file health monitoring dashboard** that alerts when any table exceeds 50K files or avg file size drops below 32 MB
+- You designed an **OPTIMIZE scheduling framework**: tables classified by write pattern (append-heavy, merge-heavy, low-churn) with different OPTIMIZE frequencies
+- You added `OPTIMIZE` as a post-write step in the pipeline DAG rather than a separate job — so it can never be "accidentally" disabled independently
+
+---
+
+#### Problem 3: Concurrent Writes Causing ConcurrentAppendException
+
+**Scenario you describe:**
+&gt; "Two teams were writing to the same gold table — one via a streaming job (append) and another via a nightly MERGE. Every few days the MERGE failed with `ConcurrentAppendException`. The streaming job was critical and couldn't be paused."
+
+**Root Cause:**
+Delta Lake's optimistic concurrency control detected that both operations modified overlapping file ranges. The MERGE was rewriting files that the streaming append had just written to.
+
+**Solution:**
+
+| Approach | Detail |
+| --- | --- |
+| **Partitioned isolation** | Restructured the table with `PARTITIONED BY (source_system)` — streaming writes to partition `source_system='realtime'`, MERGE only touches `source_system='batch'` |
+| **Write serialization** | For the overlap period, used Delta's `delta.isolationLevel = WriteSerializable` (less strict than Serializable) |
+| **Idempotent writes** | Made the streaming job idempotent using `foreachBatch` with MERGE instead of append — so retries are safe |
+| **Architecture change** | Long-term: separated into two tables + a UNION ALL view for consumers. Eliminated contention entirely |
+
+**What makes this principal-level:**
+- You understood Delta's **MVCC (multi-version concurrency control)** at the protocol level — conflict detection is file-level, not row-level
+- You evaluated multiple solutions and chose based on tradeoffs (partition isolation is simple but adds query complexity; separate tables are cleanest but require consumer changes)
+- You documented a **write contention playbook** for the team
+
+---
+
+#### Problem 4: OOM (Out of Memory) on a Join That Used to Work
+
+**Scenario you describe:**
+&gt; "A daily report query that joined a 500M-row transaction table with a 'small' reference table started failing with OOM. Nothing in the query changed. The job had run fine for a year."
+
+**Root Cause:**
+The "small" reference table had grown from 8 MB to 15 MB over the year (new products added daily). Spark's broadcast threshold is 10 MB by default. When the table crossed 10 MB, Spark switched from **Broadcast Hash Join** (small table copied to all executors) to **Sort Merge Join** (both tables shuffled). The shuffle of the 500M-row table didn't fit in memory.
+
+**How you debugged it:**
+
+| Step | Action | Finding |
+| --- | --- | --- |
+| 1 | `EXPLAIN EXTENDED` on the failing query | Join strategy: SortMergeJoin (was BroadcastHashJoin last month) |
+| 2 | `DESCRIBE DETAIL reference_table` | sizeInBytes: 15.2 MB (crossed 10 MB threshold) |
+| 3 | Query Profile | 18 GB spill to disk on the sort phase of SMJ |
+| 4 | Added broadcast hint: `/*+ BROADCAST(ref) */` | Query succeeded in 3 minutes |
+| 5 | Long-term: `ANALYZE TABLE reference_table COMPUTE STATISTICS` | Ensured optimizer always has fresh stats |
+
+**What makes this principal-level:**
+- You didn't just add a hint — you built a **table growth monitoring alert** that flags when reference tables approach the broadcast threshold
+- You created a policy: all reference/dimension tables must have `ANALYZE TABLE` as a post-write step
+- You evaluated raising `spark.sql.autoBroadcastJoinThreshold` to 50 MB but rejected it because it would mask future issues with genuinely large tables
+
+---
+
+#### Problem 5: Data Skew Causing One Task to Run 100x Longer
+
+**Scenario you describe:**
+&gt; "A GROUP BY aggregation on customer_id had 200 tasks finishing in 5 seconds each, but 1 task took 45 minutes. The job SLA was 10 minutes. Total data was only 50 GB."
+
+**Root Cause:**
+One `customer_id` (a B2B wholesale account) had 800M transactions while the median customer had 50. That single key landed in one partition, creating a **skewed partition** 1000x larger than the rest.
+
+**Solution:**
+
+| Technique | How It Works | When to Use |
+| --- | --- | --- |
+| **AQE Skew Join** | Spark detects the large partition and auto-splits it into sub-partitions | First thing to try — enabled by default on Databricks |
+| **Salting** | Append a random number (0-9) to the skewed key, aggregate in two stages: first by `(key, salt)`, then by `key` | When AQE isn't enough or for non-join skew |
+| **Isolate and union** | Process the skewed key separately with a broadcast join, UNION ALL with the rest | When one key dominates and needs special logic |
+| **Pre-aggregate** | Reduce the 800M rows for that customer to daily summaries before joining | Best long-term solution |
+
+**What makes this principal-level:**
+- You built a **skew detection query** that runs pre-flight before expensive jobs: `SELECT key, count(*) as cnt FROM table GROUP BY key HAVING cnt &gt; 10 * (SELECT percentile(cnt, 0.5) FROM (SELECT count(*) cnt FROM table GROUP BY key))`
+- You designed the pipeline to handle skew architecturally (pre-aggregation at silver layer) rather than relying on runtime hints
+
+---
+
+#### Problem 6: Streaming Job Silently Stops Processing New Data
+
+**Scenario you describe:**
+&gt; "Our Structured Streaming job showed as RUNNING in the Spark UI. No errors. But the watermark hadn't advanced in 6 hours — no new data was being processed. The source Kafka topic was actively receiving events."
+
+**Root Cause:**
+A bad record in Kafka had a timestamp of year 2099 (corrupted data). The watermark is computed as `max(event_time) - threshold`. With one record at 2099, the watermark jumped to 2099, and ALL subsequent records were considered "late" and dropped.
+
+**How you debugged it:**
+
+| Step | Action | Finding |
+| --- | --- | --- |
+| 1 | Streaming query progress | `watermark: 2099-03-15T00:00:00` — obviously wrong |
+| 2 | Queried the raw Kafka topic | Found a single record with `event_time = '2099-03-15'` |
+| 3 | Added pre-filter before watermark | `WHERE event_time BETWEEN '2020-01-01' AND current_timestamp() + INTERVAL 1 DAY` |
+| 4 | Restarted from last valid checkpoint after clearing state | Watermark reset to correct time |
+
+**What makes this principal-level:**
+- You implemented **data quality gates at the bronze layer**: timestamp range validation, schema conformance, dead-letter queue for bad records
+- You added watermark monitoring to the streaming dashboard — alert if watermark doesn't advance within 2x the expected interval
+- You designed the pipeline to be **replayable**: Kafka retention + Delta checkpointing means you can always reprocess from a known good state
+
+---
+
+### PART B: Architecture &amp; Optimization Examples
+
+---
+
+#### Problem 7: Redesigning a Monolithic ETL into Medallion Architecture
+
+**Scenario you describe:**
+&gt; "Inherited a 4,000-line SQL script that ran as a single job for 6 hours. It read from 15 source systems, applied 200+ business rules, and wrote to 8 reporting tables. Any failure meant re-running the entire 6-hour job. The business wanted 1-hour SLA."
+
+**Solution — Medallion with Dependency DAG:**
+
+```
+Bronze (raw ingestion)        Silver (cleaned/conformed)       Gold (business-ready)
+┌─────────────────┐          ┌────────────────────┐          ┌──────────────────┐
+│ 15 source tables │ ──CDC──▶ │ Deduplicated       │ ──JOIN──▶│ Revenue summary  │
+│ (append-only,    │          │ Type-cast          │          │ Customer 360     │
+│  schema-on-read) │          │ Null-handled       │          │ Product metrics  │
+│                  │          │ Partitioned by date│          │ (pre-aggregated) │
+└─────────────────┘          └────────────────────┘          └──────────────────┘
+     5 min each                   10 min each                    15 min each
+     Independent                  Depends on bronze              Depends on silver
+     Parallel                     Parallel within layer          Parallel within layer
+```
+
+| Design Decision | Why |
+| --- | --- |
+| **Bronze = append-only, raw** | Source of truth. Never loses data. Can replay from here. |
+| **Silver = cleaned, conformed** | Business rules applied once. Shared across gold tables. Failures here don't require re-ingestion. |
+| **Gold = pre-aggregated, denormalized** | Optimized for query speed. Materialized views where possible. |
+| **Each layer is a separate job task** | Failure in gold doesn't re-run bronze/silver. Retry is minutes, not hours. |
+| **Dependency DAG** | Bronze tasks run in parallel → silver waits for its bronze → gold waits for its silver |
+
+**Result:** 6-hour monolith → 45-minute DAG with per-task retry. SLA met.
+
+**What makes this principal-level:**
+- You didn't just split the SQL — you redesigned the **data model** so each layer is independently testable and replayable
+- You introduced **data contracts** between layers: silver guarantees non-null keys, valid dates, deduplication
+- You added **circuit breakers**: if bronze row count deviates &gt;20% from yesterday, silver doesn't run — prevents bad data propagation
+
+---
+
+#### Problem 8: Migrating from Hive Partitioning to Liquid Clustering
+
+**Scenario you describe:**
+&gt; "Our 10 TB events table was partitioned by `(year, month, day, hour)`. It had 850,000 partitions and 4.2 million files. Queries that didn't filter on date were extremely slow (full scan). OPTIMIZE took 12 hours. The metastore was buckling under partition metadata."
+
+**Solution:**
+
+| Phase | Action | Detail |
+| --- | --- | --- |
+| 1. Analysis | Profiled 90 days of query patterns | 60% filtered by date, 25% by `event_type`, 15% by `user_id` |
+| 2. New table | `CREATE TABLE events_v2 CLUSTER BY (event_date, event_type, user_id)` | Liquid clustering on the top 3 filter columns |
+| 3. Migration | `INSERT INTO events_v2 SELECT * FROM events_v1` | Ran in batches by month to avoid timeout |
+| 4. OPTIMIZE | `OPTIMIZE events_v2` | Compacted into \~1 GB files with Hilbert-curve layout |
+| 5. Cutover | Renamed tables: `ALTER TABLE events_v1 RENAME TO events_v1_archive` then `ALTER TABLE events_v2 RENAME TO events` |
+| 6. Validation | Compared query performance on 20 representative queries | Avg 3.2x faster, worst case (date-only filter) same, best case (multi-column filter) 8x faster |
+
+**Before vs After:**
+
+| Metric | Hive Partitioned | Liquid Clustered |
+| --- | --- | --- |
+| Partitions | 850,000 | 0 (no physical partitions) |
+| Files | 4,200,000 | 12,500 |
+| Avg file size | 2.5 MB | 850 MB |
+| OPTIMIZE time | 12 hours | 25 minutes |
+| Date-only query | 8 sec | 9 sec (comparable) |
+| Multi-column query | 180 sec (full scan) | 22 sec (clustering prunes files) |
+| Metastore overhead | High (850K partitions to list) | Minimal |
+
+**What makes this principal-level:**
+- You ran a **query pattern analysis** before choosing clustering columns — data-driven, not guesswork
+- You designed a **zero-downtime migration** with table rename + archive
+- You set up **ongoing OPTIMIZE scheduling** — liquid clustering improves with each OPTIMIZE as new data arrives
+
+---
+
+#### Problem 9: Cost Optimization — $180K/Month Cloud Bill to $45K
+
+**Scenario you describe:**
+&gt; "The team was running everything on Large All-Purpose clusters that stayed up 24/7. 8 analysts sharing 3 clusters. Monthly DBU cost: $180K. CTO asked me to cut it by 60% without impacting productivity."
+
+**Solution — Compute Right-Sizing:**
+
+| Change | Before | After | Savings |
+| --- | --- | --- | --- |
+| **SQL workloads → Serverless SQL Warehouse** | Large all-purpose cluster 24/7 | Small serverless WH, auto-stops in 10 min | 70% (pay only when querying) |
+| **Nightly ETL → Job Clusters** | Ran on always-on cluster | Dedicated job cluster, terminates after completion | 60% (runs 2 hours, not 24) |
+| **Dev/test → X-Small clusters with auto-stop** | Large cluster for development | X-Small with 15-min auto-stop | 80% |
+| **Caching layer** | Every dashboard query hit raw tables | Materialized views for top 10 dashboards | 40% fewer queries |
+| **Spot instances for non-critical** | All on-demand | Job clusters use spot/preemptible workers | 30% per cluster |
+
+**Architecture:**
+
+| Workload Type | Compute | Size | Auto-Stop | Who |
+| --- | --- | --- | --- | --- |
+| Ad-hoc SQL | Serverless SQL WH | Small (auto-scales) | 10 min | Analysts |
+| Dashboard serving | Serverless SQL WH | Medium (shared) | 20 min | BI consumers |
+| ETL pipelines | Job Clusters | Medium + spot workers | On completion | Scheduled |
+| ML training | All-Purpose (ML Runtime) | GPU-enabled | 30 min | Data scientists |
+| Dev notebooks | Serverless SQL WH | Small | 10 min | Engineers |
+
+**What makes this principal-level:**
+- You didn't just downsize — you **re-architected compute allocation** by workload type
+- You built a **cost attribution dashboard** by team/user using `system.billing.usage` — made costs visible
+- You introduced **tagging policies**: every cluster must have `team`, `project`, `environment` tags for chargeback
+- You negotiated **reserved capacity** for the base workload (further 20% discount on predictable portion)
+
+---
+
+#### Problem 10: Implementing Incremental Processing with MERGE
+
+**Scenario you describe:**
+&gt; "The team was doing `INSERT OVERWRITE` of the entire 500 GB table every night — recomputing all history. It took 4 hours and cost $800/run. Only 0.1% of rows changed daily."
+
+**Solution:**
+
+```sql
+-- Before: Full rewrite (4 hours, $800)
+INSERT OVERWRITE TABLE gold.customers
+SELECT * FROM silver.customers;
+
+-- After: Incremental MERGE (8 minutes, $12)
+MERGE INTO gold.customers AS target
+USING (
+  SELECT * FROM silver.customers
+  WHERE _commit_timestamp &gt; (SELECT max(last_updated) FROM gold.customers_watermark)
+) AS source
+ON target.customer_id = source.customer_id
+WHEN MATCHED AND source.updated_at &gt; target.updated_at
+  THEN UPDATE SET *
+WHEN NOT MATCHED
+  THEN INSERT *;
+```
+
+| Aspect | INSERT OVERWRITE | MERGE (Incremental) |
+| --- | --- | --- |
+| Rows processed | 500M (all) | 500K (changed only) |
+| Duration | 4 hours | 8 minutes |
+| Cost per run | $800 | $12 |
+| Monthly cost | $24,000 | $360 |
+| Deletion vectors | Not applicable | Enabled — avoids full file rewrite for updates |
+
+**Additional optimizations applied:**
+
+| Technique | Detail |
+| --- | --- |
+| **Deletion Vectors** | `ALTER TABLE gold.customers SET TBLPROPERTIES ('delta.enableDeletionVectors' = true)` — MERGE updates mark rows as deleted instead of rewriting entire files |
+| **Change Data Feed (CDF)** | Enabled on silver table — `ALTER TABLE silver.customers SET TBLPROPERTIES ('delta.enableChangeDataFeed' = true)` — so MERGE source reads only changed rows |
+| **Watermark table** | Tracks last processed `_commit_version` per table — enables exactly-once incremental processing |
+| **OPTIMIZE post-MERGE** | Scheduled weekly OPTIMIZE to compact the small files created by incremental MERGEs |
+
+**What makes this principal-level:**
+- You designed an **incremental processing framework** reusable across 40+ tables, not a one-off fix
+- You combined CDF + MERGE + deletion vectors — three Delta features working together
+- You handled edge cases: late-arriving data, schema evolution, idempotent reruns
+
+---
+
+#### Problem 11: External Tables for Multi-Cloud Compliance
+
+**Scenario you describe:**
+&gt; "Regulatory requirement: raw PII data must remain in the EU region (Azure West Europe). But our analytics platform is in Azure Australia East. The compliance team mandated data sovereignty — PII cannot be copied to the AU region."
+
+**Solution — External Tables + Views:**
+
+| Layer | Location | Table Type | Detail |
+| --- | --- | --- | --- |
+| **Raw PII** | Azure West Europe (ADLS Gen2) | External Table | `CREATE TABLE eu_raw.customers LOCATION 'abfss://eu-container@eustorage.dfs.core.windows.net/customers'` |
+| **Anonymized/aggregated** | Azure Australia East | Managed Table | PII stripped or hashed — safe to copy |
+| **Cross-region view** | AU workspace | View over external table | `CREATE VIEW analytics.customers_safe AS SELECT hash(email) as email_hash, city, age_band FROM eu_raw.customers` |
+| **Governance** | Unity Catalog | Column masks + row filters | `ALTER TABLE eu_raw.customers ALTER COLUMN email SET MASK mask_pii` |
+
+**Tradeoffs communicated to stakeholders:**
+
+| Aspect | External Table | Managed Table |
+| --- | --- | --- |
+| Query latency | Higher (cross-region network) | Lower (co-located) |
+| Data sovereignty | Full control — data stays in EU | Data in Databricks-managed storage |
+| DROP TABLE risk | Safe — only metadata deleted | Data deleted |
+| Optimization | Must manually run OPTIMIZE on the external path | Auto-optimize built in |
+
+**What makes this principal-level:**
+- You designed a **hybrid architecture** that satisfies compliance without sacrificing analytics capability
+- You used Unity Catalog **column masking and row-level security** to enforce PII protection at the platform level, not application level
+- You documented the **latency tradeoff** (cross-region reads are 2-5x slower) and mitigated it with aggressive caching and pre-aggregation
+
+---
+
+#### Problem 12: Implementing a Self-Healing Pipeline
+
+**Scenario you describe:**
+&gt; "We had 120 ETL jobs. On average, 5-8 failed every night due to transient issues (network blips, spot instance preemption, source system timeouts). An on-call engineer spent 2 hours every morning manually retrying them. I eliminated the on-call toil entirely."
+
+**Solution — Multi-Layer Resilience:**
+
+| Layer | Mechanism | Handles |
+| --- | --- | --- |
+| **Task-level retry** | Job config: `max_retries: 3` with exponential backoff | Transient network errors, spot preemption |
+| **Checkpoint recovery** | Delta + Structured Streaming checkpoints | Job restarts from last committed micro-batch, not from scratch |
+| **Idempotent writes** | All writes use MERGE or `CREATE OR REPLACE` — never raw INSERT | Safe to retry without duplicates |
+| **Circuit breaker** | Pre-flight check: if source row count &lt; 50% of yesterday's, SKIP and alert | Prevents loading bad/partial source data |
+| **Dead letter queue** | Bad records written to `_quarantine` table, not dropped | No silent data loss |
+| **Dependency-aware retry** | If bronze fails, silver and gold for that entity don't attempt — retry bronze first | Prevents cascading failures |
+| **Automated alerting** | After 3 retries fail, PagerDuty alert with error context + runbook link | Human intervention only when automation can't fix it |
+
+**Result:**
+
+| Metric | Before | After |
+| --- | --- | --- |
+| Daily manual interventions | 5-8 | 0-1 |
+| On-call morning time | 2 hours | 10 minutes (review dashboard) |
+| Data freshness SLA misses | 3-4/month | 0-1/month |
+| Mean time to recovery | 45 min (human) | 3 min (automatic retry) |
+
+**What makes this principal-level:**
+- You designed a **framework**, not a one-off fix — every new pipeline inherits resilience patterns
+- You quantified the impact in **engineering hours saved** and **SLA improvement** — speaks to leadership
+- You used Databricks features together: Lakeflow Jobs retries + Delta checkpointing + MERGE idempotency + Unity Catalog lineage for dependency tracking
+
+---
+
+### PART C: New Features You Should Mention in Interviews
+
+| Feature | What It Is | Interview-Ready Example |
+| --- | --- | --- |
+| **Liquid Clustering** | Replaces partitioning + Z-ORDER with adaptive file layout | "Migrated a 10 TB table from 850K Hive partitions to Liquid Clustering — 3x faster queries, 90% fewer files" |
+| **Deletion Vectors** | Soft-delete rows without rewriting entire Parquet files | "Reduced MERGE operation time by 4x on a 2 TB table — updates mark rows as deleted instead of rewriting 1 GB files" |
+| **Predictive I/O** | ML model predicts which files to read based on query patterns | "Enabled on our largest fact table — scan time dropped 40% because Spark learned our common filter patterns" |
+| **Serverless SQL Warehouses** | Instant-start, auto-scaling SQL compute | "Migrated 8 analysts from always-on clusters to serverless — $135K/month savings with sub-second startup" |
+| **Unity Catalog** | Unified governance: access control, lineage, data sharing | "Implemented UC across 3 business units — single permission model, full column-level lineage, cross-workspace sharing" |
+| **Delta Sharing** | Open protocol for sharing data across organizations | "Shared anonymized datasets with 5 partner companies without copying data — they query our Delta tables directly" |
+| **Change Data Feed (CDF)** | Captures row-level changes (insert/update/delete) from Delta tables | "Replaced full-table reprocessing with CDF-powered incremental MERGE — processing time from 4 hours to 8 minutes" |
+| **Materialized Views** | Auto-refreshing pre-computed query results | "Created MVs for top 10 dashboard queries — dashboard load time from 30s to 2s, warehouse load reduced 40%" |
+| **Genie / AI Assistant** | Natural language to SQL, code generation | "Used Genie to create a self-service analytics room for business users — reduced ad-hoc SQL request tickets by 60%" |
+| **Row/Column Level Security** | Fine-grained access in Unity Catalog | "Implemented column masking on PII fields — analysts see hashed emails, data engineers see raw values, same table" |
+| **VACUUM** | Removes old Delta files no longer referenced | "Automated VACUUM RETAIN 168 HOURS on all tables — reclaimed 15 TB of orphaned Parquet files, saved $2K/month storage" |
+| **Photon** | C++ vectorized execution engine | "Migrated our heaviest SQL workloads to Photon-enabled warehouses — 3x average speedup with zero code changes" |
+
+---
+
+### PART D: Interview Answer Framework (STAR+)
+
+Use this structure for every answer:
+
+| Element | What to Say | Time |
+| --- | --- | --- |
+| **S - Situation** | Set the scene: team size, data volume, business impact | 15 sec |
+| **T - Task** | What was your specific responsibility | 10 sec |
+| **A - Action** | Technical details: what you did, tools used, tradeoffs evaluated | 45 sec |
+| **R - Result** | Quantified impact: time saved, cost reduced, SLA met | 15 sec |
+| **+ Scale** | How you made it reusable: framework, monitoring, documentation, team enablement | 15 sec |
+
+&gt; **Principal-level differentiator**: Junior engineers fix the bug. Senior engineers fix the class of bugs. **Principal engineers design systems where that class of bugs cannot occur.**
+</pre>
+</section>
+<footer>Preserve-first master guide • Source material + clearly separated interview enhancements</footer>
+</main></div>
+<script>
+function searchAll(){
+ const q=document.getElementById('q').value.toLowerCase().trim();
+ document.querySelectorAll('.searchable').forEach(el=>el.classList.toggle('hidden',q && !el.innerText.toLowerCase().includes(q)));
+}
+function copySource(id){navigator.clipboard.writeText(document.getElementById(id).innerText);}
+</script></body></html>
