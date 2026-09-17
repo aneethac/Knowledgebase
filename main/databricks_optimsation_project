@@ -225,4 +225,91 @@ When discussing this optimization, remember:
 SQL-centric ETL → SQL Warehouse
 Spark/Python/ML → Job Clusters
 
+
+Photon is good for SQL workloads because it was specifically built by Databricks as a high-performance query engine for SQL analytics and data warehousing operations.
+
+Simple Interview Answer
+
+"Photon is optimized for SQL processing. It executes joins, aggregations, filters, and Delta Lake operations much more efficiently than the traditional Spark engine. Because queries finish faster, compute resources run for less time, which reduces DBU consumption and overall Databricks costs."
+
+Why Photon Performs Better
+1. Faster Joins
+
+ETL workloads often contain:
+
+SELECT *
+FROM sales s
+JOIN customer c
+ON s.customer_id = c.customer_id
+
+
+Photon is heavily optimized for join operations, which are usually among the most expensive parts of large ETL workloads.
+
+2. Faster Aggregations
+
+Many ETL processes contain:
+
+GROUP BY
+SUM()
+COUNT()
+AVG()
+
+
+Photon processes aggregations more efficiently, reducing query execution time.
+
+3. Better CPU Utilization
+
+Traditional Spark focuses on distributed processing.
+
+Photon is written in native code and is designed to use modern CPU architectures more efficiently, allowing more work to be completed with the same infrastructure.
+
+4. Optimized for Delta Lake
+
+Most Databricks ETL platforms use Delta tables.
+
+Photon is optimized for:
+
+Delta reads
+Delta writes
+MERGE operations
+UPDATEs
+DELETEs
+
+These are common operations in data warehouse and ETL environments.
+
+5. Faster Queries = Lower Cost
+
+A useful way to explain it:
+
+Without Photon:
+Query takes 20 minutes
+
+With Photon:
+Query takes 10 minutes
+
+
+Even if the compute rate is similar, the workload runs for less time, so total cost is lower.
+
+How to Explain in Your Databricks Story
+
+"One reason the SQL Warehouse delivered cost savings was Photon. Our ETL workloads involved a lot of joins, aggregations, and Delta table operations. Photon is optimized for exactly those types of SQL workloads, so queries executed faster, resources were utilized more efficiently, and overall compute costs reduced."
+
+Easy Memory Trick
+
+Remember:
+
+J-A-D
+
+J = Faster Joins
+A = Faster Aggregations
+D = Optimized for Delta
+
+So if someone asks:
+
+"Why did SQL Warehouse work better?"
+
+You can answer:
+
+"Because SQL Warehouse uses Photon, which is optimized for joins, aggregations, and Delta operations. Since our ETL workloads were mainly SQL-based, we got better performance and lower costs."
+
 That's the main reason the optimization delivered substantial cost savings.
