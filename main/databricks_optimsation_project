@@ -1,0 +1,228 @@
+Databricks Cost Optimization Story: Moving ETL Workloads from Job Clusters to SQL Warehouse
+1. STAR Answer (Natural Interview Version)
+Situation
+
+We noticed that our Databricks costs were quite high, especially for ETL workloads. Most of our ETL processes were SQL-driven and operated on large datasets, but they were running on Job Clusters as part of the existing design.
+
+Task
+
+My goal was to identify opportunities to reduce compute costs without impacting performance, reliability, or delivery timelines.
+
+Action
+
+I analyzed our workload patterns, cluster utilization, execution times, and overall Databricks spend.
+
+During the analysis, I found that most of our ETL processing was:
+
+SQL-based
+Large joins and aggregations
+Delta table operations
+ELT-style processing
+Minimal Spark-specific transformations
+
+Although Job Clusters are a common recommendation for ETL workloads, they were not the most efficient option for our use case.
+
+Every execution required:
+
+Cluster startup
+Spark initialization
+Worker provisioning
+Cluster termination
+
+I ran a proof of concept by migrating selected workloads to a SQL Warehouse and compared:
+
+Runtime
+DBU consumption
+Infrastructure overhead
+Overall cost
+
+Since SQL Warehouse is optimized for SQL workloads and uses Photon, we were able to process the same workloads more efficiently while avoiding repeated cluster startup overhead.
+
+Result
+
+The migration resulted in a significant reduction in Databricks compute costs while maintaining performance and reliability.
+
+We achieved:
+
+Lower overall compute spend
+Better resource utilization
+Reduced operational overhead
+Faster execution for several workloads
+Simpler compute management
+
+The key lesson was that instead of applying a standard "ETL = Job Cluster" approach, we aligned the compute platform to the actual workload profile, which was SQL-centric.
+
+2. Executive Summary (30 Seconds)
+
+One of the cost optimization initiatives I led was reviewing our Databricks ETL platform. After analyzing the workload patterns, I found that most ETL processes were SQL-driven but running on Job Clusters. I migrated these workloads to SQL Warehouse, which was better suited for SQL processing. This eliminated repeated cluster startup overhead, improved resource utilization, leveraged Photon optimization, and significantly reduced overall Databricks costs while maintaining performance.
+
+3. Why SQL Warehouse Was Cheaper
+1. Reduced Startup Overhead
+
+With Job Clusters:
+
+Job Starts
+   ↓
+Create Cluster
+   ↓
+Provision Workers
+   ↓
+Initialize Spark
+   ↓
+Run Job
+   ↓
+Terminate Cluster
+
+
+This process repeats for every execution.
+
+For hundreds of daily jobs, this becomes expensive.
+
+2. Photon Optimization
+
+SQL Warehouse uses Photon, which is highly optimized for:
+
+SQL joins
+Aggregations
+Filters
+Window functions
+Delta operations
+
+Since our ETL workloads were primarily SQL-based, Photon executed them more efficiently.
+
+3. Better Resource Utilization
+
+Job Cluster approach:
+
+Job A -> Cluster 1
+Job B -> Cluster 2
+Job C -> Cluster 3
+
+
+Each workload gets separate resources.
+
+SQL Warehouse approach:
+
+SQL Warehouse
+    ├─ Query A
+    ├─ Query B
+    └─ Query C
+
+
+Multiple workloads share the same compute resources.
+
+This leads to higher utilization.
+
+4. Auto Scaling
+
+SQL Warehouse can:
+
+Scale up during demand
+Scale down when demand reduces
+Auto-stop when idle
+
+This helps control cost automatically.
+
+4. Interview Follow-Up Questions & Answers
+Q: Why didn't you continue using Job Clusters?
+
+After reviewing the workload profile, we discovered that most ETL workloads were SQL-heavy rather than Spark-heavy. SQL Warehouse was a better fit because it provided better utilization and lower compute costs for SQL processing.
+
+Q: Isn't Job Cluster considered best practice for ETL?
+
+It depends on the workload type. For Spark, Python, Scala, machine learning, and streaming workloads, Job Clusters are usually the right choice. Our ETL workloads were largely SQL-driven, so SQL Warehouse offered better efficiency and lower costs.
+
+Q: How did you identify the opportunity?
+
+I analyzed job execution patterns, DBU consumption, cluster utilization, and workload characteristics. The analysis showed that our ETL jobs were primarily SQL operations, which made SQL Warehouse a strong candidate.
+
+Q: How did you measure success?
+
+We compared execution times, DBU consumption, and overall Databricks costs before and after migration. The key metric was cost per workload execution, and we saw a significant reduction without any performance impact.
+
+Q: Did SQL Warehouse affect performance?
+
+No. In fact, several jobs performed better because SQL Warehouse is optimized for SQL execution and benefits from Photon acceleration.
+
+Q: Does SQL Warehouse also have startup overhead?
+
+Yes, but it's much smaller and shared across multiple workloads. With Job Clusters, every job requires a cluster startup. With SQL Warehouse, multiple jobs can reuse the same warehouse, so the startup cost is distributed across many workloads.
+
+Q: When would you still recommend Job Clusters?
+
+I would still recommend Job Clusters for Spark-intensive workloads, Python or Scala transformations, machine learning workloads, complex streaming jobs, and workloads requiring custom libraries.
+
+5. SQL Warehouse vs Job Cluster
+Job Cluster
+
+Best for:
+
+Spark processing
+Python transformations
+Scala workloads
+Machine learning
+Streaming
+
+Pros:
+
+Isolated execution
+Flexible
+Good for custom frameworks
+
+Cons:
+
+Startup overhead per job
+Lower utilization for SQL-heavy workloads
+SQL Warehouse
+
+Best for:
+
+SQL ETL
+ELT workloads
+Dashboard refreshes
+Analytics queries
+Delta table processing
+
+Pros:
+
+Photon optimization
+Better concurrency
+Better utilization
+Lower operational overhead
+
+Cons:
+
+Not ideal for complex Spark or ML workloads
+6. The Key Business Message
+
+The biggest lesson from this optimization was that cost optimization is not about choosing the cheapest technology. It's about choosing the right compute model for the workload. Since our ETL platform was heavily SQL-driven, moving from Job Clusters to SQL Warehouse allowed us to leverage Photon, improve utilization, reduce startup overhead, and significantly lower our Databricks costs.
+
+7. Mini Version (Easy to Remember)
+S-P-U-C Framework
+
+S = Startup overhead reduced
+
+P = Photon optimization
+
+U = Better resource utilization
+
+C = Lower compute cost
+
+One-liner
+
+We migrated SQL-heavy ETL workloads from Job Clusters to SQL Warehouse, reducing startup overhead, leveraging Photon optimization, improving utilization, and significantly lowering compute costs.
+
+8. 15-Second Version
+
+Our ETL processes were mostly SQL-based but running on Job Clusters. After analyzing workload patterns, I moved them to SQL Warehouse, which was a better fit for SQL processing. This reduced cluster startup overhead, improved resource utilization, and significantly lowered our Databricks costs while maintaining performance.
+
+Final Memory Trick
+
+When discussing this optimization, remember:
+
+"Right workload, right compute."
+
+SQL-centric ETL → SQL Warehouse
+Spark/Python/ML → Job Clusters
+
+That's the main reason the optimization delivered substantial cost savings.
