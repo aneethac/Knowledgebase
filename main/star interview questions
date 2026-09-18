@@ -1,0 +1,375 @@
+Interview Handbook - Final Version
+________________________________________
+STORY 1: Feature Store Modernisation (Architecture / Migration / Leadership)
+1. Start Line
+"One of the largest programs I led was the migration and modernisation of the Product Feature Store platform from Oracle to Azure Databricks."
+________________________________________
+2. Super-Easy Memory Version
+Legacy Oracle Platform
+↓
+300 Tables
+↓
+Design Databricks Lakehouse
+↓
+Metadata Framework
+↓
+Regression Framework
+↓
+Migration Validation
+↓
+Production Deployment
+↓
+Reliable Governed Platform
+________________________________________
+3. 45-Second Version
+One of the largest programs I led was the migration and modernisation of the Product Feature Store platform. It supported critical forecasting and machine learning solutions and contained around 300 enterprise tables. I led the architecture, migration strategy, framework development, reconciliation approach and deployment process. One of the major challenges was validating data parity between Oracle and Databricks while supporting business-critical models. Through automation, governance and strong stakeholder alignment, we successfully delivered a scalable and reliable cloud platform.
+________________________________________
+4. Master Speech
+One of the largest programs I led was the Product Feature Store modernisation. The organisation needed to migrate a large Oracle-based platform supporting forecasting, replenishment and machine learning workloads into Azure Databricks.
+I led the solution end-to-end, including architecture, framework design, migration planning, validation strategy and deployment.
+One of the key design decisions was building a reusable metadata-driven framework that supported both historical rebuilds and incremental processing through a single codebase.
+One of the biggest technical challenges was validating data equivalence between Oracle and Databricks. We encountered differences in aggregation behaviour, token ordering and calculation logic. To address this, I built automated reconciliation and regression frameworks that provided confidence before production deployment.
+I worked closely with Data Scientists, Business SMEs, Platform Teams and Enterprise Architects throughout the migration.
+The result was a scalable, governed and reliable cloud platform that improved maintainability, accelerated future feature development and became the foundation for multiple downstream machine learning initiatives.
+________________________________________
+5. Follow-Up Question Mind Map
+Why was the migration needed?
+The legacy platform had scalability limitations, lengthy rebuild times, rigid architecture and increasing pressure from forecasting and machine learning teams.
+What was your role?
+I owned the solution end-to-end, including architecture, design, migration planning, validation, deployment and production support.
+What was the biggest design challenge?
+Creating a reusable framework that supported both historical rebuilds and incremental processing without maintaining separate codebases.
+What was the biggest technical challenge?
+Proving data parity between Oracle and Databricks.
+What stakeholders were involved?
+•	Data Science
+•	Business SMEs
+•	Product Owners
+•	Enterprise Architects
+•	Platform Teams
+•	SRE Teams
+How did you gain stakeholder confidence?
+Automated parity reports, reconciliation frameworks and controlled deployment strategies.
+What leadership did you demonstrate?
+Led architecture decisions, coordinated multiple teams and drove the migration from design through production.
+What ownership did you demonstrate?
+End-to-end ownership from requirements through deployment and operational handover.
+________________________________________
+6. Memory Formula
+Business Need
+↓
+Migration
+
+Architecture
+↓
+Framework
+
+Challenge
+↓
+Data Parity
+
+Solution
+↓
+Validation Framework
+
+Result
+↓
+Reliable Platform
+5 Words
+Design → Build → Validate → Migrate → Deliver
+________________________________________
+STORY 2: Databricks Cost Optimisation ($300K Saving)
+1. Start Line
+"A cost optimisation initiative I'm particularly proud of was reducing Databricks spend by aligning the compute platform to workload patterns."
+________________________________________
+2. Super-Easy Memory Version
+Job Clusters
+↓
+Costs Increasing
+↓
+Analyse Workloads
+↓
+SQL-heavy ETL
+↓
+Evaluate SQL Warehouse
+↓
+POC
+↓
+Stakeholder Buy-in
+↓
+Migration
+↓
+40% Savings
+↓
+$300K Savings
+________________________________________
+3. 45-Second Version
+A cost optimisation initiative I'm particularly proud of was reviewing our Databricks ETL platform. The original solution used Job Clusters, which was the recommended approach when the system was designed. As usage increased, I analysed workload patterns and found that most ETL jobs were SQL-heavy. I evaluated SQL Warehouse, completed a proof of concept and presented the findings to stakeholders. After migrating the workloads, we reduced Databricks costs by approximately 40%, delivering around $300K annual savings while maintaining performance and reliability.
+________________________________________
+4. Master Speech
+One example that comes to mind is a Databricks cost optimisation initiative I led.
+When the platform was originally designed, Job Clusters were the recommended architecture for ETL workloads and the solution was performing well.
+As the platform matured, I noticed compute costs were steadily increasing, so I took ownership of understanding where the spend was coming from.
+Through workload analysis, I discovered that most ETL workloads were SQL-heavy and not Spark-heavy. This prompted me to evaluate whether SQL Warehouse was a better fit.
+I ran a proof of concept, compared cost, utilisation and execution performance, and found SQL Warehouse aligned much better with the workload profile.
+It reduced repeated startup overhead, improved utilisation and benefited from Photon optimisation.
+After presenting the findings and driving stakeholder alignment, we migrated the SQL workloads.
+The result was approximately 40% cloud cost reduction, delivering around $300K annual savings while maintaining performance and reliability.
+The biggest lesson was that good architecture should continuously evolve as workload patterns and technology capabilities change.
+________________________________________
+5. Follow-Up Question Mind Map
+Why use Job Clusters originally?
+That was the recommended ETL architecture at the time and the original decision was correct based on requirements and platform maturity.
+Why revisit the design?
+Costs increased and I wanted to understand optimisation opportunities.
+How did you identify the issue?
+Analysed workload patterns, DBUs, runtime metrics and utilisation.
+What did you discover?
+Most ETL workloads were SQL-heavy.
+Why SQL Warehouse?
+SPUC
+S = Startup overhead reduction
+P = Photon optimisation
+U = Better utilisation
+C = Lower cost
+What is Photon?
+JAD
+J = Faster Joins
+A = Faster Aggregations
+D = Better Delta Operations
+Doesn't SQL Warehouse also have startup overhead?
+Yes, but the overhead is shared across multiple workloads instead of every individual job.
+How did you measure success?
+Cost reduction, resource utilisation and execution performance.
+Leadership?
+Led analysis, built business case and drove migration.
+Ownership?
+Nobody asked me to investigate. I proactively identified and delivered the opportunity.
+Innovation?
+Challenged the assumption that SQL ETL must always run on Job Clusters.
+________________________________________
+6. Memory Formula
+Problem
+↓
+Costs
+
+Analysis
+↓
+SQL-heavy Workloads
+
+Solution
+↓
+SQL Warehouse
+
+Justification
+↓
+SPUC
+
+Result
+↓
+$300K Savings
+5 Words
+Analyse → Discover → Evaluate → Migrate → Save
+________________________________________
+STORY 3: Range Optimisation
+1. Start Line
+"A good example of problem solving was the Range Optimisation platform where I investigated both performance and cost issues."
+________________________________________
+2. Super-Easy Memory Version
+Performance Issues
+↓
+Investigate End-to-End
+↓
+Processing In R
+↓
+Move To Databricks
+↓
+Persist Delta Tables
+↓
+Optimise SQL
+↓
+Serverless SQL Warehouse
+↓
+30% Faster
+↓
+15% Cost Reduction
+________________________________________
+3. 45-Second Version
+A good example of problem solving was the Range Optimisation platform. The solution had both cost and performance issues. I analysed the entire architecture and discovered a significant amount of processing was occurring inside the R application layer. I redesigned the solution by moving transformations into Databricks, introducing reusable Delta tables and optimising SQL execution. The result was approximately 30% performance improvement and around 15% cost reduction.
+________________________________________
+4. Master Speech
+One initiative I'm particularly proud of was improving the Range Optimisation platform.
+The platform was experiencing performance and cost issues, and rather than scaling infrastructure, I focused on understanding the root cause.
+Through end-to-end analysis, I discovered that significant transformation logic was repeatedly being executed inside the R application layer.
+This created unnecessary processing overhead and increased operational cost.
+I redesigned the architecture by moving heavy transformations into Databricks, persisting reusable Delta datasets and optimising the SQL processing layer.
+I also migrated the workload to a right-sized Serverless SQL Warehouse.
+The result was approximately 30% performance improvement and about 15% reduction in compute costs.
+The key lesson was that architecture improvements often deliver greater value than infrastructure scaling.
+________________________________________
+5. Follow-Up Question Mind Map
+What was the problem?
+Performance issues and high compute cost.
+How did you investigate?
+End-to-end architecture review.
+What did you discover?
+Large-scale transformations were happening in R.
+Why is that a problem?
+R was performing work better suited to Databricks.
+What changes did you make?
+•	Move transformations to Databricks
+•	Persist Delta tables
+•	Optimise SQL
+•	Serverless SQL Warehouse
+Why Delta persistence?
+Avoid repeated recalculation.
+Why Serverless Warehouse?
+Better workload alignment and cost efficiency.
+How did you measure success?
+Runtime improvement and cost reduction.
+Problem-solving skills?
+Root cause analysis and architecture redesign.
+Leadership?
+Led investigation and implementation.
+________________________________________
+6. Memory Formula
+Problem
+↓
+Performance
+
+Investigation
+↓
+R Processing
+
+Solution
+↓
+Databricks
+
+Optimisation
+↓
+Delta + SQLWH
+
+Result
+↓
+30% Faster
+15% Cheaper
+5 Words
+Investigate → Discover → Redesign → Optimise → Improve
+________________________________________
+STORY 4: Source Data Discovery & Enterprise Ecosystem
+1. Start Line
+"One of the biggest challenges in my role isn't building pipelines, it's discovering and understanding data across a complex enterprise ecosystem."
+________________________________________
+2. Super-Easy Memory Version
+Data Science Requirement
+↓
+Business SME Workshops
+
+Understand Business Process
+↓
+Source System Workshops
+
+Understand Tables & Interfaces
+↓
+Enterprise Architect Workshops
+
+Understand Lineage
+↓
+Data Discovery
+
+Acquire Data
+↓
+Solution Design
+
+Transform Data
+↓
+ML Features
+________________________________________
+3. 45-Second Version
+One of the biggest challenges I face is source data discovery. Data Scientists often request features for machine learning models, but the required information is spread across many Coles systems. I start with Business SMEs to understand the business process, then work with source-system teams to understand technical implementation and interfaces. I also engage Enterprise Architects to understand lineage and end-to-end flow. Once I understand the process, systems and data behaviour, I design the acquisition and transformation solution and deliver machine-learning-ready features.
+________________________________________
+4. Master Speech
+One of the biggest challenges I face is source data discovery within a large and complex enterprise landscape.
+Data Scientists often require new features, but those features rarely exist in a single source system. Information such as promotions, pricing, inventory, sales and range data often originates from different systems with multiple integration layers in between.
+My approach begins with Business SMEs to understand the business process, business rules and user behaviour.
+Next, I work with source-system architects and IT teams to understand tables, interfaces, ownership and application-level implementation.
+I then engage Enterprise Architects to understand lineage and how data moves across the organisation because some datasets travel through four or five different systems before reaching the analytics platform.
+Once I understand the business process, technical implementation and data behaviour, I design the acquisition approach, onboard the data into Databricks and build machine-learning-ready datasets.
+I describe myself as the one-stop front for Data Scientists because I own everything from discovery through delivery.
+The biggest lesson is that understanding the business process is often more important than understanding the technology.
+________________________________________
+5. Follow-Up Question Mind Map
+Why is source discovery difficult?
+Data is distributed across many systems and integration layers.
+What's your approach?
+BSE
+B = Business SME
+S = System Architects
+E = Enterprise Architects
+Why start with Business SMEs?
+To understand process, rules and ownership.
+Why engage System Architects?
+To understand tables, interfaces and implementation.
+Why engage Enterprise Architects?
+To understand lineage and system dependencies.
+What are you trying to understand?
+PLB
+P = Process
+L = Lineage
+B = Behaviour
+Examples of complexity?
+•	Promotion vs Pricing systems
+•	Fresh vs Grocery domains
+•	Store vs Online channels
+•	Multiple system hops
+Stakeholders involved?
+•	Business SMEs
+•	Product Owners
+•	Enterprise Architects
+•	System Owners
+•	Data Scientists
+•	Data Engineers
+Leadership?
+Coordinated multiple stakeholder groups.
+Ownership?
+Managed requirement, discovery, acquisition, design and delivery.
+________________________________________
+6. Memory Formula
+Feature Required
+↓
+Business Process
+
+Technical Discovery
+↓
+Lineage
+
+Data Discovery
+↓
+Acquire
+
+Solution Design
+↓
+Transform
+
+Feature Delivery
+↓
+ML Models
+5 Words
+Understand → Discover → Trace → Transform → Deliver
+________________________________________
+Ultimate Interview Memory Formula
+Story 1 = BUILD
+Feature Store Modernisation
+
+Story 2 = SAVE
+Databricks Cost Optimisation
+
+Story 3 = SOLVE
+Range Optimisation
+
+Story 4 = DISCOVER
+Source Data Discovery
+BUILD → SAVE → SOLVE → DISCOVER
+Those four words alone can guide you through most leadership, architecture, problem-solving, stakeholder, delivery, ownership and technical interview questions.
+
+
