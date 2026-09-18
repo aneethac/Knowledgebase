@@ -1,0 +1,168 @@
+Hi All,
+Confirming the successful production release of Drop 3 of the Agentic AI Platform on 15 September 2026.
+Please find the release notes.
+
+Release Date	15 September 2026
+Release Type	Platform Capability Enhancement
+Change Request #	CHG0524707
+Who is impacted?	All D&AI teams and stakeholders using the Agentic AI Platform
+Summary of Changes	What is Value Drop 3?
+Value Drop 3 extends the Agentic AI Platform from the core agent capabilities delivered in Value Drop 2 into governed agent integration and tooling.
+It provides reusable platform patterns for creating and hosting Model Context Protocol (MCP) services, exposing enterprise capabilities as controlled agent tools, applying tool-level access controls, observing MCP execution and enabling Human Evaluation for published agents.
+The objective is to reduce the need for individual use cases to design their own tool-integration, security, deployment and evaluation patterns.
+
+What’s new and what it unlocks
+
+MCP Creation, Hosting & Registry
+
+What’s new
+A reusable MCP server capability is now available, including MCP service scaffolding, Streamable HTTP support, FastMCP server wiring, container and deployment artefacts, Azure DevOps pipeline patterns, and tool registry metadata.
+
+What this unlocks
+Teams can now expose domain capabilities such as enterprise APIs, data access, or business actions to agents through a standard MCP service pattern, rather than creating a bespoke integration framework for each use case.
+Teams can generate the platform scaffold and concentrate their implementation on the domain-specific tools and business logic they own.
+
+Secure MCP Tool Access
+
+What’s new
+Release 3 introduces Entra ID authentication and tool-level role-based authorisation patterns for MCP services. The MCP implementation supports required-role metadata and fail-closed authorisation before a tool is dispatched.
+
+What this unlocks
+Use cases can expose multiple tools through a governed MCP service while controlling which identities are permitted to invoke individual tools.
+This allows tool access to be managed as an explicit security boundary rather than relying on application code alone.
+The approved internal integration pattern places privately hosted MCP services behind APIM. The production-readiness dependency for the Foundry → APIM → MCP path is described below.
+
+Tool Usage & Library Foundations
+
+What’s new
+Release 3 establishes common patterns for tool definitions, bounded input schemas, tool metadata, entitlements, safe error handling and MCP contract testing.
+
+What this unlocks
+Teams can build reusable libraries of domain tools using a common engineering and security model.
+Rather than embedding enterprise integration logic directly into individual agents, teams can expose capabilities through governed MCP tools that can be discovered and consumed by supported agent implementations.
+
+MCP Operational & Cyber Observability
+
+What’s new
+MCP-specific telemetry extends the existing platform observability foundation with structured JSON logging, request correlation, W3C trace propagation and lifecycle events for tool invocation, completion, rejection, and failure.
+
+What this unlocks
+Teams and support functions can trace individual MCP tool executions and investigate how a request progressed through the integration path.
+The implementation provides a consistent mechanism for recording tool outcomes and relevant identity/context information while avoiding the logging of tokens and sensitive payloads.
+
+Human Feedback Mechanisms & Tooling
+
+What’s new
+The Agentic SDK now provides configuration and CI/CD tooling for activating Microsoft Foundry Human Evaluation against published agents. Configuration can be version controlled and validated before activation.
+
+What this unlocks
+Teams can introduce structured human review of agent responses without manually configuring the evaluation capability for each deployment.
+Reviewer feedback can be captured against supported agent scenarios and queried from the Application Insights resource associated with the Foundry project.
+
+Human Evaluation remains a Microsoft Foundry public preview capability and is limited to supported non-production/test scenarios in this release.
+
+Release readiness, dependencies & limitations
+
+The following points are important when deciding how Release 3 capabilities can be consumed.
+Area	Current position	What it means for consumers
+MCP capability	MCP scaffolding, hosting, authentication, RBAC, registry and observability patterns form part of Release 3.	Teams can begin developing MCP services and tools using the released platform patterns.
+Foundry → APIM → MCP	The approved internal integration path still requires completion of the internal APIM certificate remediation and final end-to-end validation.	Do not assume the internal Foundry-to-MCP path is fully production-ready until this validation is complete.
+External APIM used during testing	External APIM has been used to progress testing but is not the approved target path for internal applications.	It should not be treated as the production workaround for the outstanding internal connectivity dependency.
+Human Evaluation	Microsoft Foundry Human Evaluation remains in public preview with no production SLA.	Release 3 usage is limited to supported non-production/test scenarios.
+Operational observability	MCP telemetry patterns are delivered, but the broader enterprise operational-observability direction remains under Architecture Reset review.	Release 3 should not be interpreted as completing the future ADA/Splunk or enterprise observability target state.
+Tool/API permissions governance	Technical app-role/API-permission controls exist, but the broader governance process for approving agent access to different enterprise tools still requires agreement.	Use cases must follow applicable security/IAM approval processes; Release 3 does not automate the complete enterprise approval lifecycle.
+
+The APIM/MCP point is particularly important. Current integration evidence shows the AKS-hosted MCP server exposed through the configured APIM MCP endpoint, with application and Foundry invocation paths being exercised and app-role/API-permission controls implemented. However, the program baseline still requires the internal certificate remediation followed by Non-Prod, Production and end-to-end connectivity validation before the approved internal path can be considered fully production ready.
+
+How teams use these capabilities
+       For a typical MCP-based use case:
+1.	Create the MCP service
+       Use the Agentic SDK MCP capability to generate the standard service scaffold.
+2.	Implement domain tools
+       Add use-case-owned tools, schemas, downstream integration logic and business tests within the service-owned areas of the generated project.
+3.	Define access requirements
+       Define the appropriate tool metadata and required roles. Enterprise access and API permissions must follow the applicable IAM/security governance process.
+4.	Deploy through the platform pattern
+      Deploy the service using the provided container, Azure DevOps and AKS patterns.
+      For internal integrations, the intended architecture places the private MCP service behind APIM.
+5.	Validate the integration
+      Validate authentication, authorisation, MCP protocol behaviour, tool invocation, failure behaviour and required observability before production use.
+6.	Enable Human Evaluation where applicable
+      For supported non-production/test scenarios, configure Human Evaluation through the SDK and activate it through CI/CD against an already-published agent.
+
+Platform vs Use Case Responsibilities
+
+Release 3 deliberately separates reusable platform capability from use-case implementation.
+
+Platform provides	Use case / product team owns
+MCP server scaffold and supported MCP protocol pattern	Domain-specific tools and business logic
+Standard container and deployment artefacts	Use-case configuration and deployment adoption
+Private AKS/APIM integration pattern	Identification of downstream systems/APIs required by the use case
+Entra ID authentication pattern	Required identities and access requests
+Tool-level RBAC mechanism	Appropriate roles/entitlements for each tool
+Tool registry structure and metadata pattern	Domain tool definitions and metadata
+MCP contract-test foundations	Business-specific unit and integration testing
+Structured logging and Open Telemetry patterns	Appropriate application/business telemetry within platform standards
+Safe error-handling patterns	Domain-specific failure handling
+Human Evaluation configuration/activation capability	Evaluation rubrics and reviewer process for the use case
+
+Use-case teams must preserve the separation between SDK-managed scaffold files and service-owned domain code. Platform-managed files may be regenerated by SDK update operations; domain tools and custom integration logic remain owned by the consuming team.
+
+Internal integrations
+For Coles-hosted/internal enterprise integrations, the Release 3 pattern is:
+Agent / Foundry → APIM → privately hosted MCP service → approved downstream service
+
+The security pattern includes Entra ID authentication, APIM gateway controls and MCP tool-level authorisation. Direct access to the private MCP backend should not be treated as the normal integration pattern.
+The outstanding certificate dependency described above applies specifically to completing the approved Foundry → internal APIM → MCP production path.
+
+External integrations
+Release 3 does not establish a blanket approval pattern for exposing MCP services externally or connecting agents to arbitrary third-party MCP services.
+External integrations must be assessed against the relevant architecture, network, identity, data and Cyber requirements for that use case. The existence of MCP support in Release 3 should not be interpreted as approval to bypass existing enterprise integration or security governance.
+This is an area where I would deliberately not invent a more specific external security pattern in the release note unless Architecture/Cyber has approved one.
+
+Current deployment scope
+Value Drop 3 provides:
+•	MCP server creation and update scaffolding.
+•	Private AKS hosting patterns.
+•	APIM-gated MCP integration patterns.
+•	Entra ID authentication and MCP tool-level RBAC.
+•	Tool registry metadata and contract-test foundations.
+•	Structured MCP lifecycle logging.
+•	OpenTelemetry trace propagation.
+•	Safe tool error handling and redaction patterns.
+•	Human Evaluation configuration and CI/CD activation tooling.
+•	Guidance for accessing Human Evaluation feedback.
+•	
+Coming next Releases
+Value Drop 3 is focused on MCP integration and tooling, MCP observability and Human Feedback enablement.
+The following capabilities are part of Value Drops4 & 5:
+•	Agent-to-Agent (A2A) collaboration.
+•	AGUI integration.
+•	Durable Agents.
+•	Agentic Evaluation & Testing beyond the Human Evaluation capability described above.
+•	Long-Term Memory.
+•	Rolling out identity/security capabilities.
+•	Enhanced DevSecOps and Offensive Security target-state capabilities.
+•	Strategic AI Gateway target state.
+A2A and AGUI are later platform capabilities and should not be inferred from Release 3's MCP support. MCP in VD3 provides governed agent-to-tool/service integration; it does not constitute delivery of the later agent-to-agent collaboration capability. The current program baseline places A2A and AGUI in Release 5.
+The strategic AI Gateway is also not a VD3 capability. APIM V1 remains the current AIPT2 program architecture, while the strategic AI Gateway target state is proposed for consideration through Architecture Reset.
+Support	User queries and triage can be raised through the AI Platform – Queries & Triage Teams channel or via the AI Platform team.
+Documentation	Agentic AI Platform - Release 3: Release Guide Mcp-Server Human Evaluation MCP Server capability
+
+Want to know more?	If you have any questions regarding these changes, please contact: @David Burns @Yassein Shaalan
+
+
+
+Best Regards,
+Srini
+Project Manager 
+CISM | CRISC | Prince2
+M: 0423128806
+
+ 
+ 
+I respectfully acknowledge the Wurundjeri People, Traditional Owners and Custodians of the Country I live and work on.
+I pay my respects to Elders past and present and acknowledge their continuing connection to waters, skies, seas and country.
+ 
+ 
+
