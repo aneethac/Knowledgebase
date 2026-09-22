@@ -1,0 +1,261 @@
+from pyspark import StorageLevel
+from pyspark.sql import SparkSession
+from pyspark.sql.types import StructType, StructField, IntegerType, DoubleType, StringType, LongType
+from datetime import datetime
+import json
+import pytz
+import copy
+import re
+
+
+# Functions
+def get_sql_query_from_table(meta_query_table_schema, meta_query_table_name, query_id, commit_id, verbose = False):
+  query = "select * from %s.%s where path = '%s' and commit_id = '%s' order by upload_datetime desc" % (meta_query_table_schema, meta_query_table_name, query_id, commit_id)
+  if verbose == True:
+    print(query)
+  df = spark.sql(query).collect()
+  return(df[0]['code'])
+
+def update_sql_with_params(x, data_config):
+  if len(data_config) == 0: 
+    return x
+  data_config = sorted(data_config.items(), reverse=True)
+  for dc in data_config:
+    x = x.replace("@" + dc[0], str(dc[1]))
+  return x
+
+def get_sql_query_from_table_update(data_config, query_id, verbose, use_nishants_method):
+  if use_nishants_method is True:
+    print("Using Nishants method")
+    meta_query_table_schema = data_config['meta_query_table_schema']
+    meta_query_table_name = data_config['meta_query_table_name']
+    commit_id = data_config['commit_id']
+    print(meta_query_table_schema)
+    print(meta_query_table_name)
+    print(query_id)
+    print(commit_id)
+    query = get_sql_query_from_table(meta_query_table_schema, 
+                                     meta_query_table_name, 
+                                     query_id, 
+                                     commit_id, 
+                                     verbose)
+    query = update_sql_with_params(query, data_config)
+  else:
+    query = cmd['sql']
+  return query
+
+def quick_default(x, id, value):
+  if id not in x: 
+    x[id] = value 
+  return x
+
+def execute_sql_insert_command(cmd, MODEL_CODE, SQLCOMMAND_COUNT, use_nishants_method, data_config, verbose, sequence_job):
+  cmd_split = cmd.split('<==>')
+  query_name = cmd_split[0]
+  sql = cmd_split[1]
+  cmd = {'query_name': query_name, 'sql':sql}
+  print(cmd)
+  context_str = dbutils.notebook.entry_point.getDbutils().notebook().getContext().toJson()
+  context = json.loads(context_str)
+  job_id = context.get('tags', {}).get('jobId', None)
+  run_id = context.get('tags', {}).get('idInJob', None)
+  print(job_id)
+  print(run_id)
+  if(cmd['query_name'] != ""):
+    sql_query = get_sql_query_from_table_update(data_config = data_config, 
+                                                query_id = cmd['sql'], 
+                                                verbose = verbose,
+                                                use_nishants_method = use_nishants_method)
+    if verbose is True:
+      print("----------------")
+      print(sql_query)
+
+    t0 = datetime.now(pytz.timezone('Australia/Melbourne'))
+    # run the spark query
+    exec_insert_step(sql_query, data_config, sequence_job)
+    t1 = datetime.now(pytz.timezone('Australia/Melbourne'))
+    run_time = t1 - t0
+    
+    res = {
+      'model_code':   MODEL_CODE, 
+      'query_name':   cmd['query_name'], 
+      'run_time_sec': run_time.total_seconds(),
+      'start_time' :  t0.strftime("%Y-%m-%d %H:%M:%S"),
+      'end_time' :    t1.strftime("%Y-%m-%d %H:%M:%S"),
+      'job_id' :      job_id,
+      'run_id' :      run_id
+    }
+    if SQLCOMMAND_COUNT != "":
+      res['count'] = spark.sql(SQLCOMMAND_COUNT).collect()[0][0]
+    return res
+  else:
+    pass
+
+def validate_res(res):
+  # coalesce nulls for uploading to SQL
+  # doesn't matter for returning to R so we do it separately
+  res_status = copy.deepcopy(res)
+  for r in res_status:
+    if "primary_keys" not in r.keys():
+      r["primary_keys"] = None
+    if "count" not in r.keys():
+      r["count"] = None
+  return(res_status)
+
+def exe_fs_job(all_params):
+  use_nishants_method = all_params["use_nishants_method"] == "true"
+  verbose = all_params["verbose"] == "true"
+  sequence_job = all_params["sequence_job"] == "true"
+  SQLCOMMAND_DELETE = all_params["SQLCOMMAND_DELETE"]  
+
+  print("----------------")
+  if ( re.search('DAY_IDNT', SQLCOMMAND_DELETE)  and "retention_period_enable" in all_params and "retention_period_in_days" in all_params and   all_params["retention_period_enable"]=="true" and int(all_params["retention_period_in_days"])>0 ):
+    if ( int(all_params["process_run_date_day_idnt"]) + 1 == int(all_params["run_from_day_idnt"]) ):
+      #--- below delete statment is not pruning the partitios on the read
+      # seams to work when you specfiy explicitly the day_indnt  
+      purge_day_idnt = int(all_params["process_run_date_day_idnt"]) - int(all_params["retention_period_in_days"])
+      #-- below is the working around for tha above problem
+      # seems to work when you specfiy explicitly the day_indnt  
+      SQLCOMMAND_PURGE = "delete from " + all_params["target_schema"] + "." + all_params["table_name"] \
+      + " where day_idnt < "  + str(purge_day_idnt) 
+      print("Purge is enabled and is the first parrallel job.")  
+      print ("retention_period_enable = " + all_params["retention_period_enable"] )
+      print ("retention_period_in_days = " + all_params["retention_period_in_days"] )
+      print(SQLCOMMAND_PURGE)
+      spark.sql(SQLCOMMAND_PURGE)
+      print("Purge done.")
+    else:
+       print("Purge has been skipped because this not the first parrallel job .")
+  else:
+    print("Purge is disabled.")
+  print("----------------")
+
+  print(SQLCOMMAND_DELETE)
+  if SQLCOMMAND_DELETE != "":
+    spark.sql(SQLCOMMAND_DELETE)
+  print("----------------")
+  SQLCOMMANDS = all_params["SQLCOMMANDS"].split(';;')
+  res = []
+  if SQLCOMMANDS != "":
+    MODEL_CODE = all_params["MODEL_CODE"]
+    SQLCOMMAND_COUNT = all_params["SQLCOMMAND_COUNT"]
+    SQLCOMMAND_PK = all_params["SQLCOMMAND_PK"]
+    print(MODEL_CODE)
+    print(SQLCOMMANDS)
+    print(SQLCOMMAND_COUNT)
+    print(SQLCOMMAND_PK)
+    for cmd in SQLCOMMANDS:
+      res_i = execute_sql_insert_command(cmd, MODEL_CODE, SQLCOMMAND_COUNT, use_nishants_method, all_params, verbose, sequence_job)
+      print(res_i)
+      res.append(res_i)
+    # perform primary key check only once, regardless of how many queries we have
+    # and only eval if we actually have a pk check
+    if SQLCOMMAND_PK != "":
+      pk_check = {"primary_keys" : spark.sql(SQLCOMMAND_PK).collect()[0][0]}
+      for r in res:
+        r.update(pk_check)
+    send_to_status_table(res, target_schema = all_params["target_schema"])
+    
+  return(res)
+
+def send_to_status_table(res, target_schema):
+  schema = StructType([
+            StructField('model_code', StringType(), True),
+            StructField('query_name', StringType(), True),
+            StructField('count', LongType(), True),
+            StructField('primary_keys', LongType(), True),
+            StructField('run_time_sec', DoubleType(), True),
+            StructField('start_time', StringType(), True),
+            StructField('end_time', StringType(), True),
+            StructField('job_id', StringType(), True),
+            StructField('run_id', StringType(), True)
+    ])
+  res_status = validate_res(res)
+  df = spark.createDataFrame(res_status, schema)
+  status_table = target_schema + ".temp_status_table"
+  #clear_status_tbl = 'delete from ' +status_table +" where model_code = '" + MODEL_CODE + "'"
+  df.write.format("delta").mode("append").saveAsTable(status_table)
+  
+# Sequence job functions -----------------
+
+def runQuery(data_config
+             , cache_table_name
+             , cache_table_name_yesterday
+             , day_offset
+             , loop_query
+             , view_name):
+  
+  run_params = {
+    "cache_table_name" : cache_table_name,
+    "cache_table_name_yesterday" : cache_table_name_yesterday,
+    "day_offset" : day_offset,
+    "day_offset_next" : day_offset+1
+  }
+  run_params.update(data_config)
+  loop_query = loop_query.format(**run_params) 
+  spark.sql(loop_query).persist(StorageLevel.MEMORY_AND_DISK).createOrReplaceTempView(run_params["cache_table_name"])  
+def insertResult(numDays, offsetDay, data_config, loop_query):
+  table_name = data_config["table_name"]
+  view_name = table_name.replace("ftr_", "", 1)
+  target_schema = data_config["target_schema"] 
+  runQuery(data_config = data_config,
+           cache_table_name = view_name+"0",
+           cache_table_name_yesterday = f"{target_schema}.{table_name}",
+           day_offset = offsetDay - 1,
+           loop_query = loop_query,
+           view_name = view_name
+  ) 
+  for offset in range(numDays):
+    runQuery(data_config = data_config,
+             cache_table_name = view_name+f"{offset+1}",
+             cache_table_name_yesterday = view_name+f"{offset}",
+             day_offset = offsetDay + offset,
+             loop_query = loop_query,
+             view_name = view_name
+    ) 
+  union_query = " UNION ALL ".join([f"SELECT * FROM {view_name}{q}" for q in range(numDays)])
+  
+  insert_query = f"""INSERT INTO {target_schema}.{table_name}
+  {union_query}
+  """
+  print(insert_query) 
+  spark.sql(insert_query) 
+  # q= "insert into  aa_smkt_pfs_v3.time_day_dm_dummy select day_dt,day_idnt from biw.time_day_dm limit 5 "
+  # print(q)
+  # spark.sql(q)
+  return(True)
+
+def runForDays(totalNumDays, daysPerInsert, data_config, loop_query):
+  numIter = int(totalNumDays / daysPerInsert)
+  remainder = totalNumDays % daysPerInsert
+  for i in range(numIter):
+    insertResult(numDays = daysPerInsert, offsetDay = daysPerInsert * i, data_config = data_config, loop_query = loop_query)
+  if remainder > 0:
+    insertResult(numDays = remainder, offsetDay = numIter * daysPerInsert, data_config = data_config, loop_query = loop_query)
+    
+def exec_insert_step(sql_query, data_config, sequence_job):
+  if sequence_job is True:
+    date_format = "%Y%m%d" 
+    run_config = copy.deepcopy(data_config) 
+    run_config["n_days"] = (datetime.strptime(data_config["run_to_yyyymmdd"], date_format) - datetime.strptime(data_config["run_from_yyyymmdd"], date_format)).days + 1
+    print("n_days: ", run_config["n_days"]) 
+    runForDays(totalNumDays = run_config["n_days"], daysPerInsert = 10, data_config = run_config, loop_query = sql_query) 
+  else:
+    df = spark.sql(sql_query)
+
+
+                                    # When we get a JSON from the Jobs API it looks and behaves like a python dictionary
+# But under the hood it's actually a Java object of class java.util.HashMap
+# This means that certain functions that work with a python dictionary won't work unless we convert it to a more python friendly structure
+all_params = dict(dbutils.notebook.entry_point.getCurrentBindings())
+
+all_params = quick_default(all_params, "sequence_job", False)
+all_params = quick_default(all_params, "use_nishants_method", False)
+all_params = quick_default(all_params, "verbose", True)
+
+print(all_params)
+
+# Run each step:
+res = exe_fs_job(all_params)
+
+dbutils.notebook.exit(res)
