@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lead Data Engineer Interview Trainer</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f4f6f8;color:#172033;margin:0;line-height:1.6}
+header{background:#172033;color:white;padding:28px 18px}
+main{max-width:1050px;margin:auto;padding:18px}
+.card{background:white;border:1px solid #dfe4ea;border-radius:12px;padding:20px;margin:16px 0}
+h1,h2,h3{margin-top:0} h2{color:#2549b8}
+.tag{font-size:12px;font-weight:bold;color:#3157d5;text-transform:uppercase}
+.flow{font-weight:bold;color:#3157d5;background:#eef2ff;padding:10px;border-radius:8px}
+.speech{font-size:17px;white-space:pre-line}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{border:1px solid #dfe4ea;padding:10px;vertical-align:top;text-align:left}
+th{background:#eef2ff}
+details{margin-top:14px;border-top:1px solid #ddd;padding-top:12px}
+summary{font-weight:bold;cursor:pointer;color:#2549b8}
+nav a{display:inline-block;margin:5px;padding:8px 12px;background:white;color:#2549b8;border-radius:8px;text-decoration:none;font-weight:bold}
+.note{background:#fff8e7;border-left:4px solid #e1a900;padding:12px}
+@media(max-width:650px){table,tbody,tr,td,th{display:block}th{display:none}td{border-bottom:0}.speech{font-size:16px}}
+</style>
+</head>
+<body>
+<header>
+<h1>Lead Data Engineer Interview Trainer</h1>
+<p>Two core projects + actual reusable STAR answers</p>
+<nav><a href="#project1">Project 1</a><a href="#project2">Project 2</a><a href="#star">STAR Answers</a><a href="#questions">Question Map</a></nav>
+</header>
+<main>
+
+<section class="card" id="project1">
+<div class="tag">Project 1 — Flagship Project</div>
+<h2>Feature Store Cloud Modernisation</h2>
+<div class="flow">PROJECT → QUICK CONTEXT → PROBLEM → ARCHITECTURE → FRAMEWORK → RELIABILITY → MY ROLE → RESULT</div>
+<div class="speech">“One of the major projects I worked on was the migration and modernisation of our Feature Store from on-prem to Azure.
+
+Just to give a quick context, the Feature Store prepares reusable data and features for our AI and ML use cases. For forecasting, for example, we bring together data such as sales, promotions, pricing, stock and range, apply the required business logic, and provide model-ready data at the required granularity.
+
+The Feature Store was already running on-prem. The main drivers for the modernisation were scalability, performance, maintainability and reliability. A full historical rebuild could take close to two weeks, so rather than doing a straight lift-and-shift, we redesigned the platform and the processing framework.
+
+On the cloud side, we used ADLS Gen2 and Delta Lake for the data layer and Databricks for processing. We built batch and incremental processing across multiple granularities and historical and future horizons.
+
+A major part of the solution was a reusable metadata-driven Databricks framework. Configuration and control information drive the processing, and the framework integrates with Databricks Jobs API/Lakeflow Jobs for orchestration. This allowed us to standardise the way different Feature Store workloads are executed rather than building separate operational patterns for each one.
+
+Reliability was also part of the design. We introduced idempotent processing, state and control handling, dependency controls, automated recovery and backfills, validation, SLA monitoring and RCA.
+
+My role covered the full lifecycle — requirements and stakeholder workshops, architecture and HLD/LLD, hands-on engineering, validation, deployment, production readiness and operational support. I was also involved in estimation, PI and sprint planning, design reviews, dependencies and stakeholder communication.
+
+The outcome was a more scalable and reusable cloud solution, with the historical rebuild reduced significantly and the framework becoming a common engineering pattern for the Feature Store workloads.”</div>
+<details open><summary>Feature Store — Follow-up questions with spoken answers</summary>
+
+<h3>1. Why did you use ADLS and Delta Lake?</h3>
+<div class="speech">“We used ADLS as the durable cloud storage layer, and Delta Lake gave us the table capabilities we needed on top of it.
+
+For the Feature Store, we are dealing with large historical datasets as well as daily incremental processing, so we needed reliable updates, schema management and the ability to manage data as tables rather than just files.
+
+So I normally explain it as: ADLS gives us scalable storage, Delta gives us reliable table semantics, and Databricks gives us the distributed processing layer.”</div>
+
+<h3>2. Why Databricks?</h3>
+<div class="speech">“The Feature Store involves large-scale transformations across multiple domains, multiple granularities and several years of history.
+
+Databricks gave us distributed Spark processing for that workload and integrated well with ADLS and Delta. It also allowed us to use PySpark, Spark SQL and SQL depending on the processing requirement.
+
+The important point wasn't just moving the existing processing to Databricks. We redesigned the processing so it could scale for both daily incremental runs and large historical rebuilds.”</div>
+
+<h3>3. How does your Feature Store framework work?</h3>
+<div class="speech">“At a high level, I explain the framework as configure, orchestrate, execute, track, validate and publish.
+
+We keep common processing behaviour in the framework and drive individual workloads through configuration. The orchestration layer passes the runtime information into Databricks, the required feature processing is executed, status is tracked, validations are performed, and only then is the output made available for downstream use.
+
+The advantage is that every Feature Store doesn't need to reinvent orchestration, state management, retry, validation and publishing.”</div>
+
+<h3>4. Why use Databricks Jobs API?</h3>
+<div class="speech">“We already had an orchestration framework outside the individual notebooks, so we needed a standard programmatic way to trigger Databricks processing and pass runtime information.
+
+The Jobs API gave the framework that interface. It allowed orchestration and execution to remain separated — the framework decides what needs to run and with what runtime information, while Databricks handles the actual distributed processing.
+
+That also made the execution pattern reusable instead of hard-coding orchestration inside every notebook.”</div>
+
+<h3>5. What is the role of the driver or attaching notebook?</h3>
+<div class="speech">“The driver notebook acts as the entry point between the framework and the actual feature-processing logic.
+
+It receives the runtime information, resolves the required parameters and then invokes the relevant processing for that run.
+
+That keeps runtime handling separate from the business transformation logic, which makes the same processing easier to reuse for different dates and execution scenarios.”</div>
+
+<h3>6. Why job clusters?</h3>
+<div class="speech">“For Spark-based batch processing, the workload is job-oriented rather than an interactive workload.
+
+A job cluster gives us compute for the execution and allows the compute lifecycle to be tied to the job instead of keeping a general-purpose cluster running continuously.
+
+That gives us better workload isolation and helps control cost. For SQL-oriented workloads, we can separately use SQL Warehouse where that is the better execution model.”</div>
+
+<h3>7. How do daily processing and historical rebuild use the same framework?</h3>
+<div class="speech">“One of the design goals was not to maintain separate business logic for daily processing and rebuilds.
+
+The same framework and transformation logic can be used, but the runtime date window changes. A daily run processes the required incremental or restatement window, while a rebuild processes a much larger historical range.
+
+That reduces duplicated code and, more importantly, reduces the risk that daily and rebuild logic start producing different results.”</div>
+
+<h3>8. Why partition reload instead of MERGE?</h3>
+<div class="speech">“For the workloads where the affected data is a known date window, we already know which partitions need to be regenerated.
+
+In that situation, replacing the controlled date partitions can be simpler than doing row-level matching against a large target table. It also supports idempotency because rerunning the same date window regenerates the same controlled output instead of appending duplicates.
+
+I wouldn't say partition replacement is always better than MERGE. If changes were scattered across the table at individual-row level, MERGE could be the better pattern. It depends on the update pattern.”</div>
+
+<h3>9. How do you make the processing idempotent?</h3>
+<div class="speech">“For me, idempotency means that if I rerun the same logical processing window, I should end up with the same final state rather than duplicate data.
+
+We achieve that by controlling the processing window and the way the target data is replaced or updated, and by keeping execution state in the framework.
+
+That becomes very important operationally because retries, catch-up runs and backfills should be safe without somebody manually cleaning the target every time.”</div>
+
+<h3>10. What is the difference between retry, restart and backfill?</h3>
+<div class="speech">“I separate them based on what we are recovering from.
+
+A retry is normally rerunning a failed execution. Restartability means the framework knows the execution state and can continue safely rather than blindly starting everything again. A backfill is intentional reprocessing of an earlier date range, for example because source data arrived late or business logic changed.
+
+The common requirement across all three is that the processing must be idempotent and state-aware.”</div>
+
+<h3>11. What do you mean by fail-fast validation?</h3>
+<div class="speech">“We don't want technically successful processing to publish bad data.
+
+So we run validation checks at the appropriate stages — for example schema checks, duplicate checks, reconciliation or other critical data-quality rules.
+
+If a critical validation fails, the process should stop before publishing that output downstream. That's what I mean by fail fast: detect a critical issue close to where it occurs and don't allow bad data to cascade into the model pipeline.”</div>
+
+<h3>12. How do you handle dependencies?</h3>
+<div class="speech">“Feature processing depends on multiple upstream datasets, so dependency handling is part of the framework rather than something we manage manually.
+
+We track whether the required upstream inputs and prerequisite processing are available before dependent processing proceeds. If an upstream dependency is delayed or fails, we need that state to be visible so we can recover or catch up in a controlled way.
+
+This is particularly important because one upstream delay shouldn't result in us publishing incomplete model-ready data.”</div>
+
+<h3>13. How is the solution scalable?</h3>
+<div class="speech">“I don't describe scalability as simply increasing the cluster size.
+
+For us it came from several design choices: distributed processing in Databricks, Delta-based storage, processing only the required date windows for incremental workloads, working at the appropriate grain, and using reusable framework patterns so additional Feature Store workloads don't require completely new operational designs.
+
+Then compute can be sized according to the workload. So scalability is a combination of data design, processing design and compute — not just bigger infrastructure.”</div>
+
+<h3>14. How do you monitor the Feature Store?</h3>
+<div class="speech">“We look at monitoring from both execution and data perspectives.
+
+Operationally, we need job status, dependencies, failures, runtime and SLA visibility. From the data side, we need validation and reconciliation so that a green job doesn't automatically mean the data is correct.
+
+When something fails, we use the execution state and logs for RCA, fix the issue, and then use the retry, restart or backfill mechanism depending on the scenario.”</div>
+
+<h3>15. What was your personal contribution?</h3>
+<div class="speech">“My involvement was end-to-end. I worked from discovery and requirements through solution design, HLD and LLD, and I was also hands-on with the engineering.
+
+I was involved in framework and pipeline design, validation, performance and production-readiness decisions, as well as design reviews and deployment.
+
+On the delivery side, I worked with Product Owners, Data Scientists, architects and source teams, and I was involved in estimation, PI and sprint planning, dependencies, risks and production support.
+
+So my role wasn't only to build pipelines or only to provide architecture. I was involved across both the technical design and delivery lifecycle.”</div>
+</details>
+</section>
+
+<section class="card" id="project2">
+<div class="tag">Project 2 — Technical Project</div>
+<h2>Range Optimisation — Performance & Architecture Modernisation</h2>
+<div class="flow">PROBLEM → INVESTIGATE END-TO-END → ROOT CAUSE → ARCHITECTURE CHANGE → OPTIMISE → RESULT</div>
+<div class="speech">“Another project I worked on was performance and architecture modernisation for our Range Optimisation solution.
+
+The overall processing was taking longer than required and the compute cost was also high. Instead of immediately tuning individual queries, I looked at the complete data flow and the Shiny application end-to-end to understand where the time and cost were actually being spent.
+
+One of the key findings was that data-intensive transformation logic was being handled in R. That wasn't the right place for large-scale data processing.
+
+So we changed the architecture. We moved the data-heavy transformation logic into Databricks and kept R mainly focused on modelling.
+
+We also changed the intermediate processing. Instead of repeatedly recomputing the same data, we persisted reusable intermediate datasets as Delta tables so downstream processing could reuse them.
+
+Then we reworked the SQL transformations in Databricks SQL and looked at the compute separately. Based on the actual workload characteristics, we moved from Classic to a right-sized Serverless SQL Warehouse.
+
+The important part was that we didn't treat it as just a query-tuning exercise. We looked at where the processing should happen, what should be persisted and reused, how the SQL should be structured, and what compute was appropriate for the workload.
+
+The result was around a 30% improvement in overall processing performance and around a 15% reduction in compute cost.”</div>
+<details open><summary>Range Optimisation — Follow-up questions with spoken answers</summary>
+
+<h3>1. What exactly was the performance problem?</h3>
+<div class="speech">“The problem wasn't one single slow query. When we looked at the solution end-to-end, we could see that some data-intensive transformations were happening in the application and R layer, and some intermediate results were being recomputed.
+
+So the issue was partly SQL performance, but more importantly it was where the processing was happening and how the overall solution had been designed.”</div>
+
+<h3>2. How did you investigate the bottleneck?</h3>
+<div class="speech">“I started with the complete flow rather than immediately changing SQL.
+
+I traced the process from the input data through the Databricks transformations and into the Shiny application. We looked at where time was being spent, which transformations were data-intensive, what was being recomputed, and which compute was being used.
+
+That helped us separate an architecture problem from a simple query-performance problem.”</div>
+
+<h3>3. Why was R not the right place for those transformations?</h3>
+<div class="speech">“R itself wasn't the problem — we still use it for the modelling side.
+
+The issue was that large data transformations were happening there even though Databricks was the platform designed for distributed data processing.
+
+So we separated the responsibilities. Databricks handles the data-heavy transformation and preparation, and R stays focused mainly on the modelling logic. That gave us a cleaner architecture as well as better performance.”</div>
+
+<h3>4. Why persist intermediate Delta tables?</h3>
+<div class="speech">“We found that some expensive intermediate processing was being repeated.
+
+Where an intermediate result was stable and reused by later steps, we persisted it as Delta rather than calculating it again every time.
+
+There is a trade-off because persistence uses storage and creates another dataset to manage. So I wouldn't persist every intermediate result. We used it where the cost of repeated computation was higher than the cost and complexity of storing and managing the intermediate data.”</div>
+
+<h3>5. What SQL optimisation did you do?</h3>
+<div class="speech">“We reviewed the transformation SQL rather than simply moving the same logic unchanged.
+
+The focus was on reducing unnecessary processing, restructuring transformations where required, reusing persisted intermediate results and making sure the workload was suited to Databricks SQL execution.
+
+I would explain the exact query-level optimisation only for the specific SQL being discussed rather than claim that one optimisation technique fixed the whole solution.”</div>
+
+<h3>6. Why move from Classic to Serverless SQL Warehouse?</h3>
+<div class="speech">“Once we had improved the transformation design, we looked at compute separately.
+
+This was primarily a SQL-oriented workload, so we evaluated the warehouse based on the actual workload and cost characteristics. We moved from Classic to a right-sized Serverless SQL Warehouse.
+
+The decision wasn't simply that Serverless is newer. We selected it because it was a better fit for this particular workload after looking at performance and cost.”</div>
+
+<h3>7. Why didn't you just increase the cluster size?</h3>
+<div class="speech">“Because adding compute can hide an inefficient architecture without fixing it.
+
+Our first question was whether the processing was happening in the right layer and whether we were repeatedly doing work that could be reused.
+
+Only after addressing those issues did we look at the compute configuration. That is generally how I approach performance problems — architecture and processing pattern first, then compute sizing.”</div>
+
+<h3>8. How did you balance performance and cost?</h3>
+<div class="speech">“I don't treat performance and cost as separate optimisation exercises.
+
+A solution that becomes faster only because we double the compute may not actually be a better solution. So we looked at reducing unnecessary computation, moving processing to the appropriate platform, reusing intermediate results, optimising SQL, and then right-sizing the compute.
+
+That allowed us to improve performance while reducing cost rather than trading one for the other.”</div>
+
+<h3>9. What alternatives did you consider?</h3>
+<div class="speech">“There were a few possible levers: optimise the existing R and SQL flow, increase compute, move more of the transformation into Databricks, or persist reusable intermediate results.
+
+We didn't choose one technique in isolation. The end-to-end analysis showed that the bigger issue was the processing boundary and repeated computation, so we corrected those first and then optimised SQL and compute.
+
+That gave us a more structural improvement rather than a temporary performance fix.”</div>
+
+<h3>10. How did you measure the improvement?</h3>
+<div class="speech">“We compared the processing performance and compute cost before and after the changes rather than relying on a subjective improvement.
+
+Across the Range Optimisation changes, we achieved around a 30% improvement in processing performance and around a 15% reduction in compute cost.
+
+Those measurements were important because they allowed us to demonstrate that the architecture change improved both engineering performance and operating cost.”</div>
+
+<h3>11. What was your personal contribution?</h3>
+<div class="speech">“My main contribution was the end-to-end investigation and the engineering decisions that came out of it.
+
+I traced the existing data flow and application, identified where the performance and cost bottlenecks were coming from, and helped redesign the processing boundary so data-intensive transformations moved into Databricks.
+
+I was also involved in the SQL rework, the Delta intermediate-data approach and the compute decision. So I wasn't looking at only one query — I was looking at the complete solution and deciding where each type of workload should run.”</div>
+</details>
+</section>
+
+<section id="star">
+<h2>Actual STAR Answers</h2>
+
+<div class="card">
+<div class="tag">STAR 1 — Business / Ambiguity / Stakeholders</div>
+<h3>Tell me about a difficult or ambiguous requirement</h3>
+<table>
+<tr><th>S</th><td>“One challenge we regularly face is identifying the right source for a new ML feature. In a large enterprise ecosystem, data can flow through multiple systems.”</td></tr>
+<tr><th>T</th><td>“The Data Scientist normally gives us the feature requirement and required granularity. We need to determine the business meaning, authoritative source and how the data should reach our platform.”</td></tr>
+<tr><th>A</th><td>“I don't start by simply finding a table. We run discovery workshops with business SMEs to understand the process, source-system IT teams to understand feeds, tables and columns, and architects to understand integration and data flow. For example, a promotion may be created in one system while related pricing is handled through another. Even within the same domain, fresh and non-fresh range can follow different processes.”</td></tr>
+<tr><th>R</th><td>“Once the flow is clear, we identify the correct source, design how to bring it into the landing layer, apply the business rules and build the feature at the granularity required by the model.”</td></tr>
+</table>
+</div>
+
+<div class="card">
+<div class="tag">STAR 2 — Technical Challenge</div>
+<h3>Tell me about a difficult technical challenge</h3>
+<table>
+<tr><th>S</th><td>“In Range Optimisation, we had an end-to-end processing flow where performance and compute cost needed improvement.”</td></tr>
+<tr><th>T</th><td>“My responsibility was to identify the actual bottleneck and improve the solution rather than simply adding more compute.”</td></tr>
+<tr><th>A</th><td>“I traced the data flow and application end-to-end. We moved data-intensive transformations from R into Databricks, persisted reusable Delta intermediates instead of repeatedly recomputing them, reworked the Databricks SQL transformations, and moved from Classic to a right-sized Serverless SQL Warehouse based on the workload.”</td></tr>
+<tr><th>R</th><td>“Overall processing performance improved by around 30%, while compute cost reduced by around 15%.”</td></tr>
+</table>
+</div>
+
+<div class="card">
+<div class="tag">STAR 3 — Architecture Decision</div>
+<h3>Tell me about an important architecture decision</h3>
+<table>
+<tr><th>S</th><td>“During the Feature Store modernisation, we had multiple workloads requiring common orchestration, operational controls and repeatable processing.”</td></tr>
+<tr><th>T</th><td>“We wanted to avoid building a separate operational solution for every Feature Store.”</td></tr>
+<tr><th>A</th><td>“We built a reusable metadata-driven Databricks framework using configuration and status/control information and integrated it with Databricks Jobs API/Lakeflow Jobs. Common concerns such as execution, state, dependencies, recovery, backfills and validation were standardised while feature-specific processing remained configurable.”</td></tr>
+<tr><th>R</th><td>“That gave us a reusable engineering pattern rather than independently operated pipelines, improving maintainability and operational consistency.”</td></tr>
+</table>
+</div>
+
+<div class="card">
+<div class="tag">STAR 4 — Reliability / Production</div>
+<h3>How have you made a data platform more reliable?</h3>
+<table>
+<tr><th>S</th><td>“The Feature Store supports downstream AI and ML workloads, so successful pipeline execution alone isn't enough. Recovery and data reliability are critical.”</td></tr>
+<tr><th>T</th><td>“We needed safe reruns and controlled recovery without producing duplicate or inconsistent output.”</td></tr>
+<tr><th>A</th><td>“We designed idempotent processing with state/control handling, dependency controls, automated recovery and backfills, data-quality and reconciliation checks, SLA monitoring and RCA. Failure and recovery became part of the engineering design rather than depending on manual production intervention.”</td></tr>
+<tr><th>R</th><td>“That gave us a more controlled production process and made the platform easier to operate against downstream SLAs.”</td></tr>
+</table>
+</div>
+
+<div class="card">
+<div class="tag">STAR 5 — Leadership / Influence</div>
+<h3>Tell me about influencing multiple teams</h3>
+<div class="speech">“A good example is Feature Store discovery. A requirement can involve Data Scientists, business SMEs, source-system teams, architects and platform teams, and no single group necessarily owns the complete end-to-end picture.
+
+My role is to bring those views together. I start with the business requirement and required grain, work with SMEs to understand the process, work with technical teams to trace the source and integration flow, and then play the proposed solution back to the stakeholders.
+
+That allows us to resolve assumptions and dependencies before build starts. For me, technical leadership in these situations is about creating enough shared understanding for multiple teams to make the right engineering decision.”</div>
+</div>
+
+<div class="card">
+<div class="tag">STAR 6 — Prioritisation</div>
+<h3>How do you manage competing priorities?</h3>
+<div class="speech">“In my current role I normally have project delivery, production commitments and technical leadership happening at the same time.
+
+I prioritise first around production and SLA impact, then committed delivery milestones and dependencies, and then improvement work. During PI and sprint planning I make capacity and dependencies visible rather than committing everything at the same priority.
+
+If priorities change, I assess business impact, technical risk and downstream dependencies, agree what needs to move, and communicate it early to the Product Owner and affected teams.”</div>
+</div>
+
+<div class="card">
+<div class="tag">STAR 7 — Mentoring</div>
+<h3>How do you mentor engineers?</h3>
+<div class="speech">“I don't treat mentoring as only reviewing someone's code after they've finished.
+
+I involve engineers earlier in design discussions and ask them to explain why they selected an approach. During design and code reviews we discuss scalability, failure handling, maintainability and production readiness.
+
+Initially I may work through the design with a less experienced engineer, but over time I expect them to come back with options and their recommendation. That helps the team become more independent while maintaining our engineering standards.”</div>
+</div>
+</section>
+
+<section class="card" id="questions">
+<h2>Which story should I use?</h2>
+<table>
+<tr><th>Question</th><th>Use</th></tr>
+<tr><td>Major project / end-to-end ownership</td><td>Feature Store Modernisation</td></tr>
+<tr><td>Technical challenge</td><td>Range Optimisation</td></tr>
+<tr><td>Performance problem</td><td>Range Optimisation</td></tr>
+<tr><td>Architecture decision</td><td>Feature Store Framework or Range Optimisation</td></tr>
+<tr><td>Ambiguous requirement</td><td>Source-system discovery</td></tr>
+<tr><td>Business engagement</td><td>Source-system discovery</td></tr>
+<tr><td>Stakeholder management</td><td>Source-system discovery</td></tr>
+<tr><td>Reliability / production engineering</td><td>Feature Store reliability</td></tr>
+<tr><td>Influence without authority</td><td>Cross-team Feature Store discovery</td></tr>
+<tr><td>Prioritisation</td><td>Feature Store delivery + BAU</td></tr>
+<tr><td>Mentoring</td><td>Current Lead DE role</td></tr>
+</table>
+</section>
+
+<div class="note"><b>Speaking rule:</b> Start with the concise answer. Stop after the result. Go deeper only when the interviewer asks a follow-up.</div>
+</main></body></html>

@@ -1,0 +1,136 @@
+Cloud Migration & Modernisation of the Product Feature Store (aaPFS / aaPFuS)
+1. Executive Narrative & Project Context
+The Mission: Project Atlantis & The Cloud Modernisation
+At Coles, the Product Feature Stores (PFS for historical data and PFuS for future data) represent the core analytical backbone of the Advanced Analytics ecosystem. They provide a unified, enterprise-wide view at the Item–Location–Day (ILD) and Item–Zone–Day (IZD) grains across ~250+ raw and engineered features https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+These feature stores feed critical downstream machine learning and optimisation models across the business, including:
+Smarter Forecasting (SF) for store and zone demand prediction (fresh and packaged goods).
+Dynamic Markdowns & Smarter Clearance for stock clearance pricing.
+Future Store Inventory (FSI) and Command Centre operations.
+Supply Chain Replenishment Interfaces (RELEX, RDFi) https://colesgroup.atlassian.net/wiki/spaces/DARCH/pages/4434857598/Atlantis+-+Integration+Architecture+Document.
+
+The Legacy Problem Statement
+Originally hosted on-premise (Oracle Exadata / BIW / legacy R servers), the system had hit critical operational bottlenecks:
+Prolonged History Rebuilds: Re-generating the 7-year historical dataset took nearly 2 weeks https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+SLA Pressure: Daily batch generation took 2–3+ hours, regularly putting downstream ML scoring SLAs at risk https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+Rigid Codebase & Schema Evolution: Introducing a new feature or altering existing definitions required complex cross-table rewrites and extended deployment cycles.
+Lack of Multi-Version / Blue-Green Support: Inability to run concurrent versions in parallel to validate model accuracy before cutover https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+
+The Objective: Re-architect, migrate, and operationalise the feature stores onto Azure Databricks and Delta Lake using the unified aaFS (Advanced Analytics Feature Store) Framework, ensuring strict data parity, automated validation, high reliability, and sub-second scale https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+2. aaFS Feature Store Framework: Core Design Considerations
+The aaFS Framework was architected to standardize data engineering patterns across all supermarket domain stores (Product, Customer, Promotion Timeline, Receipts):
++-----------------------------------------------------------------------------------+
+|                                 aaFS FRAMEWORK                                    |
++-----------------------------------------------------------------------------------+
+|  1. Unified Codebase        -> Single pipeline logic for 7-year Rebuild & Daily    |
+|                                Rolling 8-day Delta (configurable lookback/horizon)|
+|  2. Decoupled Architecture  -> Databricks Spark Compute + Azure ADLS Delta Lake  |
+|  3. Multi-Grain Hierarchy   -> ILD (Base) -> IZD (Zone Aggregation) -> ILT (Intra)|
+|  4. Blue-Green Versioning   -> ModelStore metadata orchestration for parallel runs|
+|  5. Automated Quality Gate  -> AADV Validation Framework & statistical parity tests|
+|  6. State & Idempotency     -> Step-level re-startability without data corruption |
++-----------------------------------------------------------------------------------+
+Key Architectural Pillars
+Unified Codebase for Rebuild and Delta Execution:
+Avoided maintaining separate SQL/pipeline logic for historical backfills vs. daily increments https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+Parameterised date-range windowing allows the exact same code to execute a rolling 8-day historical restatement (capturing late sales/receipts) or a multi-year historical rebuild https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+
+Multi-Grain Modelling & Aggregation Strategy:
+ILD (Item–Location–Day): Primary atomic grain capturing store-specific dynamics (local trading hours, shelf facings, stock-on-hand, local waste/sales) https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+IZD (Item–Zone–Day): Point-in-time state/zone aggregation used for training broader pricing, promotion elasticity, and catalogue impact models https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+ILT (Item–Location–Timestamp): Intraday slices for real-time stock position monitoring https://colesgroup.atlassian.net/wiki/spaces/FA/pages/516968617/High+Level+design+diagram+for+Product+Feature+Store+construction+in+Azure.
+
+Blue-Green Deployment via ModelStore:
+Enabled simultaneous execution of distinct versions (e.g., v2 legacy vs v3 cloud/BIW_SF) https://colesgroup.atlassian.net/wiki/spaces/FA/pages/5231509747/Feature+Store+Regression+Test+Plan.
+Downstream ML models could consume and benchmark new feature tables in parallel, allowing zero-downtime pointer swaps and instant rollback capability https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+
+Idempotency, Re-startability, and Fault Tolerance:
+Each stage in the execution tree manages ~50 distinct jobs and thousands of executions per cycle https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+State tracking ensures that interrupted jobs resume from the last successful step while cleaning up intermediate staging data https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+
+
+3. PFS & PFuS Architecture & Pipeline Design
++---------------------------------------------------------------------------------------+
+|                                    UPSTREAM DATA SOURCES                              |
+|  * Sales & Margin (POS)     * Inventory SOH / Receipts    * CKB / LETTUS Range Feeds  |
+|  * Pricing & Promo Manager  * PredictHQ Events / BOM       * Store Trading Hours       |
++-------------------------------------------+-------------------------------------------+
+                                            | (Delta / Batch Ingestion via EDP/BIW_SF)
+                                            v
++---------------------------------------------------------------------------------------+
+|                                  FEATURE DRIVING SET                                  |
+|         Establishes valid active Item-Location-Day / Item-Zone-Day grain matrix       |
++-------------------------------------------+-------------------------------------------+
+                                            |
+                    +-----------------------+-----------------------+
+                    v                                               v
++---------------------------------------+   +---------------------------------------+
+|        HISTORICAL PFS (PAST)          |   |          FUTURE PFuS (FUTURE)         |
+|  * 7-Year History (2016 -> Present)   |   |  * 16 to 54-Week Forward Horizon      |
+|  * Rolling 8-Day Daily Restatement    |   |  * Daily Restated Projections         |
+|  * Actual Sales, Margin, Waste, SOH   |   |  * Planned/Approved Promos, Holidays  |
++-------------------+-------------------+   +-------------------+-------------------+
+                    |                                           |
+                    +-----------------------+-------------------+
+                                            v
++---------------------------------------------------------------------------------------+
+|                      AUTOMATED DATA VALIDATION (AADV) ENGINE                          |
+|    Schema Check | Cell-by-Cell Diff | Token-Sort Tests | Min/Max/Mode Distribution     |
++-------------------------------------------+-------------------------------------------+
+                                            v
++---------------------------------------------------------------------------------------+
+|                             DOWNSTREAM CONSUMERS & ML APPS                            |
+|    Smarter Forecast (SF)  | Dynamic Markdowns | Clearance | Supply Chain (RDFi/RELEX)  |
++---------------------------------------------------------------------------------------+
+Feature Grouping and Transformations
+Feature Driving Set: Dynamically establishes active, valid item-location relationships, preventing sparse matrix explosion across millions of inactive combinations https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+Historical PFS (Past): Merges actual POS sales, waste, markdowns, beginning/end-of-day stock on hand (SOH), planogram shelf capacity/facings, supplier deliveries, and Bureau of Meteorology (BOM) weather data https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+Future PFuS (Future): Builds forward-looking feature sets (16 to 54 weeks out) incorporating planned and approved promotional mechanics, expected price changes, catalogue events, public holidays, and pending range resets https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+Automated Data Validation (AADV Framework): Embedded automated regression scripts comparing target Delta tables against legacy baselines to prevent data drifts or silent null injections prior to model consumption https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+
+4. The Project Journey: Highs, Lows, and Overcoming Challenges
+🌟 The Highs
+Massive Performance Leaps: Full historical rebuild runtime dropped from ~14 days to under 24 hours; daily delta processing was compressed to well within the required 8:00 AM SLA window https://colesgroup.atlassian.net/wiki/spaces/FA/pages/393747247/aaPFS+aaPFuS+Project+-+High+Level+Requirements.
+Successful Atlantis Release: Deployed end-to-end cloud pipelines supporting international SKUs and automated downstream handoffs to supply chain forecasting (RDFi) https://colesgroup.atlassian.net/wiki/spaces/FA/pages/5898108993/FeatureStores+-+Atlantis+project+-runsheet+for+deployment.
+High Extensibility: Created a template that accelerated the rollout of subsequent stores (such as receipts-based features and liquor/CFC domains).
+
+🌧️ The Lows & Deep Technical Challenges
+1. Subtle Data Mismatches & Non-Deterministic Discrepancies
+Challenge: During parallel regression testing between legacy BIW and cloud BIW_SF, automated diffs flagged thousands of mismatches https://colesgroup.atlassian.net/wiki/spaces/DANDI/pages/5947526223/BIW+migration+Regression+test+tracker+-+PFS.
+Investigation: Deep-dive analysis revealed two distinct categories:
+Formatting/Token Ordering: In string concatenations like PRMTN_TACTIC_TICKET_DESC, Oracle SQL and Spark aggregated multi-value promo tags in different orders (e.g., 'Value (Excl FP),While Stocks Last' vs 'While Stocks Last,Value (Excl FP)') https://colesgroup.atlassian.net/wiki/spaces/DANDI/pages/5947526223/BIW+migration+Regression+test+tracker+-+PFS.
+Statistical Calculation Nuances: Discrepancies in PROMO_PRICE_MODE where multi-modal ties or null handling differed slightly between SQL dialects https://colesgroup.atlassian.net/wiki/spaces/DANDI/pages/5947526223/BIW+migration+Regression+test+tracker+-+PFS.
+
+Resolution: Developed custom token-sorting test scripts in PySpark/R notebooks (biw_regression_test) to verify semantic equality, and standardized statistical mode calculation rules across the codebase https://colesgroup.atlassian.net/wiki/spaces/DANDI/pages/5947526223/BIW+migration+Regression+test+tracker+-+PFS, https://colesgroup.atlassian.net/wiki/spaces/FA/pages/5231509747/Feature+Store+Regression+Test+Plan.
+
+2. Scalability Bottlenecks in Long-Horizon Workloads (PFuS 54-Week)
+Challenge: Extending future feature horizons up to 54 weeks exploded memory usage during Cartesian joins between items, locations, and promotional timelines, driving up Databricks compute costs.
+Resolution: Re-architected data structures to push down partition filters early, leveraged broadcast joins for static reference tables, and separated heavy aggregations into staged intermediate checkpoint tables.
+
+3. Upstream Dependency Delays & SLA Breaches
+Challenge: Upstream landing times from source data platforms were occasionally erratic, delaying feature store execution start times.
+Resolution: Instituted strict SLA contracts, automated dependency monitoring via ModelStore, and decoupled independent feature groups so that non-dependent feature streams could process in parallel.
+
+5. Stakeholder Alignment & Communication Strategy
+Executing a foundational migration that touches forecasting, replenishment, and commercial operations requires clear, structured communication:
+                                  +-----------------------------+
+                                  |     Feature Store Team      |
+                                  +--------------+--------------+
+                                                 |
+         +---------------------------------------+---------------------------------------+
+         |                                       |                                       |
+         v                                       v                                       v
++-------------------------+             +-------------------------+             +-------------------------+
+|    Data Science / ML    |             |   Enterprise Data/SRE   |             |  Commercial & Business  |
+| * Data parity metrics   |             | * Detailed runbooks     |             | * Forecast availability |
+| * Model drift checks    |             | * Rollback commit IDs   |             | * Business capability   |
+| * Schema changelogs     |             | * SLA alerts & logging  |             | * Release milestones    |
++-------------------------+             +-------------------------+             +-------------------------+
+Communication Framework in Practice
+Quantified, Objective Parity Reporting:
+Instead of subjective updates, data scientists were provided with granular cell-level parity reports (e.g., verifying 99.9% match rates across billions of rows and breaking down discrepancies into benign token ordering vs true value differences) https://colesgroup.atlassian.net/wiki/spaces/DANDI/pages/5947526223/BIW+migration+Regression+test+tracker+-+PFS.
+
+Defensive Deployment Runbooks & Hypercare:
+Production cutovers (e.g., Atlantis release) followed documented runbooks detailing prerequisite checks, environment rollbacks, Git commit hashes, and multi-tiered fallback plans (Hotfix $\rightarrow$ Fallback on previous day's forecast $\rightarrow$ Rollback to previous commit) https://colesgroup.atlassian.net/wiki/spaces/FA/pages/5898108993/FeatureStores+-+Atlantis+project+-runsheet+for+deployment.
+
+Cross-Functional Empathy & Collaborative Triage:
+When data discrepancies were surfaced by data scientists, issues were logged in shared regression trackers with immediate code snippets, sample keys (ITEM_IDNT, LOC_IDNT, DAY_DT), and root-cause breakdowns to accelerate collaborative resolution https://colesgroup.atlassian.net/wiki/spaces/DANDI/pages/5947526223/BIW+migration+Regression+test+tracker+-+PFS.
