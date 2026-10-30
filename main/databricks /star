@@ -1,0 +1,341 @@
+Used Execute Code, Memory
+I read the aaAzureProductFeatureStore repo (151 SQL files, 117 configs, 116 run scripts) and combined it with the stats from the earlier steps. Below are the practices your lakehouse already follows, then a plan for the governance gap.
+Best practices already in place
+1. A metadata-driven framework (your strongest design choice)
+•	Every load is defined by YAML rather than code: two global configs (PFS and PFUS) plus about 110 per-table configs. Each config lists the ordered SQL steps, the delete mode (date / all), the primary keys and the post-load checks.
+•	SQL files are parameterised with @ placeholders (@source_schema, @target_schema, @tbl_*, @run_from_day_idnt). The same code runs in DEV, TST and PRD by switching config, never by editing SQL.
+•	One generic engine, build_fs(), executes every table. A new feature table needs a config, its SQL files and a run script, with no new orchestration code. There is a bootstrap template (template_feature_config.yaml) for this.
+•	Runtime controls (max_days_increment, max_parallel_jobs) let you tune backfills and incremental loads per table without code changes.
+•	Naming is consistent end to end (ftr_{stream}_{feature} for table, config, SQL and job), which makes the lineage machine-parseable. That is what made the Featureverse knowledge graph possible.
+2. Storage
+•	All tables are Delta on ADLS, giving ACID writes, time travel and schema enforcement at about 118 TB.
+•	Large tables are partitioned by DAY_IDNT, and channel tables by DAY_IDNT, CHANNEL_CDE. This matches both how the data is loaded (delete-and-reload by date) and how it is read (date-range filters).
+•	File sizing is healthy: for example, ftr_pfs_item_loc_day is 9.3 TB across about 71K files (about 130 MB each), so there is no small-file problem.
+•	Data is layered: source → work tables (*_wrk1, *_wrk2) → feature tables → wide item-location-day tables → views (*_channel_comp_vw) → gold (aa_smkt_pfs_gold).
+•	Loads are idempotent: each run deletes the date window and rewrites it, so reruns and backfills are safe.
+3. Source ingestion with shallow clones
+•	Shallow-cloning the biw source tables gives you stable, point-in-time copies without copying the data. You avoid duplicate storage, each run sees a consistent snapshot, and the upstream EDP tables are protected from your heavy reads.
+•	Source freshness is checked before each load (externalDependenciesBefore in modelstore_dependencies.yaml), so nothing builds on stale upstream data.
+4. Compute
+•	Transformations run on SQL warehouses (2X-Large for production, X-Large for interactive/dev). Batch and ad hoc work are separated, and each environment has its own warehouse (DISC/INT/OPS).
+•	Instance pools and cluster policies are created by code (infra_deployment_utils.R), so infrastructure is reproducible.
+•	Production runs as a service principal, not a named user.
+5. Orchestration via the Jobs API
+•	Jobs are triggered with the Jobs REST API (/api/2.0/jobs/run-now) from R, and job names follow ade-aaazureproductfeaturestore-<table>.
+•	Dependencies live in one place (modelstore_dependencies.yaml): hard internal parent dependencies plus external source checks.
+•	Post-load checks (check_step: daily counts, primary-key uniqueness per date) act as built-in data quality gates.
+6. Unity Catalog and sharing
+•	Each environment has its own catalog (uc_0004_dev/tst/prd_prd_catalog) with the same schema names, so promotion is just a catalog switch.
+•	Consumers get published tables (tables_to_publish), views and a gold schema, which keeps them away from the work tables.
+Improvements to the core platform
+Area	Current	Recommendation
+Backups	About 72 TB of *_backup_* / *_asof_* copies (118 TB total vs 46 TB live)	Rely on time travel plus a retention policy, or use shallow clones for snapshots; reclaim about 60% of storage
+Layout	Hive-style partitions	Consider liquid clustering on DAY_IDNT, LOC_IDNT and turn on predictive optimization (automatic OPTIMIZE/VACUUM)
+PFUS rewrite	PFUS tables rewritten 8–20× a day (about 33 TB/month)	Use MERGE or change data feed to process only changed rows
+Orchestration	REST calls from R; queries carry no job ID	Define jobs as Lakeflow Jobs in Declarative Automation Bundles, which gives you lineage, the Jobs UI, retries and cost attribution
+Compute	Classic SQL warehouses	Consider serverless warehouses (fast start-up, auto-scaling)
+Access	No GRANT statements in the repo	Manage grants as code, given to groups rather than individuals
+The governance gap: what's missing
+•	No table or column comments, TBLPROPERTIES or tags in any DDL.
+•	No grants as code, and no data classification.
+•	Your user can't query system.access (audit and lineage). That is why I couldn't link queries to tables earlier.
+Recommended governance plan, in four phases
+Phase 1: Foundations
+•	Define a governed-tag set at account level so tag values are controlled: 
+o	domain: pricing, promo, sales, inventory, supply
+o	sensitivity: public, internal, confidential, restricted
+o	data_owner and tier: work, feature, gold
+o	pii: true/false
+o	refresh_sla
+•	Add comments to tables and columns. Your Featureverse column lineage and the YAML configs can generate most of them; Unity Catalog's AI-generated comments can fill the rest.
+•	Request access to system.access (audit and lineage) and system.information_schema tag views for monitoring.
+Phase 2: Automated classification
+•	Turn on Unity Catalog data classification for the aa_smkt_pfs_v3 and gold schemas. It scans columns, detects sensitive classes (names, emails, phone numbers, addresses, card numbers and so on) and applies system classification tags automatically. New tables and columns are picked up as they appear.
+•	Add a metadata-driven tagging step to your framework, so it stays consistent with your config-first design: 
+o	Each feature config gets a governance block (domain, owner, sensitivity, column overrides).
+o	A post-load step in build_fs() applies those tags and comments after each run.
+o	New tables are tagged from day one, and the YAML stays the single source of truth.
+•	Most of your data is product, location, price and sales features with little PII. The customer and customer_group features and the Coles Online tables are the likely sensitive candidates, so review them first.
+Phase 3: Policy enforcement
+•	Use attribute-based access control (ABAC) policies tied to governed tags rather than per-table grants: 
+o	Column masks: any column tagged pii or sensitivity=restricted is masked automatically unless the user is in an approved group.
+o	Row filters: restrict by domain, or by business unit or state where needed.
+o	Policies set at catalog or schema level apply to every new table that carries the tag, so no manual grant is needed.
+•	Give access to groups (pfs-readers, pfs-engineers, pfs-admins), give the production service principal write access only, and keep work tables private.
+•	Use Delta Sharing for consumers outside your workspace instead of copying data, and share only the gold and published tables.
+Phase 4: Monitoring and continuous compliance
+•	Run a scheduled audit job that flags any table or column without required tags, untagged sensitive columns, or tables without an owner or comment.
+•	Use Data Quality Monitoring on the core tables (ftr_pfs_item_loc_day, ftr_pfus_item_loc_day, the channel-comp tables) for freshness, completeness and anomaly detection. It complements your check_step checks.
+•	Review access with audit logs (who reads restricted columns), and use lineage to trace the impact of upstream biw changes.
+•	Publish trusted gold tables under a Discover domain and mark them with certified/deprecated tags.
+One-line summary: "A config-driven, multi-environment Delta lakehouse (about 110 feature tables, 118 TB, 1.6 TB written a day) with idempotent date-partitioned loads, shallow-cloned sources, API-driven orchestration and built-in quality gates. The next step is metadata-driven governance: automated classification, governed tags and tag-based policies managed from the same YAML configs."
+I saved two facts to memory: the biw sources are shallow-cloned and loads are triggered via the Jobs API, and governance is a known gap.
+
+
+Used Manage Todo List, Execute Code
+Skipping the calendar lookup; printing partition stats only.
+Used Execute Code, Fetch Omitted Content, Manage Todo List, Memory
+I measured your real PFUS load to answer this. In short: MERGE won't help, liquid clustering won't speed up the load, and serverless at list price would roughly double your daily compute cost. The gains are elsewhere.
+How the PFUS load actually runs (from ftr_pfus_item_loc_day change history)
+•	Each day partition is about 19.3M rows and about 1.2 GB, with 205 columns. That's a dense item × store grid: 44.3K items × 912 stores.
+•	Every day the pipeline deletes the whole 113-day window (DAY_IDNT 2027096–2027208) in four 30-day chunks, plus the day rolling off the back. It then appends four chunks in parallel: about 2.2 bn rows and 135 GB a day.
+•	The deletes are almost free. They line up exactly with the partitions, so Delta just drops files and copies 0 rows.
+•	The real cost is computing and writing 2.2 bn rows.
+Why MERGE won't help: I compared the 28 Oct and 29 Oct versions row by row
+Comparison	Rows changed per day partition
+All columns	100%
+Excluding the 2 audit columns	98.8%
+Also excluding 17 customer-segment columns (AFF_*, LFSTG_*, SPND_*)	44.8%
+•	RECD_LOAD_DT and PROCESS_KEY are stamped fresh on every row, every run.
+•	The segment columns are held at item × store level, but they're copied into every one of the 113 days, so one refresh changes about 2.2 bn rows.
+•	Even the remaining "real" changes (latest sales day, deliveries, last received, store hours) touch 45% of rows, spread across every file.
+•	So a MERGE would still rewrite every file in all 113 partitions. On top of that it would add a 2.2 bn × 2.2 bn key join. It would cost more than what you do today.
+What actually helps the load
+•	Single atomic replace instead of DELETE then APPEND. Today the delete committed at 21:04 and the appends finished at 21:10 UTC. For about 6 minutes, readers saw 2.2 bn rows missing. A single replace-by-date-range commit (Delta's REPLACE WHERE) closes that gap at the same cost.
+•	Move the item × store attributes out of the daily table. Put the segment, latest-sales and delivery-snapshot columns in a small "current" table (about 19M rows) and join them in the view. Then a segment refresh is a 19M-row write, not 2.2 bn. This is the only change that shrinks the daily rewrite.
+•	Audit columns: keep RECD_LOAD_DT and PROCESS_KEY, but don't count them as data changes.
+•	Check the far-future days. The table holds 267 more days beyond the window (DAY_IDNT up to 2028111, 5.2 bn rows) that this daily job doesn't rewrite. Worth confirming they're still meant to be there.
+Liquid clustering
+•	Your day partitions are already about 1.2 GB, with healthy files around 150 MB, so they aren't too big.
+•	Partitioning by DAY_IDNT is what keeps your deletes free.
+•	Liquid clustering only helps readers who filter by item or store inside a day. For PFUS, which is fully rewritten daily, you'd re-cluster 135 GB every day: extra compute for no gain in the load. Keep the day partitions.
+•	For PFS (ftr_pfs_item_loc_day: 9.3 TB, 11 years, only about 0.8 bn rows written a day), clustering by DAY_IDNT, LOC_IDNT / ITEM_IDNT is worth it. History is stable, so you cluster it once and every model-training read benefits.
+Classic vs serverless: cost for one day
+Your pipeline warehouse is a classic 2X-Large (144 DBU per cluster-hour), running 1–2 clusters with a 15-minute auto-stop. It uses about 500 DBU a day. On 28 Oct it used 515.6 DBU, which matches the sum of the hourly figures:
+Time (UTC)	DBU	Activity
+09:00	48	10 queries, 10 minutes of runtime
+15:00	46	10 queries, 12 minutes of runtime
+18:00–21:59 (main batch)	422	about 1,420 queries
+	Classic (today)	Serverless, same DBUs	Serverless, idle removed
+Price per DBU (list)	$0.22	$0.95 (Australia East)	$0.95
+DBU cost per day	about $110	about $475	about $390
+Azure VM cost per day	about $160 (estimate)	included	included
+Total per day	about $270	about $475	about $390
+•	Breakeven: serverless only matches classic if it uses about 43% fewer DBUs (about 285 a day).
+•	Main batch: this is dense work, so cutting idle time won't get you there. Only a big runtime speed-up would, which you'd need to test with a pilot.
+•	Sporadic runs: the two small daytime runs are the exception. They spend about 94 DBU a day (18%) on 22 minutes of queries, mostly idle and start-up time. Those are worth moving to a smaller serverless warehouse. Keep the main batch on classic unless a pilot shows a large speed-up.
+Caveats
+•	The VM figure is an estimate, because Azure VM charges aren't in Databricks billing. I assumed 65 E8ds_v4 VMs at about $0.72 an hour, list price. Use your actual Azure invoice rate.
+•	All prices are list prices, so any negotiated discount changes the comparison.
+•	The change rates come from one day-over-day comparison (28 vs 29 Oct). The segment columns may not refresh every day; if they don't, check on a day without a refresh.
+ Here are five interview stories in STAR format (Situation, Task, Action, Result), built from your real pipeline numbers.
+Story 1: Discussing a trade-off — "Should we switch to MERGE?"
+Likely question: "Tell me about a time you had to weigh a design trade-off."
+•	Situation: Our product feature store loads about 2.2 bn rows (135 GB) a day into ftr_pfus_item_loc_day. Every day it rewrites the full 113-day window. Stakeholders assumed we were "wasting compute" and asked us to switch to MERGE so we'd only write the rows that changed.
+•	Task: Decide, with evidence rather than opinion, whether MERGE would cut cost, and bring the stakeholders along with the answer.
+•	Action:
+o	Compared two consecutive days row by row. 100% of rows differed, mostly because two audit columns are stamped every run.
+o	Excluded those and still found 98.8% of rows changed, because 17 customer-segment columns sit at item × store level but are copied into all 113 days.
+o	Excluded those too and still found 45% changed, spread across every file.
+o	Showed that MERGE would still rewrite every file, plus add a 2.2 bn × 2.2 bn key join.
+o	Presented the options side by side:
+Option	Effect
+MERGE	Higher cost
+Keep partition replace	Same cost
+Move item × store attributes into a small current table (19M rows)	Only option that shrinks the daily rewrite
+•	Result: We avoided a costly redesign and moved the conversation to the change that actually helps. The approach was to profile the data before choosing the pattern.
+•	Line to land: "MERGE is the right tool when the change rate is low. Here it was 45–100%, so the data told us to keep the partition replace and fix the data model instead."
+Story 2: Pushing back on a demanding customer — "Move everything to serverless"
+Likely question: "Tell me about a time you disagreed with a customer or stakeholder."
+•	Situation: A stakeholder insisted on moving the whole pipeline to serverless SQL because it's "modern and cheaper". The warehouse is a classic 2X-Large using about 500 DBU a day.
+•	Task: Respect the goal (lower cost, less operations work) while challenging the assumption, without damaging the relationship.
+•	Action:
+o	Agreed on the goal first, then asked: "Can we agree to decide on cost per day for our actual workload?"
+o	Pulled hourly billing:
+Run	DBU per day	Share	Pattern
+Main batch	422	about 82%	dense, well used
+Two small daytime runs	94	about 18%	mostly idle and start-up time
+o	Priced it out at list price:
+Option	Cost per day
+Classic (today)	about $270 (DBUs plus estimated Azure VMs)
+Serverless, same DBUs	about $475
+Serverless, idle removed	about $390
+o	Gave the breakeven: serverless only wins if it uses 43% fewer DBUs.
+o	Offered a middle path rather than a flat no: move the sporadic runs to a smaller serverless warehouse now, and run a time-boxed pilot of the main batch with clear exit criteria.
+•	Result: The customer got a quick win, the low-risk path, and a data-driven way to decide on the rest. The relationship stayed collaborative because the pushback came with an alternative.
+•	Line to land: "I don't push back with opinions. I agree the goal, reframe it as a measurable criterion and offer a pilot. Saying no is easier to accept when it comes with a path to yes."
+Story 3: Discussing a hidden risk — the 6-minute data gap
+Likely question: "How do you identify and communicate risks?"
+•	Situation: While profiling the load history, I noticed the DELETE committed at 21:04 and the appends finished at 21:10. For about 6 minutes, 2.2 bn rows were missing for any downstream reader. Nobody had reported it, because readers usually ran later.
+•	Task: Raise a risk nobody had seen yet, at the right severity, without causing alarm.
+•	Action: 
+o	Framed it as likelihood × impact. Likelihood is low today, but rises as consumers move to near-real-time. Impact is high: models or forecasts silently trained on incomplete data.
+o	Showed the evidence (commit timestamps), not a hypothesis.
+o	Proposed a fix that costs nothing extra: replace the separate delete and append with a single atomic replace-by-date commit.
+o	Logged it in the risk register with an owner and a review date. Added a detection control: the post-load count check already in our framework.
+•	Result: The team moved the fix into the next release, at the same compute cost, and readers can no longer see a half-loaded table.
+•	Line to land: "I bring risks with evidence, a severity, a cheap mitigation and an owner, so it becomes a decision rather than a worry."
+Story 4: A trade-off with cost and risk — 72 TB of backups
+Likely question: "Tell me about balancing cost against safety."
+•	Situation: The production schema is 118 TB, but only 46 TB is live. About 72 TB is manual backup and as-of copies kept "just in case".
+•	Task: Reduce storage cost without taking away the team's safety net.
+•	Action: 
+o	Mapped what each backup actually protects against: bad loads, schema changes, audit snapshots.
+o	Showed that Delta time travel plus shallow-clone snapshots cover the same recovery cases at a fraction of the storage.
+o	Proposed a retention policy (for example, keep N days of time travel, plus named shallow clones for releases), with a rollback drill to prove it works before deleting anything.
+•	Result: The plan reclaims about 60% of storage, the team keeps a proven recovery path, and the trade-off is written down rather than tribal knowledge.
+•	Line to land: "People don't resist cutting backups because they love storage. They resist losing safety. Show them the same safety, cheaper, and prove it with a drill."
+Story 5: Architecture vision — a config-driven lakehouse and the governance gap
+Likely question: "Describe a system you designed and what you'd improve."
+•	Situation: 
+o	A config-driven feature store: about 110 feature tables, 118 TB, about 1.6 TB written a day.
+o	Each table is defined in YAML (SQL steps, keys, checks) and run by one generic engine.
+o	Sources come in as shallow clones, loads are partitioned Delta, orchestration runs through the Jobs API, and environments are separated by catalog in Unity Catalog.
+o	Governance was missing: no tags, comments, grants or classification.
+•	Task: Close the governance gap without slowing delivery.
+•	Action: 
+o	Extended the same metadata-driven approach to governance: a governance block in each table's config (domain, owner, sensitivity), applied automatically after each load.
+o	Turned on Unity Catalog automated data classification, which tags sensitive columns.
+o	Used tag-based policies (column masks, row filters) instead of per-table grants.
+o	Added a scheduled audit for untagged or unowned tables.
+•	Result: Governance becomes part of the build rather than a separate project, and every new table is compliant from day one.
+•	Line to land: "Governance scales when it's declared in config next to the pipeline, not bolted on afterwards."
+General techniques to name in the interview
+•	Trade-offs: "Agree the decision criterion first (cost per day, freshness, risk), then lay out two or three options against it, including the 'do nothing' option."
+•	Pushing back: acknowledge the goal, bring the data, offer an alternative or a pilot, and set exit criteria together.
+•	Risks: state likelihood × impact, back it with evidence, propose a mitigation with its cost, name an owner, and add a detection control.
+•	Demanding customers: put the decision in their terms (dollars a day, SLA minutes), give them a quick win early, and write decisions down.
+•	Close every story with numbers: 2.2 bn rows a day, 45–100% change rate, $270 vs $475 a day, 6-minute gap, 72 TB of backups.
+Used Execute Code
+Here are five interview stories in STAR format (Situation, Task, Action, Result), built only on your framework's own features and the lakehouse. The facts come from your repo configs and the load history we measured.
+Your framework's features (name these in every answer)
+•	Idempotent loads: each config sets delete_step.mode: date, so a run deletes its date window and reloads it. Running it again gives the same result.
+•	Backfill: run_from_day_idnt plus max_days_increment (30 days for PFUS) split any date range into chunks. max_parallel_jobs (5) runs them in parallel.
+•	Data quality gates: check_step runs count_date (row count per day) and primary_keys_date (no duplicates on item, store, day) after every load.
+•	Fault tolerance: hard parent dependencies in modelstore_dependencies.yaml, source freshness checks before each load, and fallback rules in the wait job (fsi_fallback_*) when upstream data is late.
+•	Lakehouse: 
+o	Delta time travel and ACID commits.
+o	Partitions by DAY_IDNT, so each delete only drops files and copies 0 rows.
+o	Shallow-cloned sources and a separate catalog per environment.
+Story 1: Idempotency vs incremental loads
+Likely question: "Tell me about a design trade-off you made."
+•	Situation: PFUS rewrites a 113-day window every day: about 2.2 bn rows and 135 GB. Stakeholders asked whether we should switch to incremental MERGE to save compute.
+•	Task: Choose between keeping the simple, idempotent reload and adding the complexity of incremental loads.
+•	Action:
+o	Compared two consecutive days and found 45–100% of rows changed. A MERGE would rewrite every file anyway, plus add a 2.2 bn-row join.
+o	Set out what each pattern gives us:
+o		Delete and reload by date (current)	MERGE
+Rerun after failure	Safe, same result	Needs careful handling of partial state
+Backfill	Just change run_from_day_idnt	Separate logic needed
+Cost at our change rate	Baseline	Higher
+Debugging	One date range = one unit	Row-level history to untangle
+•	Result: We kept the idempotent pattern on purpose, because simplicity and safe reruns were worth more than theoretical savings.
+•	Line to land: "Idempotency is a feature I chose to pay for. At a 45%+ change rate it's also the cheaper option."
+Story 2: Backfill without disrupting production
+Likely question: "How have you handled a large reprocessing or a logic change?"
+•	Situation: A logic fix had to be applied to history in a table with about 19.3M rows per day. A full rebuild in one go would have overloaded the shared warehouse during the daily batch window.
+•	Task: Reprocess history safely, without breaking the daily SLA.
+•	Action: 
+o	Used run_from_day_idnt with max_days_increment: 30 to split the range into 30-day chunks.
+o	Capped concurrency with max_parallel_jobs so the backfill couldn't starve the daily run.
+o	Because each chunk is idempotent, a failed chunk is simply rerun with no clean-up.
+o	The count and primary-key checks validated every chunk before the next one started.
+•	Result: History was corrected chunk by chunk. Failures were contained to 30 days, the daily load never missed, and the backfill needed no new code, only config changes.
+•	Trade-off to name: "Smaller chunks mean more runs and longer total elapsed time, but less damage when one fails. I tuned chunk size to balance the two."
+Story 3: Data quality gates vs speed
+Likely question: "How do you balance data quality against delivery speed?"
+•	Situation: Downstream forecasting models consume the item × store × day tables. A duplicate key or a missing day silently skews a forecast.
+•	Task: Stop bad data reaching consumers without slowing every load.
+•	Action: 
+o	Made count_date and primary_keys_date mandatory checks in every feature config.
+o	Explained the cost honestly: the duplicate check scans the loaded window, adding minutes per run.
+o	Argued the alternative is worse: a bad forecast reaches store ordering, which costs far more than minutes of compute.
+o	Scoped the checks to the loaded dates (_date, not _all), so they cost the same whether the table is 400 days or 11 years.
+•	Result: Bad loads fail fast and are fixed by rerunning, and consumers trust the tables. Every table also gets quality checks automatically because they're part of the template.
+•	Line to land: "Run checks per load window, not per table. That keeps validation cost flat as the table grows."
+Story 4: The 6-minute data gap
+Likely question: "Tell me about a risk you found and how you handled it."
+•	Situation: The change history showed the delete committed at 21:04, but the four parallel appends only finished at 21:10. For about 6 minutes, readers saw 2.2 bn rows missing. The same idempotent pattern that makes reruns safe had a window where the table was incomplete.
+•	Task: Assess and communicate the risk, and fix it without losing what makes the framework safe to rerun.
+•	Action: 
+o	Likelihood: low today, because consumers read later in the day. It rises as consumers move towards near-real-time reads.
+o	Impact: high. A model trained or scored during the gap gets a silently incomplete dataset, and the checks would still pass afterwards.
+o	Evidence: the commit timestamps from the table's change history, not a hypothesis.
+o	Mitigation: replace the separate delete and append with a single atomic replace-by-date commit. It stays just as idempotent and costs the same, with no window where data is missing.
+o	Short-term control: schedule consumers after the load finishes and the checks pass, using the existing dependency config.
+•	Result: The risk went into the register with an owner and a fix planned in the framework itself, so all of about 110 tables benefit, not just one.
+•	Line to land: "Idempotent isn't the same as atomic. I kept the first and added the second."
+Story 5: Backups vs Delta's built-in recovery
+Likely question: "Tell me about balancing cost against safety."
+•	Situation: Of the 118 TB production schema, about 72 TB is manual backup and as-of copies, made before releases "just in case".
+•	Task: Cut storage without removing the team's safety net.
+•	Action:
+o	Mapped each backup to the failure it protects against:
+Failure	Already covered by
+Bad load	Idempotent rerun of the date range
+Bad logic	Backfill by config
+Accidental change	Delta time travel
+Release snapshot	Shallow clone (metadata only, no data copied)
+o	Proposed a policy: time travel retention for operational recovery, named shallow clones at each release, and full copies only for audit-required snapshots.
+o	De-risked the change with a restore drill before deleting anything.
+•	Result: The plan reclaims about 60% of storage, and recovery is documented and tested rather than "we have a copy somewhere".
+•	Trade-offs to name:
+o	Time travel only covers the retention period.
+o	A shallow clone still depends on its source table's files, so vacuuming the source can break it.
+That's why audit snapshots stay as full copies.
+How to frame trade-offs and risks in the room
+•	Trade-offs: "Agree the criterion first: rerun safety, cost per day, or freshness. Then compare the options against it."
+•	Risks: state likelihood × impact, show evidence, propose a mitigation and its cost, name an owner, and add a detection control.
+•	Pushing back: "The framework already gives us this." For example, a customer asks for custom recovery tooling, and you show that idempotent reruns and time travel already cover it.
+•	Always quantify: 2.2 bn rows a day, 30-day chunks, 6-minute gap, 72 TB of backups, about 110 tables built from one template.
+
+
+Your framework is a SQL-first, config-driven batch lakehouse, and for dense, mostly-rewritten time-series that's the right base. Lakeflow Spark Declarative Pipelines (SDP, formerly called DLT), Auto Loader, PySpark and change data feed (CDF) each fit specific gaps. Use them there, not as a full replacement.
+When to use Lakeflow Spark Declarative Pipelines
+Use SDP when	Keep your framework when
+The source changes a little each day and incremental refresh can process only the changes	Most rows change daily. PFUS changes 45–100% of rows, so incremental refresh would do a near-full recompute anyway
+You want built-in lineage, retries, quality rules (expectations) and dependency ordering without writing them	You already have this through YAML: dependencies, check_step, idempotent date-window reloads
+New feature tables or small dimensions (item, store, promo, cost reference), or the proposed item × store current table	The ~110 existing tables, where migrating means rewriting configs with little gain
+Streaming or near-real-time freshness is needed	Daily batch with a fixed window
+•	Trade-off to state: SDP runs on its own pipeline or serverless compute. For your dense 3-hour batch, the classic SQL warehouse is about $270 a day versus an estimated $390–475 on serverless at list price. SDP has to earn that back through incremental processing, which your PFUS data doesn't allow.
+•	Best fit: a hybrid. Your framework handles the heavy item × store × day rebuilds, and SDP handles the low-change dimension and snapshot tables that feed them.
+Auto Loader: why you didn't need it, and when you would
+•	Your sources are Delta tables in the biw schema, which you bring in as shallow clones. Auto Loader is for files landing in cloud storage (CSV, JSON, Parquet drops), so it wasn't relevant.
+•	You'd need it for:
+o	vendor or supplier file feeds;
+o	manual uploads such as range or promo spreadsheets;
+o	any source that arrives as files rather than tables.
+In those cases it gives you incremental, exactly-once ingestion and schema evolution into a raw layer.
+SQL vs PySpark notebooks
+Stay in SQL (most of your work)	Use PySpark
+Joins, aggregations, window functions for features	Logic driven by your configs: looping over tables or dates, building SQL dynamically (what your R engine does today)
+Date-window delete and reload, checks	Complex algorithms: forecasting prep, statistical features, item-similarity work
+Anything that runs well on a SQL warehouse	Calling machine-learning models, the feature store client or external APIs
+	Data quality frameworks beyond counts and duplicate checks: distribution or drift checks
+•	Rule of thumb: SQL for transformations, Python for orchestration and logic. With serverless notebooks, R isn't supported, so new framework code should be in Python.
+Jobs with many tasks
+•	Use one Lakeflow Job with many tasks when tables depend on each other. Today the modelstore_dependencies.yaml graph is run through REST calls from R. As native tasks, you'd get: 
+o	a dependency graph and UI;
+o	retries for just the failed task, and repair-and-rerun from the failed task onward;
+o	conditional tasks (for example, a fallback if upstream is late);
+o	for-each tasks (for example, one per 30-day backfill chunk);
+o	per-task compute, and cost attributed to each job.
+•	Pattern: 
+1.	A wait-for-upstream task.
+2.	Parallel feature tasks (cost, promo, sales and so on).
+3.	Item-location-day assembly.
+4.	Channel and comparison tables.
+5.	Quality checks.
+6.	Publish or views.
+•	Define it as code: generate the job definition from your YAML dependencies using Declarative Automation Bundles, so the config stays the single source of truth.
+When change data capture (CDC) or change data feed fits here
+•	Not on PFUS item-location-day. Every daily reload rewrites all rows, so CDF would emit about 2.2 bn deletes plus 2.2 bn inserts a day, with no downstream saving.
+•	Good fits: 
+o	Upstream sources that change a little each day (cost, price, promo, range, item and store attributes). Read only the changes and recompute only the affected item × store × day rows. This is where real compute savings come from.
+o	The proposed item × store current table (segments, latest sales, deliveries). It's small (19M rows) and naturally change-driven, so it's ideal for CDF or SDP's built-in CDC handling.
+o	PFS history (9.3 TB, but only about 0.8 bn rows written a day). Downstream copies such as gold or shared tables can consume only the changes instead of re-reading partitions.
+o	Slowly changing dimensions (item hierarchy, store attributes), where you need history (SCD type 2).
+•	Caveat: change data feed has to be enabled on the table you read changes from. A shallow clone starts its own history at clone time, so for source-level changes, read from the source table or confirm CDF is enabled on it.
+Reference architecture for a scalable, reliable lakehouse like this
+Layer	Pattern	Tools
+Ingest	Tables: shallow clone or read source changes. Files: Auto Loader	Delta, change data feed, Auto Loader
+Raw / staging	Append-only, schema evolution, audit columns	Delta, Unity Catalog
+Dimensions and snapshots	Incremental, change-driven, SCD where needed	SDP materialized views and CDC handling
+Heavy features (item × store × day)	Config-driven, idempotent atomic replace by date window, chunked backfill	Your framework on a SQL warehouse
+Quality	Count and duplicate checks per load window, plus expectations and anomaly monitoring	check_step, SDP expectations, Data Quality Monitoring
+Serve	Views, gold schema, Delta Sharing, clustering on stable history (PFS)	Views, liquid clustering, Delta Sharing
+Orchestrate	Multi-task Lakeflow Jobs generated from the YAML dependencies	Jobs, Declarative Automation Bundles
+Govern	Governed tags, automated classification, tag-based policies, lineage	Unity Catalog
+Recover	Idempotent reruns, time travel, shallow-clone release snapshots	Delta
+One-line interview answer: "I match the tool to how much the data changes. Low-change dimensions go incremental with SDP and change data feed. Dense, fully-changing time-series stay on a config-driven, idempotent SQL batch. Everything is orchestrated as multi-task jobs defined in code, and governed in Unity Catalog."
+
