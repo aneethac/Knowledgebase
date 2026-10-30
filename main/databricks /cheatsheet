@@ -1,0 +1,157 @@
+Here is the cheat sheet, tied to three scale tiers.
+
+| Tier | Size | Example |
+| --- | --- | --- |
+| **L (Large)** | over 10 TB, or over 1 bn rows a day | your PFS/PFUS: 118 TB, 2.2 bn rows a day |
+| **M (Medium)** | 100 GB – 10 TB | |
+| **S (Small)** | under 100 GB | |
+
+**1. File and table formats**
+
+| Choice | Use when | Avoid when |
+| --- | --- | --- |
+| Delta (default) | Always for curated data: ACID, time travel, file skipping, MERGE | Never avoid for anything curated |
+| Parquet | Only underneath Delta, or a one-off export | Tables that get updated |
+| CSV / JSON | Landing zone only, then convert to Delta | Anything downstream |
+| Avro | Kafka or event payloads | Analytics |
+| Iceberg (UniForm / managed Iceberg) | Tools outside Databricks must read the tables | Databricks-only use |
+| **Managed table (Unity Catalog)** | Default. Gets predictive optimization (automatic OPTIMIZE/VACUUM/statistics) | |
+| **External table** | Data must live at a fixed storage path, or other engines write to it | New builds where managed works |
+| **View** | Light logic, joins, security layer, stable consumer interface (your `*_comp_vw`) | Heavy logic queried often |
+| **Materialized view** | Expensive aggregates read often. Refresh can be incremental | Data that is mostly rewritten every day |
+| **Streaming table** | Append or change-driven ingestion | Full-window reloads |
+| **Shallow clone** | Source snapshots, release checkpoints, dev/test copies | Long-term backup: it breaks if the source is vacuumed |
+| **Deep clone** | Real backup, audit snapshot, moving data between regions | Routine snapshots: expensive |
+
+**2. Partitioning, liquid clustering and Z-order: decision table**
+
+| Situation | Choice |
+| --- | --- |
+| S: table under 1 TB | **No partitions.** Liquid clustering only if queries filter on a column; otherwise rely on predictive optimization |
+| M: query filters vary, and keys may change over time | **Liquid clustering** on 1–4 columns |
+| L: you replace whole date windows (your PFUS pattern) | **Partition by date** (each partition ≥ 1 GB; yours are 1.2 GB). Deletes just drop files, 0 rows copied |
+| L: stable history read by item or store (your PFS, 9.3 TB) | **Liquid clustering** on (day, store) or (day, item), clustered once and kept incrementally |
+| Old table that already has Z-order | Migrate to liquid clustering. Z-order isn't incremental and works for only 1–3 columns |
+
+* **Limits and rules to remember:**
+  * Partition count: keep it under about 10K, and never partition on a column with many distinct values.
+  * Liquid clustering:
+    * It can't be combined with partitioning or Z-order on the same table.
+    * Its keys must be columns with statistics. By default only the first 32 columns get statistics (`delta.dataSkippingNumIndexedCols`).
+    * This matters for your 287-column table: clustering keys must sit in the first 32 columns, or you have to adjust the statistics column setting.
+  * Target file size is tuned automatically: about 256 MB for tables under 2.56 TB, rising to 1 GB above 10 TB.
+
+**3. Maintenance**
+
+| Command | When | Limits / risks |
+| --- | --- | --- |
+| OPTIMIZE | After many small appends, or on clustered tables. **L:** only on partitions that changed. **S:** let predictive optimization handle it | Costs compute. Don't OPTIMIZE PFUS daily, because it's rewritten daily anyway |
+| VACUUM | Weekly, or automatically through predictive optimization | Default retention is 7 days, and it sets your time-travel window. Shorter retention breaks long readers and shallow clones |
+| ANALYZE / statistics | After big loads, for better join plans | Predictive optimization does this for managed tables |
+| Deletion vectors | Speed up DELETE/UPDATE/MERGE | Purge them periodically (REORG) on tables with many updates |
+| Log retention | Transaction log is kept 30 days by default | Time travel never reaches past VACUUM retention |
+
+**4. Compute selection**
+
+| Compute | Use for | Tier | Cost note |
+| --- | --- | --- | --- |
+| **Jobs compute (classic)** | Scheduled PySpark/R/Scala pipelines | M–L | Cheapest per DBU for Spark batch |
+| **All-purpose cluster** | Interactive development only | Any | About twice the jobs DBU rate; never schedule production on it |
+| **Instance pools** | Many short tasks, fast start | M–L | Idle VMs cost Azure money but no DBUs |
+| **Serverless jobs / notebooks** | Bursty or short jobs, no tuning wanted, fast start | S–M | Higher DBU rate, no idle time, no VM bill. No R, no Spark caching |
+| **SQL warehouse, Classic** | Dense, predictable SQL batch (your 2X-Large: about $270 a day) | L | Cheapest at list price for well-used batch |
+| **SQL warehouse, Pro** | Adds SQL features, for example query federation and SQL in pipelines | M | Mid price |
+| **SQL warehouse, Serverless** | Dashboards, ad hoc use, sporadic runs (your two daytime runs) | S–M | Starts in seconds. Your 3-hour batch would cost about $390–475 a day |
+| **Photon** | Joins, aggregations, writes on SQL or Spark | M–L | Usually lowers total cost on SQL-heavy work |
+
+* **Choose a SQL warehouse when:**
+  * the logic is pure SQL;
+  * the team is SQL-skilled;
+  * you want concurrency scaling (multiple clusters) and no Spark tuning.
+* **Choose Spark compute when:**
+  * you need loops or configs driving the logic;
+  * you use Python/ML libraries or UDFs;
+  * you need fine Spark settings, or Spark caching.
+
+**5. Ways of orchestrating**
+
+| Option | Best for | Trade-off |
+| --- | --- | --- |
+| **Lakeflow Jobs (multi-task)** | Any production graph: dependencies, retries, repair-and-rerun, for-each, conditions | Define as code in Declarative Automation Bundles |
+| **Lakeflow Spark Declarative Pipelines (SDP)** | Incremental, low-change data. Built-in quality rules, lineage, change handling (CDC, SCD) | Pipeline compute. Little gain when about 100% of rows change |
+| **SQL (on a warehouse)** | Transformations, date-window reloads | Weak for control flow |
+| **PySpark notebooks / files** | Config-driven engines, ML, complex logic | Needs code discipline (tests, packaging) |
+| **REST API from an external tool** (your R runner) | Legacy or integration | No native lineage, job ID or cost attribution |
+
+* **Rule:** use SQL for transformations, Python for orchestration logic, Jobs for scheduling, and SDP for incremental work.
+
+**6. Caching**
+
+| Type | When | Limits |
+| --- | --- | --- |
+| **Disk cache** (automatic) | Repeated reads of the same files | Needs SSD instance types; automatic on SQL warehouses |
+| **SQL result cache** | Dashboards repeating the same query | Cleared when the data changes |
+| **Spark `cache()` / `persist()`** | One DataFrame reused 2+ times in the same job (iterative ML, multi-step features) | Memory pressure and spill. Unpersist when done. Not available on serverless |
+| **`CACHE TABLE`** | Rarely | Usually better to write a temp Delta table: easier to recover, no memory risk |
+
+* **Don't cache** data read only once, huge tables bigger than cluster memory, or anything inside a streaming loop.
+* Your PFUS config has its cache steps commented out, which is correct for a warehouse.
+
+**7. Spark settings (Spark compute)**
+
+| Setting | Default | When to change |
+| --- | --- | --- |
+| `spark.sql.adaptive.enabled` (adaptive query execution, AQE) | true | Keep it on. It covers partition coalescing, skew joins and switching to broadcast at runtime |
+| `spark.sql.shuffle.partitions` | 200 (`auto` on Databricks) | **L:** about total shuffle size ÷ 128–200 MB, or `auto`. **S:** lower it (for example 8–50) |
+| `spark.sql.files.maxPartitionBytes` | 128 MB | Raise to 256–512 MB for wide scans with light work; lower for heavy per-row work |
+| `spark.sql.autoBroadcastJoinThreshold` | 10 MB | Raise to 100 MB – 1 GB if dimensions are small and memory allows. Hard limit about 8 GB |
+| `spark.sql.adaptive.skewJoin.enabled` | true | Keep. Tune the skew factor when one key (one big store or item) dominates |
+| `spark.databricks.delta.optimizeWrite.enabled` | on for many writes | Produces fewer, larger files on write |
+| `delta.autoOptimize.autoCompact` | | Small, frequent appends |
+| `spark.sql.sources.partitionOverwriteMode=dynamic` | static | Overwrite only the partitions you write. Prefer replace-by-condition for atomic date windows |
+
+* On SQL warehouses most of these can't be changed, which is a point in their favour for SQL teams. Your configs set shuffle and broadcast settings: keep that only on Spark compute.
+
+**8. Hints**
+
+| Hint | Use when |
+| --- | --- |
+| `BROADCAST` | A dimension table is small (under about 1 GB) but statistics are missing or stale |
+| `SHUFFLE_HASH` | Medium-sized join where sorting is the bottleneck |
+| `MERGE` (sort-merge join) | Both sides are large and already sorted or bucketed |
+| `REPARTITION` / `REBALANCE` | Control output file count or fix skew before a write |
+| `COALESCE` | Reduce file count without a shuffle (small outputs) |
+
+* **Rule:** fix statistics first (ANALYZE) and let AQE decide. Hints are a last resort, and they become wrong as data grows.
+
+**9. Choices by tier**
+
+| Area | Small (under 100 GB) | Medium (100 GB – 10 TB) | Large (over 10 TB, bn rows a day) |
+| --- | --- | --- | --- |
+| Layout | No partitions | Liquid clustering | Date partitions for window replace; liquid clustering for stable history |
+| Load | Full overwrite | MERGE / change data feed when under about 10–20% of rows change | Idempotent atomic replace by date window, chunked backfill |
+| Compute | Serverless SQL or serverless jobs | Pro/serverless SQL, or jobs compute | Classic SQL warehouse or jobs compute with Photon; pools |
+| Orchestration | Simple job or SDP | Multi-task job or SDP | Multi-task jobs from config, with dependency gates |
+| Maintenance | Predictive optimization | Predictive optimization plus clustering | Targeted OPTIMIZE; controlled VACUUM; no daily optimize on rewritten windows |
+| Quality | Expectations | Expectations plus anomaly monitoring | Per-window count and duplicate checks, plus monitoring |
+
+**10. Main risks and trade-offs**
+
+| Risk | Mitigation |
+| --- | --- |
+| Non-atomic delete then append (your 6-minute gap) | Single replace-by-condition commit |
+| Over-partitioning, small files | Partitions ≥ 1 GB, or liquid clustering |
+| MERGE at a high change rate | Measure the change rate first; full replace above about 30–40% |
+| Manual backups (your 72 TB) | Time travel, shallow clones for snapshots, deep clones for audit only |
+| Serverless cost on dense batch | Use breakeven analysis; mix the two |
+| VACUUM too short | Keep 7 days or more; check readers and clones first |
+| Hints and settings going stale | Rely on statistics and AQE; review each quarter |
+| Statistics only on the first 32 columns | Put filter and clustering keys early, or adjust the setting |
+
+**11. Governance essentials**
+* Managed tables in Unity Catalog; catalog = environment, schema = domain or layer.
+* Governed tags plus automated data classification, then tag-based policies (column masks, row filters).
+* Grants to groups, production runs as a service principal, and work tables kept private.
+* Comments on every table and column (AI-generated where possible), owner tags, certified/deprecated tags.
+* Lineage, audit logs and Data Quality Monitoring, plus a scheduled check for untagged or unowned tables.
+* Delta Sharing for consumers outside the workspace instead of copying data.
