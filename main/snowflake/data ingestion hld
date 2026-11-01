@@ -1,0 +1,240 @@
+ EDP to Snowflake data ingestion pipeline: summary, system design and interview guide
+This is based on the https://colesgroup.atlassian.net/wiki/spaces/DIAT/pages/528090246/Cloud+BI+Platform+EDP+to+Snowflake+Data+Ingestion+Pipeline+-+HLD.
+1. Summary
+Goal: Build a secure, config-driven pipeline that copies full or partial datasets from the Enterprise Data Platform (EDP, which stores Delta Lake tables on Azure Databricks) into Snowflake for BI and data discovery.
+What it does:
+Detects changes (CDC). It compares the latest published version of a Delta table with the previous one and labels each record Insert, Update/Change or Delete. A full extract is the same output with every record marked "I".
+Encrypts the files. Client-side encryption (CSE) uses AES-256 envelope encryption, with the master key in Azure Key Vault. Files are never stored unencrypted in the staging area.
+Stages the files in an Azure storage account (ADLS Gen2) that Snowflake reads from (the "external stage").
+Loads the files with COPY INTO through an encrypted named stage in Snowflake, which decrypts them during the load.
+Applies the changes. A dynamically generated MERGE moves changes from Raw Staging into Persisted Staging, which feeds a dimensional Presentation layer.
+
+Key decisions:
+Decision
+Outcome
+Why
+Tri-Secret Secure (customer-managed key at the Snowflake account level)
+Not required
+Snowflake's standard encryption plus CSE was enough
+Client-side encryption
+Required
+Coles Data Protection Standards for data at rest in the external stage
+Ingestion pattern
+Pattern #1: scheduled batch, file-based
+Covers the widest range of use cases and sources
+CDC engine
+G-Research spark-extension diff, or custom code based on it
+Supports composite primary keys and schema validation, and the spike showed it performs well on large datasets
+Orchestration: Azure Data Factory (ADF) inside EDP, and Airflow plus Python on a Linux VM in the Insights subscription. Service Bus messages trigger the work.
+Alternative patterns (stretch goals): #2 Snowpipe micro-batch, #3 external tables (logical access, no copy), #4 direct writes using the Spark–Snowflake connector.
+2. Implementation as a reusable system design (for another client)
+2.1 Generic architecture
+[Source Lakehouse (Delta/Iceberg)]
+        │ (1) publish event
+        ▼
+[Event Bus: Service Bus / Kafka / SNS-SQS] ──► (2) Watcher ──► [Control DB: table register + message log]
+                                                                     │
+                                                       (3) Master orchestrator (ADF/Airflow)
+                                                                     │ fan-out per table
+                                                                     ▼
+                                          (4) Spark job: CDC → Parquet (10–100MB, Snappy)
+                                                    │
+                                          (4b) Client-side encryption (envelope, KMS/Key Vault)
+                                                    │
+                                          (4c) Copy to External Stage (ADLS/S3/GCS)
+                                                    ▼
+                         (5) Snowflake COPY INTO via encrypted named stage → RAW_STG
+                                                    ▼
+                         (6/7) Dynamic MERGE → PERSISTED_STG (logical delete flag)
+                                                    ▼
+                         PRESENTATION (star schema) → BI tool (Power BI / Tableau)
+Equivalent components on each cloud:
+Component
+Azure (Coles)
+AWS
+GCP
+Event bus
+Service Bus
+SNS/SQS, EventBridge
+Pub/Sub
+Orchestrator
+ADF + Airflow
+MWAA / Step Functions
+Cloud Composer
+Compute for CDC
+Databricks
+Databricks / EMR / Glue
+Databricks / Dataproc
+Key management
+Azure Key Vault
+KMS / Secrets Manager
+Cloud KMS
+External stage
+ADLS Gen2
+S3
+GCS
+Snowflake auth to storage
+Storage Integration
+Storage Integration (IAM role)
+Storage Integration
+2.2 Control and metadata layer (the config-driven core)
+The control database makes the pipeline config-driven: onboarding a new table means adding a row, not writing new code.
+CREATE TABLE ctl.table_register (
+  source_table      VARCHAR,
+  target_db         VARCHAR,
+  target_schema     VARCHAR,
+  target_table      VARCHAR,
+  pk_columns        VARCHAR,     -- 'store_id,item_id,date'
+  load_type         VARCHAR,     -- FULL | CDC
+  cdc_filter        VARCHAR,     -- e.g. 'sales_date >= current_date - 7' (limit CDC scope)
+  cse_required      BOOLEAN,     -- skip encryption for non-sensitive data
+  is_active         BOOLEAN
+);
+
+CREATE TABLE ctl.event_log (
+  message_id        VARCHAR,
+  source_table      VARCHAR,
+  version_current   INT,
+  version_previous  INT,
+  status            VARCHAR,     -- NEW | EXTRACTING | STAGED | LOADED | MERGED | FAILED
+  received_ts       TIMESTAMP,
+  processed_ts      TIMESTAMP
+);
+The watcher (step 2): A Python job on a schedule reads the event bus, saves every message to event_log, then keeps only the tables listed in table_register. Messages are saved first because the bus carries events for every table from every tenant, and saving them makes reprocessing and audit possible.
+2.3 CDC extract (Spark)
+from pyspark.sql import functions as F
+
+def cdc(prev_df, curr_df, pk_cols, filter_expr=None):
+    if filter_expr:                       # limit CDC scope on huge transactional tables
+        prev_df, curr_df = prev_df.where(filter_expr), curr_df.where(filter_expr)
+
+    assert dict(prev_df.dtypes) == dict(curr_df.dtypes), "Schema drift detected"
+
+    non_pk = [c for c in curr_df.columns if c not in pk_cols]
+    p, c = prev_df.alias("p"), curr_df.alias("c")
+    j = p.join(c, on=pk_cols, how="full_outer")
+
+    changed = F.lit(False)
+    for col in non_pk:
+        changed = changed | ~F.col(f"p.{col}").eqNullSafe(F.col(f"c.{col}"))
+
+    flag = (F.when(F.col(f"p.{non_pk[0]}").isNull() & F.col(f"c.{non_pk[0]}").isNotNull(), "I")  # simplify w/ a presence marker in real code
+             .when(F.col(f"c.{non_pk[0]}").isNull() & F.col(f"p.{non_pk[0]}").isNotNull(), "D")
+             .when(changed, "U").otherwise("N"))
+    ...
+    # keep I/U/D, take 'c.*' values for I/U and 'p.*' for D, add CDC_FLAG + BATCH_ID + EXTRACT_TS
+In production, either use the G-Research df1.diff(df2, *pk_cols) function or add an _exists marker column to each side so inserts and deletes are detected reliably, including rows where values are null.
+Delta time travel gives you both versions: spark.read.format("delta").option("versionAsOf", v).
+Full extract: curr_df.withColumn("CDC_FLAG", F.lit("I")).
+File sizing: use repartition(n) so each file is roughly 10–100 MB compressed, the range Snowflake loads most efficiently.
+Metadata file: write a JSON file next to the data with columns, types and primary keys. Later steps use it for schema validation and to create tables automatically.
+
+Simpler option on newer platforms: if the source has Delta Change Data Feed enabled (readChangeFeed), you can skip the version-to-version comparison. The HLD's comparison approach works no matter how the source tenant loads its tables, which matters in a multi-tenant platform.
+2.4 Client-side encryption (envelope pattern)
+Create a key-encryption key (KEK) (AES-256) in Key Vault or KMS and set an expiry date (the Coles standard requires rotation at least every two years).
+For each file, generate a random content-encryption key (CEK), encrypt the file with it, then wrap the CEK with the KEK. Snowflake expects its own CSE format, so follow Snowflake's client-side encryption spec and the cloud SDK.
+Encryption has to be a separate step after the Parquet files are written. Spark can't encrypt while it writes a DataFrame (call-out J in the HLD), so you need an extra persistence step.
+For non-sensitive tables, cse_required = false lets the pipeline skip encryption and copy the files directly.
+
+2.5 Snowflake setup and load
+-- One-time
+CREATE STORAGE INTEGRATION azure_int
+  TYPE = EXTERNAL_STAGE STORAGE_PROVIDER = 'AZURE' ENABLED = TRUE
+  AZURE_TENANT_ID = '
+<tenant>' STORAGE_ALLOWED_LOCATIONS = ('azure://<acct>.blob.core.windows.net/stage/');
+CREATE STAGE raw.ext_stage_enc
+URL = 'azure://</acct>.blob.core.windows.net/stage/'
+STORAGE_INTEGRATION = azure_int
+ENCRYPTION = (TYPE = 'AZURE_CSE' MASTER_KEY = '')
+FILE_FORMAT = (TYPE = PARQUET);
+-- Per load (Python + snowflake-connector, orchestrated by Airflow)
+COPY INTO raw_stg.sales
+FROM (SELECT $1:CDC_FLAG::VARCHAR, $1:store_id::INT, $1:item_id::INT, $1:qty::NUMBER(18,2), $1:BATCH_ID::VARCHAR
+FROM @raw.ext_stage_enc/sales/batch=20261102/)
+ON_ERROR = ABORT_STATEMENT;
+
+Before running `COPY INTO`, compare the metadata file with `INFORMATION_SCHEMA.COLUMNS`. If the table doesn't exist yet, create it from the metadata and apply the RBAC grants. That step is optional; most tables are created in advance through CI/CD.
+
+### 2.6 Dynamic MERGE (apply CDC)
+
+```python
+def build_merge(tgt, src, pks, cols):
+    on   = " AND ".join(f"t.{k}=s.{k}" for k in pks)
+    upd  = ", ".join(f"t.{c}=s.{c}" for c in cols if c not in pks)
+    ins_c = ", ".join(cols); ins_v = ", ".join(f"s.{c}" for c in cols)
+    return f"""
+    MERGE INTO {tgt} t
+    USING (SELECT * FROM {src}
+           QUALIFY ROW_NUMBER() OVER (PARTITION BY {','.join(pks)} ORDER BY EXTRACT_TS DESC)=1) s
+    ON {on}
+    WHEN MATCHED AND s.CDC_FLAG='D' THEN UPDATE SET t.IS_DELETED=TRUE, t.UPDATED_TS=CURRENT_TIMESTAMP
+    WHEN MATCHED AND s.CDC_FLAG IN ('U','C','I') THEN UPDATE SET {upd}, t.IS_DELETED=FALSE, t.UPDATED_TS=CURRENT_TIMESTAMP
+    WHEN NOT MATCHED AND s.CDC_FLAG <> 'D' THEN INSERT ({ins_c}, IS_DELETED, UPDATED_TS)
+         VALUES ({ins_v}, FALSE, CURRENT_TIMESTAMP);"""
+Deletes set a logical delete flag instead of removing rows, matching the HLD's Persisted Staging design.
+Removing duplicates with QUALIFY makes the merge idempotent, so replaying a batch gives the same result.
+
+2.7 Snowflake data layers
+Layer
+Purpose
+RAW_STG
+Temporary landing area for CDC records exactly as received
+PERSISTED_STG
+Same structure as the source, limited history, IS_DELETED flag
+WORK
+Temporary tables used during transformations
+PRESENTATION
+Star schema, semantic layer for BI
+2.8 Non-functional checklist for a new client
+Performance and cost: measure baselines across file sizes, Spark cluster sizes and Snowflake warehouse sizes. Use a dedicated loading warehouse with auto-suspend.
+Replay: keep the last N batches of files, as long as they are still encrypted with the current key.
+Key rotation runbook: process or re-key any files left in the stage before rotating. Files encrypted with the old key can't be read after the switch.
+Observability: track status per batch in event_log, compare row counts (source vs RAW vs merged), check COPY_HISTORY, and alert on failures.
+Security: RBAC per schema, dynamic data masking for personal information (PI), and a private endpoint for the storage account.
+Schema drift: fail fast (the default) or evolve automatically through the metadata.
+
+2.9 Which pattern to choose
+Pattern
+Use when
+Trade-off
+#1 Scheduled batch, file-based
+Default choice: many sources, strict security
+Many moving parts, encryption overhead
+#2 Snowpipe micro-batch
+Data needed within minutes
+MERGE still runs as a batch, tables must exist in advance, schema drift isn't handled
+#3 External tables
+Discovery or exploration with no copy
+Slower queries (materialised views help), cost per event notification
+#4 Spark connector direct write
+Simplest, fastest path, no staging
+Pays for both Databricks and Snowflake compute; the connector rewrites pushed-down SQL, which makes tuning harder
+3. How to explain it in an interview
+30-second version
+"I worked on a data ingestion pipeline that replicated Delta Lake tables from our Databricks-based enterprise data platform into Snowflake for BI. It was event-driven and config-driven. When a table was published, we ran a Spark CDC job comparing the current and previous table versions, wrote Parquet delta files, encrypted them client-side with AES-256 envelope encryption using Key Vault, staged them in ADLS, loaded them through an encrypted Snowflake stage with COPY INTO, and applied the changes with a dynamically generated MERGE into a persisted staging layer. Onboarding a new table was a config row, not new code."
+2-minute structure (STAR)
+Situation: Snowflake had been approved for BI, but there was no approved, secure way to move data from the lakehouse into it.
+Task: Design a reusable pipeline that supports full and incremental loads and composite keys, meets data-protection standards, and is cheap to run.
+Action: Walk through the 7 steps (event → watcher → orchestrator → CDC → encrypt → COPY INTO → MERGE). Then mention the two security decisions: Tri-Secret Secure was assessed and rejected, and client-side encryption was adopted.
+Result: One standard pattern approved by architecture and security, new tables onboarded through metadata, and three alternative patterns documented for other latency or cost needs.
+
+Only claim the parts you actually built. If your role was implementing or supporting the pipeline rather than designing it, say so. Interviewers usually probe deeply.
+Design trade-offs to bring up
+Why a version-to-version comparison instead of the source's own change tracking? It works no matter how each tenant loads their tables, and gives every consumer the same I/U/D format. The cost is extra compute, which we reduced by filtering the comparison window on large transactional tables.
+Why files instead of writing directly through the connector? Security and audit (data encrypted at rest, files available for replay), Snowflake loads files in bulk efficiently, and it works for sources outside the platform. The cost is more moving parts.
+Why client-side encryption but not Tri-Secret Secure? The risk was the staging area in our own storage account. Snowflake already encrypts its internal storage, so adding a customer-managed key there added key-management overhead for little benefit.
+Why save events to a database first? The bus carried events for every tenant. Saving them gave filtering, idempotency, retries and an audit trail.
+Idempotency: dedupe by primary key and latest extract time, a status machine per batch, and MERGE so replays are safe.
+
+Likely follow-up questions and short answers
+How do you handle schema changes? Compare the metadata file with Snowflake's information schema before loading, and fail fast or evolve through a controlled CI/CD change.
+How do you handle late or duplicate events? Process versions in order per table using the event log, and dedupe inside the MERGE.
+How do you scale to hundreds of tables? The master pipeline launches parallel runs per table, Parquet files are 10–100 MB, and loading warehouses are sized by measured baselines.
+What happens when the encryption key rotates? Drain the staged files first, then create the new key, recreate the Snowflake stage, and re-encrypt any files kept for replay.
+How would you make it real-time? Pattern #2 (Snowpipe triggered by storage events), or Snowpipe Streaming or Kafka, plus a scheduled or stream-and-task MERGE.
+What would you change today? Use Delta Change Data Feed instead of comparing whole versions, Snowflake dynamic tables or streams and tasks for the MERGE layer, possibly Iceberg tables to avoid copying data, and private connectivity everywhere.
+
+Whiteboard tip
+Draw the 7 boxes from left to right, mark where the data is encrypted, and label the three Snowflake layers. Then talk about failures and cost. That's usually the part interviewers score.
+Keep client-specific details (names, subscriptions, internal standards) out of the interview. Describe it as "a large retailer's enterprise data platform."
+</tenant>
